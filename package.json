@@ -1,0 +1,146 @@
+{
+  "name": "anime-player",
+  "version": "1.0.0",
+  "description": "Anime Player offering seamless playback of audio and video files across windows and mac platforms. Features include custom controls, support for various media formats, and a user-friendly interface designed for both casual and advanced users.",
+  "main": "./src/main.js",
+  "author": "Anime Player",
+  "license": "MIT",
+  "keywords": [],
+  "scripts": {
+    "start": "electron .",
+    "pack": "electron-packager . --platform=win64 --arch=x64 --out=dist/ --overwrite --icon=icon.ico",
+    "dist": "electron-builder --publish=always"
+  },
+  "dependencies": {
+    "depcheck": "^1.4.7",
+    "electron-log": "^5.1.7",
+    "electron-store": "^10.0.0",
+    "electron-updater": "^6.3.4",
+    "gifuct-js": "^2.1.2"
+  },
+  "devDependencies": {
+    "electron": "^31.3.1",
+    "electron-builder": "^24.13.3",
+    "electron-packager": "^17.1.2",
+    "webpack": "^5.94.0",
+    "webpack-cli": "^5.1.4"
+  },
+  "build": {
+    "productName": "Anime Player",
+    "appId": "com.AnimePlayer",
+    "target": [
+      "nsis",
+      "dmg"
+    ],
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "installerIcon": "assets/icons/icon.ico",
+      "uninstallerIcon": "assets/icons/icon.ico",
+      "installerHeaderIcon": "assets/icons/icon.ico",
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "deleteAppDataOnUninstall": true,
+      "shortcutName": "Anime Player",
+      "uninstallDisplayName": "Anime Player"
+    },
+    "fileAssociations": [
+      {
+        "ext": [
+          "3gp",
+          "avi",
+          "flv",
+          "mkv",
+          "mov",
+          "mp4",
+          "mpeg",
+          "mpg",
+          "webm",
+          "wmv",
+          "vob",
+          "ogg",
+          "m4v",
+          "iso",
+          "aac",
+          "ac3",
+          "aiff",
+          "alac",
+          "amr",
+          "ape",
+          "flac",
+          "mka",
+          "mp3",
+          "ogg",
+          "opus",
+          "wav",
+          "wma"
+        ],
+        "name": "Anime Player",
+        "description": "Anime Player Video File",
+        "icon": "assets/icons/icon.ico"
+      }
+    ],
+    "mac": {
+      "icon": "assets/icons/icon.icns",
+      "target": [
+        "dmg"
+      ],
+      "category": "public.app-category.video",
+      "hardenedRuntime": true,
+      "fileAssociations": [
+        {
+          "ext": [
+            "3gp",
+            "avi",
+            "flv",
+            "mkv",
+            "mov",
+            "mp4",
+            "mpeg",
+            "mpg",
+            "webm",
+            "wmv",
+            "vob",
+            "ogg",
+            "m4v",
+            "iso",
+            "aac",
+            "ac3",
+            "aiff",
+            "alac",
+            "amr",
+            "ape",
+            "flac",
+            "mka",
+            "mp3",
+            "ogg",
+            "opus",
+            "wav",
+            "wma"
+          ],
+          "name": "Anime Player",
+          "role": "Viewer"
+        }
+      ]
+    },
+    "files": [
+      "**/*",
+      "!**/*.map",
+      "!**/tests/**",
+      "!node_modules/.bin/**"
+    ],
+    "asar": true,
+    "compression": "maximum",
+    "win": {
+      "icon": "assets/icons/icon.ico"
+    },
+    "linux": {
+      "icon": "assets/icons/icon.png"
+    }
+  },
+  "publish": {
+    "provider": "github",
+    "owner": "animeredits",
+    "repo": "Anime-player"
+  }
+}
