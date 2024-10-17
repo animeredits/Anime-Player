@@ -29,15 +29,15 @@ body {
   opacity: 0;
   visibility: hidden;
   cursor: none;
-  transition: opacity 0.6s ease-in-out,
-    visibility 0.5s cubic-bezier(0.4, 0, 1, 1);
+  transition: opacity 0.8s ease-in-out,
+    visibility 0.7s  ease-in-out;
 }
 
 .visible {
   opacity: 1;
   visibility: visible;
-  transition: opacity 0.6s ease-in-out,
-    visibility 0.5s cubic-bezier(0.4, 0, 1, 1);
+  transition: opacity 0.8s ease-in-out,
+    visibility 0.7s  ease-in-out;
 }
 
 /* Navigation Bar */
@@ -68,10 +68,12 @@ nav ul li a {
   color: #fff;
   text-decoration: none;
   -webkit-app-region: no-drag;
+  transition: background-color 0.3s ease, border-radius 0.3s ease;
 }
 
 nav ul li a:hover {
-  background-color: rgba(255, 255, 255, 0.1);
+  background-color: rgba(222, 220, 220, 0.1);
+  border-radius: 5px;
 }
 
 nav ul li.nav-image img {
@@ -101,7 +103,7 @@ nav::before {
   background: linear-gradient(
     to top,
     rgba(0, 0, 0, 0) 0%,
-    rgba(0, 0, 0, 0.6) 100%
+    rgba(0, 0, 0, 0.353) 100% 
   );
   opacity: 1;
   z-index: 1;
@@ -445,7 +447,7 @@ main {
 /* Modal Content */
 .modal-content {
   backdrop-filter: blur(16px) saturate(180%);
-  background-color: #2f2f2f99;
+  background-color: #2f2f2fc5;
   border-radius: 12px;
   border: 1px solid rgba(255, 255, 255, 0.125);
   margin: 15% auto; /* Centered */
@@ -478,7 +480,7 @@ main {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  border-bottom: 1px solid #ddd;
+  border-bottom: 1px solid #f8f8f8;
   padding-bottom: 10px;
 }
 
@@ -551,11 +553,15 @@ main {
   align-items: center;
   justify-content: center;
   padding: 5px 10px;
-  border: 1px solid hsla(0, 0%, 100%, 0.1);
-  color: #e3e3e3;
+  border: 1px solid rgba(255, 255, 255, 0.364);
+  color: #ffffff;
   border-radius: 4px;
   font-size: 0.875rem;
   background: transparent;
+}
+
+.keys span:hover{
+  border: 1px solid #ededed;
 }
 
 #progressBarContainer {
@@ -683,54 +689,21 @@ main {
 
 /* Card Styles */
 .volume-rendom .card {
+  display: flex;
+  align-items: center;
+  justify-content: center;
   position: relative;
   width: 28%;
   height: 42px;
-  background: transparent;
   border: 1px solid transparent;
-  overflow: hidden;
-  transition: background-color 0.3s ease, border 0.3s ease;
-  display: flex;
-  justify-content: center;
-  align-items: center;
+  background-origin: content-box;
+  background: center transparent no-repeat;
+  transition: border, border-image 10s ease-in-out;
 }
 
 .volume-rendom .card i,
 span {
   z-index: 999;
-}
-
-/* Hover Effect on Cards */
-.volume-rendom .card:hover {
-  border-color: 0.3px solid rgba(255, 255, 255, 0.364);
-  background-color: rgba(255, 255, 255, 0.1);
-}
-
-/* Radial Glow Effect */
-.volume-rendom .card::before {
-  content: "";
-  position: absolute;
-  top: var(--y);
-  left: var(--x);
-  transform: translate(-45%, -55%);
-  background: radial-gradient(var(--clr), transparent, transparent);
-  width: 150px;
-  height: 120px;
-  opacity: 0;
-  transition: opacity 0.5s ease, top 0s, left 0s;
-}
-
-.volume-rendom .card.hovered::before {
-  opacity: 1;
-}
-
-/* Dark Overlay Effect */
-.volume-rendom .card::after {
-  content: "";
-  position: absolute;
-  inset: 1px;
-  background-color: rgba(0, 0, 0, 0.9);
-  z-index: 0; /* Ensure it is behind the content */
 }
 
 /* Icon Styles */
@@ -892,11 +865,27 @@ span {
   color: white; /* Text color */
   font-size: 24px;
   padding: 10px;
-  z-index: 1000;
+  z-index: 10; /* Set a higher value for the text to appear on top */
   max-width: 99.9vw; /* Ensure it doesn't exceed the viewport width */
   white-space: nowrap; /* Ensure the title doesn't wrap to a new line */
   overflow: hidden; /* Ensures the text is hidden if it exceeds width */
   text-overflow: ellipsis; /* Adds "..." if the text overflows */
+}
+
+#videoTitle::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(
+    to top,
+    rgba(0, 0, 0, 0.177) 0%,
+    rgba(0, 0, 0, 0.19) 100%
+  );
+  z-index: -1;
+  opacity: 1;
 }
 
 footer {
@@ -1204,3 +1193,6 @@ input[type="range"]::-moz-range-thumb:active {
   max-height: 150px;
   object-fit: contain; /* Contain the image within the preview box */
 }
+
+
+

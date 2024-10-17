@@ -185,7 +185,7 @@
       </div>
       <!-- Media Player -->
       <div id="mediaPlayer" style="position: relative">
-        <video id="media" style="display: none;" autoplay>
+        <video id="media" style="display: none;">
           <source id="videoSource" />
           <source id="audioSource" />
         </video>
@@ -202,10 +202,10 @@
       </div>
       <!-- Navigation Arrows -->
       <div class="nav-arrows">
-        <button id="prevVideo" class="card arrow-button left-arrow" style="--clr: #ededed">
+        <button id="prevVideo" class="card arrow-button left-arrow" >
           <span class="material-symbols-sharp"> arrow_back_ios </span>
         </button>
-        <button id="nextVideo" class="card arrow-button right-arrow" style="--clr: #ededed">
+        <button id="nextVideo" class="card arrow-button right-arrow" >
           <span class="material-symbols-sharp"> arrow_forward_ios </span>
         </button>
       </div>
@@ -377,36 +377,40 @@
         <span id="duration">0:00</span>
       </div>
       <div class="volume-rendom">
-        <div class="card" style="--clr: #ededed">
+        <div class="card" >
           <i id="volumeBtn" class="fa-light fa-volume-high"></i>
         </div>
-        <div class="card" style="--clr: #ededed">
+        <div class="card" >
           <span id="switchAudioTrack" class="material-symbols-outlined">subtitles</span>
         </div>
-        <div class="card" style="--clr: #ededed">
+        <div class="card" >
           <span id="repeatBtn" class="material-symbols-outlined">repeat</span>
+          
+
         </div>
-        <div class="card" style="--clr: #ededed">
+        <div class="card" >
           <i id="randomButton" class="fa-light fa-shuffle"></i>
         </div>
         <input type="range" class="range blue" id="volume-slider" min="0" max="200" value="100" step="1">
       </div>
       <div class="media-controls">
-        <div id="rewind" class="card" style="--clr: #ededed">
+        <div id="rewind" class="card" >
           <img src="../assets/icons/backward.png" alt="backward">
         </div>
-        <div class="play-pause card" style="--clr: #ededed">
+        <div class="play-pause card" >
           <i class="fa-light fa-play" id="playPauseBtn"></i>
         </div>
-        <div id="forward" class="card" style="--clr: #ededed">
+        <div id="forward" class="card" >
           <img src="../assets/icons/forward.png" alt="forward">
         </div>
       </div>
       <div class="video-settings">
-        <div id="fullscreenBtn" class="card" style="--clr: #ededed">
+        <button id="start-btn">Start Recognition</button>
+        <button id="stop-btn">Stop Recognition</button> 
+        <div id="fullscreenBtn" class="card" >
           <span class="material-symbols-outlined ">fullscreen</span>
         </div>
-        <div id="pip" class="card" style="--clr: #ededed">
+        <div id="pip" class="card" >
           <span class="material-symbols-outlined">pip</span>
         </div>
       </div>

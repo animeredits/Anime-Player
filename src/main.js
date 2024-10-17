@@ -279,3 +279,23 @@ ipcMain.handle('save-gif', async (event, filePath, fileName) => {
     return { success: false };
   }
 });
+
+// Modify your delete logo handler to use dynamic import
+ipcMain.handle('delete-logo', async (event, fileName) => {
+  try {
+    const trash = await import('trash');  // Use dynamic import for ESM
+    const logoPath = path.join(visualizationPath, fileName);
+
+    // Check if the file exists before attempting to delete
+    if (fs.existsSync(logoPath)) {
+      // Send the file to the trash (recycle bin/trash folder)
+      await trash.default(logoPath);  // Call trash.default since it's an ES module
+      return { success: true, message: 'File moved to trash successfully' };
+    } else {
+      return { success: false, message: 'File not found' };
+    }
+  } catch (error) {
+    console.error('Failed to delete file:', error);
+    return { success: false, message: 'Failed to delete file' };
+  }
+});
