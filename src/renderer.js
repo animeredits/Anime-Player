@@ -33,68 +33,7 @@ const customLogoInput = document.getElementById("customLogoInput");
 const deleteLogoButton = document.getElementById("deleteLogoButton");
 const logoPreviewContainer = document.getElementById("logoPreviewContainer");
 const logoPreviewImage = document.getElementById("logoPreviewImage");
-
-
-const offset = 69;
-const borderWidth = 1;
-const angles = [];
-
-for (let i = 0; i <= 2; i += 0.25) {
-  angles.push(Math.PI * i);
-}
-let nearBy = [];
-
-function clearNearBy() {
-  nearBy.splice(0).forEach((e) => (e.style.borderImage = null));
-  nearBy = [];
-}
-
-const cards = document.querySelectorAll(".card");
-
-// Add event listeners to each card element
-cards.forEach((card) => {
-  card.addEventListener("mousemove", (e) => {
-    let x = e.clientX; // x position of cursor
-    let y = e.clientY; // y position of cursor
-
-    clearNearBy();
-
-    nearBy = angles.reduce((acc, rad, index, arr) => {
-      const offsets = [offset * 0.35, offset * 1.105];
-
-      const elements = offsets.reduce((elementAccumulator, o, i, offsetArray) => {
-        const cx = Math.floor(x + Math.cos(rad) * o);
-        const cy = Math.floor(y + Math.sin(rad) * o);
-        const element = document.elementFromPoint(cx, cy);
-
-        if (element && element.classList.contains('card')) {
-          const brect = element.getBoundingClientRect();
-          const bx = x - brect.left; // x position within the element
-          const by = y - brect.top; // y position within the element
-          const gr = Math.floor(offset * 1.7);
-
-          if (!element.style.borderImage) {
-            element.style.borderImage = `radial-gradient(${gr}px ${gr}px at ${bx}px ${by}px, rgba(255,255,255,0.3), rgba(255,255,255,0.1), transparent) 9 / ${borderWidth}px / 0px stretch`;
-          }
-
-          // console.log("Element at", offsets, (rad * 180) / Math.PI, element);
-
-          return [...elementAccumulator, element];
-        }
-
-        return elementAccumulator;
-      }, []);
-
-      return acc.concat(elements);
-    }, []);
-  });
-
-  card.addEventListener("mouseleave", (e) => {
-    clearNearBy();
-  });
-});
-
-
+const statusMessage  = document.getElementById("statusMessage");
 
 
 // Web Speech API initialization
@@ -103,28 +42,63 @@ const recognition = new SpeechRecognition();
 recognition.lang = "en-US"; // Set language to English (US)
 recognition.interimResults = true; // Enable interim results for faster feedback
 recognition.maxAlternatives = 1; // Limit to one alternative result
-recognition.continuous = false; // Single recognition to reduce latency
+recognition.continuous = true; // Single recognition to reduce latency
 
 // Web Audio API for volume detection
-const webaudioContext = new (window.AudioContext ||
-  window.webkitAudioContext)();
+const webaudioContext = new (window.AudioContext || window.webkitAudioContext)();
 let microphone;
-
+let analyser;
+let dataArray;
 let volumeWarningIssued = false;
+let isMicrophoneEnabled = false; // Initialize microphone status
 
 // Function to setup the microphone and analyser
 async function setupMicrophone() {
   try {
     const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-    let microphone = webaudioContext.createMediaStreamSource(stream);
-    let analyser = webaudioContext.createAnalyser();
+    microphone = webaudioContext.createMediaStreamSource(stream);
+    analyser = webaudioContext.createAnalyser();
     microphone.connect(analyser);
     analyser.fftSize = 2048;
-    let dataArray = new Uint8Array(analyser.frequencyBinCount);
+    dataArray = new Uint8Array(analyser.frequencyBinCount);
+
+    // Start checking the voice volume after setup
+    checkVoiceVolume();
+    isMicrophoneEnabled = true; // Set the microphone status to enabled
+    updateMicButtonText(); // Update button text
+    startRecognition(); // Start recognition after microphone setup
   } catch (error) {
     console.error("Error accessing microphone:", error);
-    alert("Microphone access is required for voice commands.");
+    alert("Microphone access is required for voice commands. Please allow access in your browser settings.");
   }
+}
+
+// Function to request or stop microphone access
+async function toggleMicrophoneAccess() {
+  if (isMicrophoneEnabled) {
+    // Stop microphone access
+    stopRecognition(); // Stop recognition if it’s running
+    if (microphone) {
+      microphone.disconnect(); // Disconnect the microphone
+      microphone = null;
+    }
+    if (analyser) {
+      analyser = null;
+    }
+    isMicrophoneEnabled = false; // Update the status
+  } else {
+    // Request microphone access
+    await setupMicrophone(); // Call the setup function
+  }
+  
+  // Update the button text after toggling
+  updateMicButtonText(); // Update the button text
+}
+
+// Function to update the button text based on microphone status
+function updateMicButtonText() {
+  const permissionButton = document.getElementById("mic-access-button");
+  permissionButton.textContent = isMicrophoneEnabled ? "Disable Microphone" : "Enable Microphone";
 }
 
 // Function to monitor voice volume and provide feedback if too low
@@ -136,7 +110,7 @@ function checkVoiceVolume() {
     dataArray.reduce((sum, value) => sum + value) / dataArray.length;
 
   // Example threshold for low volume; adjust based on testing
-  if (averageVolume < 20 && !volumeWarningIssued) {
+  if (averageVolume < 10 && !volumeWarningIssued) {
     console.warn("Your voice is too low. Please speak louder.");
     displayVolumeWarning(); // Function to visually notify the user
     volumeWarningIssued = true; // Prevent repeated warnings
@@ -166,74 +140,183 @@ function hideVolumeWarning() {
 
 // Start listening for voice commands
 function startRecognition() {
-  recognition.start();
+  if (recognition && !recognition.recognizing) {
+    recognition.start();
+  }
 }
 
-recognition.addEventListener("result", (event) => {
-  const transcript = event.results[event.results.length - 1][0].transcript
-    .trim()
-    .toLowerCase();
-  console.log("Recognized command:", transcript);
+// Stop listening for voice commands
+function stopRecognition() {
+  if (recognition && recognition.recognizing) {
+    recognition.stop();
+  }
+}
 
-  // Example command handling
-  if (transcript.includes("play")) {
+// Add a flag to track recognition state
+recognition.recognizing = false;
+
+// Update recognition state on start and end events
+recognition.addEventListener("start", () => {
+  console.log("Speech recognition service has started.");
+  recognition.recognizing = true; // Set the flag to true
+});
+
+recognition.addEventListener("end", () => {
+  console.log("Speech recognition service has stopped.");
+  recognition.recognizing = false; // Set the flag to false
+  // Automatically restart recognition if the microphone is enabled
+  if (isMicrophoneEnabled) {
+    startRecognition();
+  }
+});
+
+
+const commandMap = {
+  play: () => {
     if (video.paused) {
       video.play();
       hideVideoTitle();
       updatePlayPauseIcon(true);
     }
-  } else if (transcript.includes("stop")) {
+  },
+  stop: () => {
     if (!video.paused) {
       video.pause();
       showVideoTitle();
       updatePlayPauseIcon(false);
     }
-  } else if (transcript.includes("next")) {
-    playNext();
-  } else if (transcript.includes("previous") || transcript.includes("back")) {
-    playPrevious();
+  },
+  next: playNext,
+  previous: playPrevious,
+  back: playPrevious
+};
+
+// In the recognition result event:
+recognition.addEventListener("result", (event) => {
+  for (let i = event.resultIndex; i < event.results.length; ++i) {
+    const transcript = event.results[i][0].transcript.trim().toLowerCase();
+    console.log("Recognized command:", transcript);
+
+    // Execute the command if it exists in the command map
+    for (const command in commandMap) {
+      if (transcript.includes(command)) {
+        commandMap[command]();
+        break; // Break after the first match
+      }
+    }
   }
-  recognition.stop(); // Stop recognition to reset
-  startRecognition(); // Restart recognition for continuous listening
 });
 
-// Handle errors gracefully
+// Error handling
 recognition.addEventListener("error", (event) => {
   console.error("Speech recognition error:", event.error);
   if (event.error === "not-allowed" || event.error === "service-not-allowed") {
     alert("Please allow microphone access to use voice commands.");
   }
-  startRecognition(); // Restart recognition after error
 });
 
-// Handle recognition end to ensure it continues listening
-recognition.addEventListener("end", startRecognition);
+// Request microphone access and initialize the Web Speech API
+async function requestMicrophoneAccess() {
+  const permissionButton = document.getElementById("mic-access-button");
+
+  if (permissionButton) {
+    permissionButton.style.display = "block"; // Show the button to request access
+
+    permissionButton.addEventListener("click", toggleMicrophoneAccess);
+  }
+
+  await setupMicrophone(); // Call setup after button is clicked
+}
+
+// Start the microphone access request
+requestMicrophoneAccess();
+
+
+// const offset = 69;
+// const borderWidth = 1;
+// const angles = [];
+
+// for (let i = 0; i <= 2; i += 0.25) {
+//   angles.push(Math.PI * i);
+// }
+// let nearBy = [];
+
+// function clearNearBy() {
+//   nearBy.splice(0).forEach((e) => (e.style.borderImage = null));
+//   nearBy = [];
+// }
+
+// const cards = document.querySelectorAll(".card");
+
+// // Add event listeners to each card element
+// cards.forEach((card) => {
+//   card.addEventListener("mousemove", (e) => {
+//     let x = e.clientX; // x position of cursor
+//     let y = e.clientY; // y position of cursor
+
+//     clearNearBy();
+
+//     nearBy = angles.reduce((acc, rad, index, arr) => {
+//       const offsets = [offset * 0.35, offset * 1.105];
+
+//       const elements = offsets.reduce((elementAccumulator, o, i, offsetArray) => {
+//         const cx = Math.floor(x + Math.cos(rad) * o);
+//         const cy = Math.floor(y + Math.sin(rad) * o);
+//         const element = document.elementFromPoint(cx, cy);
+
+//         if (element && element.classList.contains('card')) {
+//           const brect = element.getBoundingClientRect();
+//           const bx = x - brect.left; // x position within the element
+//           const by = y - brect.top; // y position within the element
+//           const gr = Math.floor(offset * 1.7);
+
+//           if (!element.style.borderImage) {
+//             element.style.borderImage = `radial-gradient(${gr}px ${gr}px at ${bx}px ${by}px, rgba(255,255,255,0.3), rgba(255,255,255,0.1), transparent) 9 / ${borderWidth}px / 0px stretch`;
+//           }
+
+//           // console.log("Element at", offsets, (rad * 180) / Math.PI, element);
+
+//           return [...elementAccumulator, element];
+//         }
+
+//         return elementAccumulator;
+//       }, []);
+
+//       return acc.concat(elements);
+//     }, []);
+//   });
+
+//   card.addEventListener("mouseleave", (e) => {
+//     clearNearBy();
+//   });
+// });
 
 let currentMedia = video;
 let isFullScreen = false;
 let isRepeat = false;
 let videoFiles = [];
 let playedVideos = [];
-let currentFolderIndex = -1;
 let currentVideoIndex = 0;
 let currentAudioIndex = 0;
 let autoSwitchDone = false;
 let isGifPlaying = false;
 let lastPlayedIndex = -1;
 let showRemainingTime = false;
+let lastPlaybackTime = 0;
+let videoId;
+let hideContinueButtonTimeout;
+let isVideoPaused = false;
 let isRandom = false;
 let isLooping = false;
-let history = [];
-let fontSize = 16;
 const volumeStep = 0.05;
-const maxFontSize = 35;
-// let previousVolume = 1;
+const minFontSize = 18;
+const maxFontSize = 36; 
+let rotationInitiated = false;
 
 // disabling the dragging behavior
 document.querySelectorAll("a ,img").forEach((link) => {
   link.setAttribute("draggable", "false");
 });
-
 
 // Function to update logo if the audio doesn't have a thumbnail
 function updateLogo(src) {
@@ -551,9 +634,7 @@ function deleteCustomLogo(fileName) {
       if (response.success) {
         console.log(response.message);  // Log success message
         // Optionally, update the UI or notify the user that the file was deleted
-      } else {
-        console.error(response.message);  // Log error message
-      }
+      } 
     })
     .catch(error => {
       console.error('Error deleting the logo:', error);
@@ -565,6 +646,8 @@ function loadMediaFile(file) {
   const fileURL = URL.createObjectURL(file);
   const fileName = file.name;
 
+  videoId = getVideoId(fileName); // Get unique video ID from file name
+
   // Reset styles
   gifImageElement.style.display = "none";
   videoElement.style.display = "none";
@@ -572,6 +655,12 @@ function loadMediaFile(file) {
   audioImage.style.display = "none";
   audioLogoDropdown.style.pointerEvents = "none";
   audioLogoDropdown.style.opacity = "0.5";
+
+  // Store last playback time from cache
+  (async () => {
+    lastPlaybackTime = await getPlaybackTimeFromCache(videoId);
+    handleContinueButtonVisibility(); // Update button visibility based on the playback time
+  })();
 
   if (file.type === "image/gif") {
     // Handle GIF files
@@ -588,7 +677,7 @@ function loadMediaFile(file) {
   if (fileType === "video" || fileType === "audio") {
     currentMedia.src = fileURL;
     updateVideoTitle(fileName);
-    
+
     if (fileType === "audio") {
       // Show the audio logo when an audio file is played
       document.getElementById("audioLogo").style.display = "block";
@@ -651,6 +740,82 @@ function loadMediaFile(file) {
 
   console.error("Unsupported file type:", file.type);
 }
+
+function getVideoId(fileName) {
+  return encodeURIComponent(fileName); // Encode the file name to use it as an ID
+}
+
+function savePlaybackTimeToCache(videoId, time) {
+  const playbackData = { videoId, time };
+  localStorage.setItem(`playback-${videoId}`, JSON.stringify(playbackData));
+}
+
+function getPlaybackTimeFromCache(videoId) {
+  const playbackData = localStorage.getItem(`playback-${videoId}`);
+  if (playbackData) {
+    const parsedData = JSON.parse(playbackData);
+    return parsedData.time;
+  }
+  return 0; // Return 0 if no cache exists
+}
+
+function clearCache(videoId) {
+  localStorage.removeItem(`playback-${videoId}`); // Remove the specific playback cache
+}
+
+// Update visibility of the continue button
+function handleContinueButtonVisibility() {
+  const continueButton = document.getElementById("continueButton");
+  if (lastPlaybackTime > 0) {
+    continueButton.style.display = "block"; // Show the button if playback time exists
+    startAutoHideContinueButton(); // Start the 5-second timeout for auto-hiding the button
+  } else {
+    continueButton.style.display = "none"; // Hide the button if no playback time
+  }
+}
+
+// Start a timeout to auto-hide the "Continue Watching" button and clear playback cache after 5 seconds
+function startAutoHideContinueButton() {
+  clearTimeout(hideContinueButtonTimeout); // Clear any previous timeout
+  hideContinueButtonTimeout = setTimeout(() => {
+    const continueButton = document.getElementById("continueButton");
+    continueButton.style.display = "none"; // Hide the button after 5 seconds
+
+    // Clear the playback cache if the button is not clicked
+    clearCache(videoId);
+  }, 5000); // 5 seconds (5000 milliseconds)
+}
+
+video.addEventListener("pause", () => {
+  // Check if the video/audio ended
+  if (video.currentTime >= video.duration) {
+    clearCache(videoId); // Clear the cache when the media ends
+    return; // Exit early, no need to save the playback time
+  }
+  
+  lastPlaybackTime = video.currentTime; // Store the current playback time
+  savePlaybackTimeToCache(videoId, lastPlaybackTime); // Save to cache
+  handleContinueButtonVisibility(); // Update the button visibility on pause
+});
+
+
+window.addEventListener("beforeunload", () => {
+  if (!video.paused) {
+    lastPlaybackTime = video.currentTime; // Store the current playback time before leaving
+    savePlaybackTimeToCache(videoId, lastPlaybackTime); // Save to cache
+  }
+});
+
+// Add event listener to continue button
+document.getElementById("continueButton").addEventListener("click", () => {
+  video.currentTime = lastPlaybackTime; // Resume from the last playback time
+  video.play(); // Play the video
+  clearTimeout(hideContinueButtonTimeout); // Clear the timeout to prevent auto-hide
+  document.getElementById("continueButton").style.display = "none"; // Hide the continue button
+
+  // Clear the playback cache after continuing
+  clearCache(videoId);
+});
 
 function checkAndSetArtwork(artworkExists) {
   if (artworkExists) {
@@ -723,91 +888,66 @@ function readAudioMetadata(file, callback) {
   reader.readAsArrayBuffer(file.slice(0, 1024 * 10)); // Read the first 10KB
 }
 
-// Function to handle video playback
+// Function to play a video by its index
 function playVideoByIndex(index) {
-  if (index >= 0 && index < videoFiles.length) {
-    const videoFile = videoFiles[index];
-    loadMediaFile(videoFile);
-    // Add the current video index to history if it's not already the last entry
-    if (history.length === 0 || history[history.length - 1] !== index) {
-      history.push(index);
-    }
-    playedVideos.push(index); // Add the played video to the list
-    if (playedVideos.length === videoFiles.length) {
-      playedVideos = []; // Reset once all videos have been played
-    }
+  if (index < 0 || index >= videoFiles.length) return;
 
-    lastPlayedIndex = index; // Update last played index
-    currentVideoIndex = index; // Update current video index
+  const videoFile = videoFiles[index];
+  loadMediaFile(videoFile);
+
+  playedVideos.push(index);
+  if (playedVideos.length === videoFiles.length) {
+    playedVideos = []; // Reset once all videos have been played
   }
+
+  lastPlayedIndex = index;
+  currentVideoIndex = index;
 }
 
-// Function to play media based on type
+// Function to play media based on file type
 function playMedia(file) {
-  const fileType = file.type.split("/")[0]; // Get 'video', 'audio', or 'image'
-  if (
-    fileType === "video" ||
-    fileType === "audio" ||
-    file.type === "image/gif"
-  ) {
+  const fileType = file.type.split("/")[0];
+  if (["video", "audio"].includes(fileType) || file.type === "image/gif") {
     loadMediaFile(file);
   } else {
     console.error("Unsupported file type");
   }
 }
 
-// Event listeners for file inputs
+// Event listener for file input changes
 fileInput.addEventListener("change", async (event) => {
   const file = event.target.files[0];
-  if (file) playMedia(file);
-  updateVideoTitle(file.name);
+  if (file) {
+    playMedia(file);
+    updateVideoTitle(file.name);
+  }
 });
 
-// Event listener for selecting multiple files
-CSOInput.addEventListener("change", (event) => {
-  videoFiles = Array.from(event.target.files).filter(
+// Handle file selection from input
+function handleFileSelection(files) {
+  videoFiles = Array.from(files).filter(
     (file) =>
       file.type.startsWith("video/") ||
       file.type.startsWith("audio/") ||
       file.type === "image/gif"
   );
   if (videoFiles.length > 0) {
-    currentVideoIndex = 0; // Default to the first file in the list
+    currentVideoIndex = 0; // Default to the first file
     playMedia(videoFiles[currentVideoIndex]);
-
-    // Ensure the logo is hidden when only video is present
-    if (videoFiles.length === 1 && videoFiles[0].type.startsWith("video/")) {
-      document.getElementById("audioLogo").style.display = "none";
-    }
+    audioLogo.style.display = videoFiles[0].type.startsWith("video/") ? "none" : "block";
   }
-});
+}
 
+// Event listener for multiple file selection
+CSOInput.addEventListener("change", (event) => handleFileSelection(event.target.files));
 
-// Event listener for selecting files from a folder
-folderInput.addEventListener("change", (event) => {
-  videoFiles = Array.from(event.target.files).filter(
-    (file) =>
-      file.type.startsWith("video/") ||
-      file.type.startsWith("audio/") ||
-      file.type === "image/gif"
-  );
-  if (videoFiles.length > 0) {
-    currentVideoIndex = 0; // Default to the first file in the list
-    playMedia(videoFiles[currentVideoIndex]);
-  }
-});
+// Event listener for folder file selection
+folderInput.addEventListener("change", (event) => handleFileSelection(event.target.files));
 
-Ofile.addEventListener("click", () => {
-  fileInput.click();
-});
-
-CSO.addEventListener("click", () => {
-  CSOInput.click();
-});
-
-folder.addEventListener("click", () => {
-  folderInput.click();
-});
+// File input button click handlers
+Ofile.addEventListener("click", () => fileInput.click());
+CSO.addEventListener("click", () => CSOInput.click());
+folder.addEventListener("click", () => folderInput.click());
 
 // Functions to toggle play/pause icon
 function updatePlayPauseIcon(isPlaying) {
@@ -831,129 +971,84 @@ function togglePlayPause() {
   }
 }
 
-// Event listeners play/pause button
+// Event listeners for play/pause button
 playPauseBtn.addEventListener("click", togglePlayPause);
+video.addEventListener("play", () => updatePlayPauseIcon(true));
+video.addEventListener("pause", () => updatePlayPauseIcon(false));
 
-// Update icon based on video play/pause state
-video.addEventListener("play", () => {
-  updatePlayPauseIcon(true);
-});
-
-video.addEventListener("pause", () => {
-  updatePlayPauseIcon(false);
-});
-
-// Function to play the next video and toggle logo accordingly
-function playNext() {
+// Function to determine next video index
+function getNextIndex() {
   if (isRandom) {
-    // When in random mode
-    let remainingVideos = videoFiles.filter(
-      (_, index) => !playedVideos.includes(index)
-    );
-    if (remainingVideos.length > 0) {
-      currentVideoIndex = videoFiles.indexOf(
-        remainingVideos[Math.floor(Math.random() * remainingVideos.length)]
-      );
-    } else {
-      stopPlayback(); // Stop playing when all videos have been played
-      return; // Stop playing when all videos have been played
-    }
-  } else {
-    // When not in random mode
-    currentVideoIndex = (currentVideoIndex + 1) % videoFiles.length;
-    // If looping is disabled and we reach the end, stop playback
-    if (currentVideoIndex === 0 && playedVideos.length > 0 && !isLooping) {
-      stopPlayback(); // Stop playback and reset the player
-      return;
-    }
+    let remainingVideos = videoFiles.filter((_, index) => !playedVideos.includes(index));
+    return remainingVideos.length > 0 
+      ? videoFiles.indexOf(remainingVideos[Math.floor(Math.random() * remainingVideos.length)]) 
+      : null;
+  }
+  return (currentVideoIndex + 1) % videoFiles.length;
+}
+
+// Function to determine previous video index
+function getPreviousIndex() {
+  if (isRandom) {
+    let remainingVideos = videoFiles.filter((_, index) => !playedVideos.includes(index));
+    return remainingVideos.length > 0 
+      ? videoFiles.indexOf(remainingVideos[Math.floor(Math.random() * remainingVideos.length)]) 
+      : null;
+  }
+  return (currentVideoIndex - 1 + videoFiles.length) % videoFiles.length;
+}
+
+// Function to play the next video
+function playNext() {
+  const nextIndex = getNextIndex();
+  if (nextIndex === null && !isLooping) {
+    stopPlayback();
+    return;
   }
 
-  lastPlayedIndex = currentVideoIndex; // Update last played index
-  playVideoByIndex(currentVideoIndex);
-
-  // Hide or show logo based on the file type
-  const currentFile = videoFiles[currentVideoIndex];
-  if (currentFile.type.startsWith("audio/")) {
-    document.getElementById("audioLogo").style.display = "block";
-  } else {
-    document.getElementById("audioLogo").style.display = "none";
-  }
+  lastPlayedIndex = nextIndex;
+  playVideoByIndex(nextIndex);
+  updateAudioLogo(nextIndex);
 }
 
 // Function to play the previous video
 function playPrevious() {
-  if (isRandom) {
-    // When in random mode
-    let remainingVideos = videoFiles.filter(
-      (_, index) => !playedVideos.includes(index)
-    );
-    if (remainingVideos.length > 0) {
-      currentVideoIndex = videoFiles.indexOf(
-        remainingVideos[Math.floor(Math.random() * remainingVideos.length)]
-      );
-    } else {
-      stopPlayback(); // Stop playing when all videos have been played
-      return; // Stop playing when all videos have been played
-    }
-  } else {
-    // When not in random mode
-    currentVideoIndex =
-      (currentVideoIndex - 1 + videoFiles.length) % videoFiles.length;
-    // If looping is disabled and we reach the beginning, stop playback
-    if (
-      currentVideoIndex === videoFiles.length - 1 &&
-      playedVideos.length > 0 &&
-      !isLooping
-    ) {
-      stopPlayback(); // Stop playback and reset the playe
-      return;
-    }
+  const prevIndex = getPreviousIndex();
+  if (prevIndex === null && !isLooping) {
+    stopPlayback();
+    return;
   }
 
-  lastPlayedIndex = currentVideoIndex; // Update last played index
-  playVideoByIndex(currentVideoIndex);
-    // Hide or show logo based on the file type
-    const currentFile = videoFiles[currentVideoIndex];
-    if (currentFile.type.startsWith("audio/")) {
-      document.getElementById("audioLogo").style.display = "block";
-    } else {
-      document.getElementById("audioLogo").style.display = "none";
-    }
+  lastPlayedIndex = prevIndex;
+  playVideoByIndex(prevIndex);
+  updateAudioLogo(prevIndex);
+}
+
+// Function to update the audio logo based on the current file type
+function updateAudioLogo(index) {
+  const currentFile = videoFiles[index];
+  audioLogo.style.display = currentFile.type.startsWith("audio/") ? "block" : "none";
 }
 
 // Function to stop playback and reset the media player
 function stopPlayback() {
-  video.pause(); // Stop the current media
-  currentVideoIndex = null; // Reset the current video index
-  video.src = ""; // Clear the video source
-  updateVideoTitle(""); // Clear the video title display
-
-  // Reset play/pause icon
+  video.pause();
+  currentVideoIndex = null;
+  video.src = "";
+  updateVideoTitle("");
   updatePlayPauseIcon(false);
-
-  // Clear played videos list
   playedVideos = [];
-
-  // Reset current time and progress bar
-  video.currentTime = 0; // Reset current time to the start
-  updateProgressBar(); // Update the progress bar to reflect the reset
-  currentTimeDisplay.textContent = formatTime(0); // Reset current time display
-
-  // Ensure progress bar and handle are reset to default position
-  progressBar.style.width = `0%`; // Reset progress bar width
-  progressHandle.style.left = `0%`; // Reset handle position
-
-  // Reset logo (gif)
-  document.getElementById("audioLogo").style.display = "none"; // Hide the audio logo when stopping playback
-
-
+  video.currentTime = 0;
+  updateProgressBar();
+  currentTimeDisplay.textContent = formatTime(0);
+  progressBar.style.width = `0%`;
+  progressHandle.style.left = `0%`;
+  stopGifPlayback();
   console.log("All videos have been played. Playback stopped.");
 }
 
-// Event listeners for stop playback
+// Event listeners for stop playback and navigation buttons
 document.getElementById("stopPlayback").addEventListener("click", stopPlayback);
-
-// Event listeners for navigation buttons
 document.getElementById("prevVideo").addEventListener("click", playPrevious);
 document.getElementById("nextVideo").addEventListener("click", playNext);
 
@@ -965,11 +1060,9 @@ rewind.addEventListener("click", () => {
   currentMedia.currentTime = Math.max(0, currentMedia.currentTime - 10);
 });
 forward.addEventListener("click", () => {
-  currentMedia.currentTime = Math.min(
-    currentMedia.duration,
-    currentMedia.currentTime + 10
-  );
+  currentMedia.currentTime = Math.min(currentMedia.duration, currentMedia.currentTime + 10);
 });
+
 
 // Function to update video title with truncation
 function updateVideoTitle(title) {
@@ -1037,23 +1130,23 @@ stereoPanner.connect(gainNode); // Connect stereo panner to gain node
 gainNode.connect(audioContext.destination);
 
 // Create an analyser node for real-time audio monitoring (new code)
-const analyser = audioContext.createAnalyser();
-analyser.fftSize = 256; // Size of the FFT for analysis
-const bufferLength = analyser.frequencyBinCount; // Length of data array for analyser
-const dataArray = new Uint8Array(bufferLength); // Array to hold the frequency data
+const audioAnalyser = audioContext.createAnalyser();
+audioAnalyser.fftSize = 256; // Size of the FFT for analysis
+const bufferLength = audioAnalyser.frequencyBinCount; // Length of data array for analyser
+const timeDomainData = new Uint8Array(bufferLength); // Array to hold the frequency data
 
 // Connect analyser node to monitor audio levels
-compressor.connect(analyser); // Place analyser after the compressor
-analyser.connect(gainNode); // Continue connecting analyser to the gain node
+compressor.connect(audioAnalyser); // Place analyser after the compressor
+audioAnalyser.connect(gainNode); // Continue connecting analyser to the gain node
 
 // Function to monitor audio levels and normalize automatically
 function monitorAudioLevels() {
-  analyser.getByteTimeDomainData(dataArray); // Get the waveform data from the analyser
+  audioAnalyser.getByteTimeDomainData(timeDomainData); // Get the waveform data from the analyser
 
   // Calculate the root mean square (RMS) value to estimate audio loudness
   let sum = 0;
   for (let i = 0; i < bufferLength; i++) {
-    let sample = dataArray[i] / 128 - 1.0; // Normalize the data between -1.0 and 1.0
+    let sample = timeDomainData[i] / 128 - 1.0; // Normalize the data between -1.0 and 1.0
     sum += sample * sample;
   }
   const rms = Math.sqrt(sum / bufferLength); // Calculate RMS
@@ -1092,9 +1185,13 @@ function loadVolumeSetting() {
   }
 }
 
+
 // Set initial volume (existing)
 gainNode.gain.value = 1.0; // Set default volume to 100%
 volumeSlider.value = gainNode.gain.value * 100; // Sync slider with volume (0-150 range)
+
+// Call the loadVolumeSetting to apply saved or default volume
+loadVolumeSetting(); // Load saved volume or apply default volume (100%)
 
 // Function to update volume, slider, and tooltip (existing)
 function updateVolume(newVolume) {
@@ -1145,7 +1242,19 @@ volumeSlider.addEventListener("change", () => {
   }, 1000);
 });
 
-// Add functionality for changing volume and font size
+// Initialize tooltip for font size
+const fontSizeTooltip = document.createElement("div");
+fontSizeTooltip.style.position = "absolute";
+fontSizeTooltip.style.top = "60px"; 
+fontSizeTooltip.style.right = "25px"; 
+// fontSizeTooltip.style.backgroundColor = "rgba(0, 0, 0, 0.7)";
+fontSizeTooltip.style.color = "white";
+fontSizeTooltip.style.padding = "5px 10px";
+fontSizeTooltip.style.borderRadius = "5px";
+fontSizeTooltip.style.zIndex = "1000";
+fontSizeTooltip.style.display = "none"; // Initially hidden
+document.body.appendChild(fontSizeTooltip);
+
 mediaPlayer.addEventListener("wheel", (event) => {
   event.preventDefault(); // Prevent default behavior
 
@@ -1154,9 +1263,20 @@ mediaPlayer.addEventListener("wheel", (event) => {
     if (event.deltaY < 0) {
       fontSize = Math.min(maxFontSize, fontSize + 2);
     } else if (event.deltaY > 0) {
-      fontSize = Math.max(10, fontSize - 2);
+      fontSize = Math.max(minFontSize, fontSize - 2);
     }
     videoTitleElement.style.fontSize = `${fontSize}px`;
+    statusMessage .style.fontSize = `${fontSize}px`; // Adjust showStatusMessage font size
+
+    // Update and show font size tooltip
+    const fontSizePercentage = Math.round(((fontSize - minFontSize) / (maxFontSize - minFontSize)) * 100);
+    fontSizeTooltip.textContent = `Text size: ${fontSizePercentage}%`;
+    fontSizeTooltip.style.display = "block";
+
+    setTimeout(() => {
+      fontSizeTooltip.style.display = "none";
+    }, 3900);
+
   } else {
     // Adjust volume with mouse wheel
     if (event.deltaY < 0) {
@@ -1177,6 +1297,16 @@ mediaPlayer.addEventListener("wheel", (event) => {
   }
 });
 
+// Function to display status messages
+function showStatusMessage(message) {
+  statusMessage .textContent = message;
+  statusMessage .style.display = "block";
+
+  setTimeout(() => {
+    statusMessage .style.display = "none";
+  }, 3000);
+} 
+
 // Add mouse wheel event listener to the volume slider
 volumeSlider.addEventListener("wheel", (e) => {
   e.preventDefault(); // Prevent the default scrolling behavior
@@ -1189,6 +1319,17 @@ volumeSlider.addEventListener("wheel", (e) => {
 
   // Update volume, slider value, and show tooltip
   updateVolume(newVolume);
+});
+
+// Show tooltip when hovering over the volume slider
+volumeSlider.addEventListener("mouseenter", () => {
+  // Show tooltip with the current volume
+  showTooltip(gainNode.gain.value);
+});
+
+// Hide tooltip when the mouse leaves the slider
+volumeSlider.addEventListener("mouseleave", () => {
+  tooltip.style.display = "none";
 });
 
 // Handle Arrow Up and Arrow Down key presses
@@ -1231,21 +1372,47 @@ volumeBtn.addEventListener("click", () => {
   updateVolumeIcon();
 });
 
-// Toggle random mode
+// Function to show the temporary status message
+function showStatusMessage(text) {
+  const statusMessage = document.getElementById('statusMessage');
+  statusMessage.innerText = text;
+  statusMessage.style.opacity = '1';  // Show the message
+
+  // Hide the message after 2 seconds
+  setTimeout(() => {
+    statusMessage.style.opacity = '0';  // Fade out the message
+  }, 2000);  // Adjust timing as needed
+}
+
+// Toggle random mode and show status
 function toggleRandomMode() {
   isRandom = !isRandom;
 
   if (isRandom) {
-    randomButton.classList.add("active"); // Add active class or change icon
+    randomButton.classList.add("active");
+    showStatusMessage("Random: On");
   } else {
-    randomButton.classList.remove("active"); // Remove active class or change icon
-    playedVideos = []; // Reset played videos when random mode is off
-    history = []; // Reset history when random mode is off
+    randomButton.classList.remove("active");
+    showStatusMessage("Random: Off");
+    playedVideos = [];
   }
 }
 
-// Event listener for random mode button and Full screen
-randomButton.addEventListener("click", toggleRandomMode);
+// Toggle repeat mode and show status
+function toggleRepeat() {
+  isRepeat = !isRepeat;
+  currentMedia.loop = isRepeat;
+
+  if (isRepeat) {
+    showStatusMessage("Loop: On");
+  } else {
+    showStatusMessage("Loop: Off");
+  }
+}
+
+// Event listener for random mode button loopbutton, switchtrack button and Full screen 
+document.getElementById("randomButton").addEventListener("click", toggleRandomMode);
+document.getElementById("repeatBtn").addEventListener("click", toggleRepeat);
 switchAudio.addEventListener("click", populateAudioTracks);
 fullscreenBtn.addEventListener("click", toggleFullScreen);
 
@@ -1639,11 +1806,6 @@ btn.onclick = function () {
   toggleShortcutsInfoBox();
 };
 
-// Toggle Repeat Video
-function toggleRepeat() {
-  isRepeat = !isRepeat;
-  currentMedia.loop = isRepeat;
-}
 
 // Function to apply rotation
 function applyRotation() {
@@ -1666,16 +1828,23 @@ function applyRotation() {
       break;
     default:
       // Handle unexpected rotation angles
-      console.error("Unsupported rotation angle");
+      showStatusMessage("Error: Unsupported rotation angle.");
+      return; // Exit function if there's an error
   }
 
   // Apply CSS to ensure video fits within the container
   video.style.objectFit = "contain"; // Adjust to your needs (cover, contain, etc.)
+
+  // Update status message if rotation has been initiated
+  if (rotationInitiated) {
+    showStatusMessage(`Video rotated to ${rotationAngle}°`);
+  }
 }
 
 // Function to rotate video
 function rotateVideo(degrees) {
   video.dataset.rotation = degrees;
+  rotationInitiated = true; // Set the flag to true
   applyRotation();
 }
 
@@ -1810,8 +1979,6 @@ function syncAudioAndVideo() {
         .play()
         .catch((error) => console.error("Error playing video:", error));
     }
-  } else {
-    console.log("Video is not ready, waiting...");
   }
 }
 

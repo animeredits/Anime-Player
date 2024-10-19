@@ -106,6 +106,7 @@
             </div> 
             <a class="increase-volume">Increase Volume</a>
             <a class="decrease-volume">Decrease Volume</a>
+            <a id="mic-access-button">Allow Microphone Access</a>
             <a class="mute-btn">Mute</a>
           </div>
         </li>
@@ -377,18 +378,16 @@
         <span id="duration">0:00</span>
       </div>
       <div class="volume-rendom">
-        <div class="card" >
+        <div class="card">
           <i id="volumeBtn" class="fa-light fa-volume-high"></i>
         </div>
-        <div class="card" >
+        <div class="card">
           <span id="switchAudioTrack" class="material-symbols-outlined">subtitles</span>
         </div>
-        <div class="card" >
+        <div class="card">
           <span id="repeatBtn" class="material-symbols-outlined">repeat</span>
-          
-
         </div>
-        <div class="card" >
+        <div class="card">
           <i id="randomButton" class="fa-light fa-shuffle"></i>
         </div>
         <input type="range" class="range blue" id="volume-slider" min="0" max="200" value="100" step="1">
@@ -405,8 +404,7 @@
         </div>
       </div>
       <div class="video-settings">
-        <button id="start-btn">Start Recognition</button>
-        <button id="stop-btn">Stop Recognition</button> 
+        <button id="continueButton" style="display: none;">Continue Watching</button>
         <div id="fullscreenBtn" class="card" >
           <span class="material-symbols-outlined ">fullscreen</span>
         </div>
@@ -415,6 +413,8 @@
         </div>
       </div>
     </footer>
+    <!-- Temporary Status Message -->
+    <div id="statusMessage" class="status-message">Status</div> 
     <script src="renderer.js"></script>
   </body>
 </html>

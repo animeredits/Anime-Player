@@ -1195,4 +1195,17 @@ input[type="range"]::-moz-range-thumb:active {
 }
 
 
-
+/* Temporary Status Message - Positioned at top-right of the page */
+.status-message {
+  position: fixed;  /* Position relative to the whole page (viewport) */
+  top: 38px; 
+  right: 20px;  
+  background-color: rgba(0, 0, 0, 0.7);
+  color: white;
+  padding: 10px 15px;
+  border-radius: 4px;
+  opacity: 0;
+  transition: opacity 0.3s ease-in-out;
+  pointer-events: none;
+  z-index: 9999;  /* Ensure it stays on top */
+}

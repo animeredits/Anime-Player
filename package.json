@@ -19,6 +19,7 @@
   "dependencies": {
     "depcheck": "^1.4.7",
     "electron-log": "^5.1.7",
+    "electron-store": "^10.0.0",
     "electron-updater": "^6.3.4",
     "latest-version": "^9.0.0",
     "nodemon": "^3.1.7",
