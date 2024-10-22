@@ -10,6 +10,9 @@ let win;
 let tray = null;
 let isPlaying = false;
 let maximizeToggle = false;
+let isQuitting = false;
+const twoDaysInMillis = 2 * 24 * 60 * 60 * 1000; // 2 days in milliseconds
+
 
 // Set user data path to avoid permission issues and create the logos folder
 const animePlayerPath = path.join(app.getPath('appData'), 'Anime Player');
@@ -193,8 +196,33 @@ function createTray() {
 
 // Prevent all global shortcuts and register new shortcut
 app.on('ready', () => {
+  const animePlayerPath = app.getPath('userData');
+  const savePath = path.join(animePlayerPath, 'playback-time.json');
+
   createWindow();
 
+  // Load playback data and remove outdated entries
+  if (fs.existsSync(savePath)) {
+    let playbackData = JSON.parse(fs.readFileSync(savePath));
+    const currentTime = Date.now();
+    
+    // Remove entries older than 2 days
+    Object.keys(playbackData).forEach(videoId => {
+      if (currentTime - playbackData[videoId].timestamp > twoDaysInMillis) {
+        delete playbackData[videoId];
+      }
+    });
+
+    // Save the updated data back to file
+    fs.writeFileSync(savePath, JSON.stringify(playbackData));
+
+    // Send the updated data to the renderer if the same video file is opened again
+    win.webContents.once('did-finish-load', () => {
+      win.webContents.send('load-playback-time', playbackData);
+    });
+  }
+
+  
   // Unregister any global shortcuts
   globalShortcut.unregisterAll();
 
@@ -226,9 +254,33 @@ ipcMain.on("Maximize", () => {
   maximizeToggle ? win.maximize() : win.unmaximize();
 });
 
-ipcMain.on("appClose", () => {
-  app.quit();
+ipcMain.on("appClose", (event, playbackTime, videoId) => {
+  const animePlayerPath = app.getPath('userData');
+  const savePath = path.join(animePlayerPath, 'playback-time.json');
+
+  // Read existing playback data
+  let playbackData = {};
+  if (fs.existsSync(savePath)) {
+    playbackData = JSON.parse(fs.readFileSync(savePath));
+  }
+
+  // Save playback time for the video
+  playbackData[videoId] = {
+    time: playbackTime,
+    timestamp: Date.now(), // Save the current time for expiration
+  };
+
+  // Write updated playback data to file
+  fs.writeFileSync(savePath, JSON.stringify(playbackData));
+
+  // Close the window, which will trigger the 'closed' event and cleanup
+  if (win) {
+    win.close();
+  } else {
+    app.quit(); // If no window exists, directly quit the app
+  }
 });
+
 
 // Handle toggle full-screen event
 ipcMain.on('toggle-fullscreen', () => {
@@ -299,3 +351,47 @@ ipcMain.handle('delete-logo', async (event, fileName) => {
     return { success: false, message: 'Failed to delete file' };
   }
 });
+
+ipcMain.on("appClose", (event, playbackTime, videoId) => {
+  // Save the playback time before quitting, specific to the videoId (file)
+  const playbackData = { videoId, time: playbackTime };
+  const animePlayerPath = app.getPath('userData');
+  const savePath = path.join(animePlayerPath, 'playback-time.json');
+
+  // Write the playback data to a JSON file
+  fs.writeFileSync(savePath, JSON.stringify(playbackData));
+
+  app.quit(); // Close the app
+});
+
+
+ipcMain.on('save-playback-time', (event, playbackTime, videoId) => {
+  const animePlayerPath = app.getPath('userData');
+  const savePath = path.join(animePlayerPath, 'playback-time.json');
+
+  // Save the playback time data synchronously
+  try {
+    const playbackData = { videoId, time: playbackTime };
+    fs.writeFileSync(savePath, JSON.stringify(playbackData)); // Sync write
+    // console.log('Playback time saved successfully.');
+    event.reply('playback-time-saved', true); // Send success response
+  } catch (err) {
+    console.error('Failed to save playback time:', err);
+    event.reply('playback-time-saved', false); // Send failure response
+  }
+});
+
+
+// Ensure playback time is saved before the app quits
+app.on('before-quit', (event) => {
+  if (!isQuitting) {
+    event.preventDefault(); // Prevent immediate quitting
+    isQuitting = true; // Mark that the quit has been requested
+
+    // Send a signal to the renderer to save the playback time before quitting
+    if (win && win.webContents) {
+      win.webContents.send('app-closing');
+    }
+  }
+});
+

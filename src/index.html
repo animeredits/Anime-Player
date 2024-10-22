@@ -195,9 +195,11 @@
           <img id="audioImage" src="../assets/icons/icon.ico" alt="Visualization" style="display: none;" />
         </div>
         <!-- File input for selecting a single video or audio file -->
-        <input type="file" id="fileInput" accept="video/*, audio/*, .3gp, .avi, .flv, .mkv, .mov, .mp4, .mpeg, .mpg, .webm, .wmv, .vob, .ogg, .m4v, .iso, .gif, .aac, .ac3, .aiff, .alac, .amr, .ape, .flac, .mka, .mp3, .ogg, .opus, .wav, .wma" style="display: none;" />
+        <input type="file" id="fileInput" accept="video/*, video/x-matroska, video/hevc,video/x-h10
+        video/x-h264, audio/*," style="display: none;" />
         <!-- Input to select multiple video and audio files -->
-        <input type="file" id="CSOInput" multiple accept="video/*, audio/*, .3gp, .avi, .flv, .mkv, .mov, .mp4, .mpeg, .mpg, .webm, .gif, .wmv, .vob, .ogg, .m4v, .iso, .aac, .ac3, .aiff, .alac, .amr, .ape, .flac, .mka, .mp3, .ogg, .opus, .wav, .wma" style="display: none;" />
+        <input type="file" id="CSOInput" multiple accept="video/*,video/x-matroska, video/hevc,video/x-h10
+        video/x-h264, audio/*," style="display: none;" />
         <!-- Folder input to select a directory containing media files -->
         <input type="file" id="folderInput" webkitdirectory style="display: none;" />
       </div>

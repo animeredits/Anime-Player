@@ -312,6 +312,7 @@ const volumeStep = 0.05;
 const minFontSize = 18;
 const maxFontSize = 36; 
 let rotationInitiated = false;
+let isAppClosing = false;
 
 // disabling the dragging behavior
 document.querySelectorAll("a ,img").forEach((link) => {
@@ -742,11 +743,21 @@ function loadMediaFile(file) {
 }
 
 function getVideoId(fileName) {
-  return encodeURIComponent(fileName); // Encode the file name to use it as an ID
+  // Generate or extract video ID from file name
+  return fileName.replace(/\.[^/.]+$/, ""); 
 }
 
 function savePlaybackTimeToCache(videoId, time) {
-  const playbackData = { videoId, time };
+  // Subtract 2 seconds from the current time, ensuring it's not negative
+  const adjustedTime = Math.max(0, time - 2);
+
+  // If the time is 0, clear the cache instead of saving it
+  if (adjustedTime === 0) {
+    clearCache(videoId);
+    return;
+  }
+
+  const playbackData = { videoId, time: adjustedTime, timestamp: Date.now() };
   localStorage.setItem(`playback-${videoId}`, JSON.stringify(playbackData));
 }
 
@@ -754,7 +765,16 @@ function getPlaybackTimeFromCache(videoId) {
   const playbackData = localStorage.getItem(`playback-${videoId}`);
   if (playbackData) {
     const parsedData = JSON.parse(playbackData);
-    return parsedData.time;
+    const currentTime = Date.now();
+    const twoDaysInMillis = 2 * 24 * 60 * 60 * 1000; // 2 days in milliseconds
+
+    // Check if the saved timestamp is older than 2 days
+    if (currentTime - parsedData.timestamp > twoDaysInMillis) {
+      clearCache(videoId); // If it's been more than 2 days, clear the cache
+      return 0; // Return 0 to reset playback
+    }
+
+    return parsedData.time; // Return the saved playback time
   }
   return 0; // Return 0 if no cache exists
 }
@@ -788,33 +808,73 @@ function startAutoHideContinueButton() {
 
 video.addEventListener("pause", () => {
   // Check if the video/audio ended
-  if (video.currentTime >= video.duration) {
-    clearCache(videoId); // Clear the cache when the media ends
+  if (video.currentTime >= video.duration || video.currentTime === 0) {
+    clearCache(videoId); // Clear the cache when the media ends or currentTime is 0
     return; // Exit early, no need to save the playback time
   }
   
   lastPlaybackTime = video.currentTime; // Store the current playback time
   savePlaybackTimeToCache(videoId, lastPlaybackTime); // Save to cache
   handleContinueButtonVisibility(); // Update the button visibility on pause
+  const continueButton = document.getElementById("continueButton");
+  continueButton.style.display = "none"; // Hide when video is paused
 });
 
-
-window.addEventListener("beforeunload", () => {
-  if (!video.paused) {
-    lastPlaybackTime = video.currentTime; // Store the current playback time before leaving
-    savePlaybackTimeToCache(videoId, lastPlaybackTime); // Save to cache
+// Save playback time only when the window is about to unload
+window.addEventListener('beforeunload', () => {
+  if (!currentMedia.paused) { // If media is playing, save the time
+    lastPlaybackTime = currentMedia.currentTime;
+    window.electron.savePlaybackTime(lastPlaybackTime, videoId); // Send to main process
   }
 });
 
-// Add event listener to continue button
-document.getElementById("continueButton").addEventListener("click", () => {
-  video.currentTime = lastPlaybackTime; // Resume from the last playback time
-  video.play(); // Play the video
-  clearTimeout(hideContinueButtonTimeout); // Clear the timeout to prevent auto-hide
-  document.getElementById("continueButton").style.display = "none"; // Hide the continue button
+// Save playback time when app is closing
+window.electron.onAppClosing(async () => {
+  if (!currentMedia.paused) {
+    lastPlaybackTime = currentMedia.currentTime;
+    try {
+      await window.electron.savePlaybackTime(lastPlaybackTime, videoId); // Save to main process
+      savePlaybackTimeToCache(videoId, lastPlaybackTime); // Also save to localStorage
+    } catch (error) {
+      console.error('Error saving playback time:', error);
+    }
+  }
+});
 
-  // Clear the playback cache after continuing
-  clearCache(videoId);
+window.addEventListener('load', () => {
+  // Assume `videoId` is already defined
+  lastPlaybackTime = getPlaybackTimeFromCache(videoId); // Load from local storage
+
+  // If there's a playback time in local storage, set it for the video
+  if (lastPlaybackTime > 0) {
+    video.currentTime = lastPlaybackTime; // Resume from last saved playback time
+    handleContinueButtonVisibility(); // Update button visibility
+  }
+
+  // Load saved playback time from main process (for reopening the same file)
+  window.electron.loadPlaybackTime((playbackData) => {
+    if (playbackData && playbackData.videoId === videoId) {
+      lastPlaybackTime = playbackData.time;
+      console.log('Saving playback time:', lastPlaybackTime);
+      console.log('Loaded playback time from local storage:', lastPlaybackTime);
+
+      // Show the "Continue" button only if the playback time is greater than 0
+      const continueButton = document.getElementById("continueButton");
+      if (lastPlaybackTime > 0) {
+        continueButton.style.display = "block";
+      }
+    }
+  });
+});
+
+// Handle "Continue" button click to resume playback
+document.getElementById("continueButton").addEventListener("click", () => {
+  video.currentTime = lastPlaybackTime; // Resume from last saved playback time
+  video.play(); // Play the video
+  document.getElementById("continueButton").style.display = "none"; // Hide the button after clicking
+
+   // Clear the playback cache after continuing
+   clearCache(videoId);
 });
 
 function checkAndSetArtwork(artworkExists) {
@@ -2055,8 +2115,12 @@ document.querySelector("#maximize").addEventListener("click", () => {
   window.electron.maximize();
 });
 
-document.querySelector("#windws-close").addEventListener("click", () => {
-  window.electron.close();
+document.querySelector("#windws-close").addEventListener("click", async () => {
+  if (!video.paused || video.currentTime > 0) { // Check if the video is playing or if there is playback time
+    lastPlaybackTime = video.currentTime; // Get the current time of the video
+    await window.electron.savePlaybackTime(lastPlaybackTime, videoId); // Save playback time to main process
+    window.electron.close(); 
+  }
 });
 
 // Handle play/pause action from tray
