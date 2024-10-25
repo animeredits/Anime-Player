@@ -6,6 +6,7 @@
     <meta name="description" content="Anime Player is an advanced media player for anime enthusiasts, offering features like customizable audio tracks, fixed navigation bar, and seamless video playback. Enjoy your favorite anime with enhanced controls and intuitive navigation.">
     <meta name="keywords" content="anime player, media player, anime streaming, video player, customizable audio tracks, fixed navigation bar, seamless playback, anime controls, intuitive navigation">
     <meta name="author" content="animeredits">
+    <meta http-equiv="Content-Security-Policy" content="script-src 'self' 'unsafe-inline';" />
     <title>Anime Player</title>
     <!-- Favicon -->
     <link rel="icon" type="image/png" sizes="16x16" href="../favicon/favicon-16x16.png" />
@@ -362,6 +363,22 @@
                   <span class="key">Q</span>
                 </div>
               </div>
+              <div class="shortcut">
+                <div class="description">Video Zoom</div>
+                <div class="keys">
+                  <span class="key">Ctrl</span>
+                  <span class="key">&#8679;</span>
+                  <span class="key">Mouse wheel</span>
+                </div>
+              </div>
+              <div class="shortcut">
+                <div class="description">Video Move</div>
+                <div class="keys">
+                  <span class="key">Ctrl</span>
+                  <span class="key">&#8679;</span>
+                  <span class="key">Mouse Left button</span>
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -416,7 +433,7 @@
       </div>
     </footer>
     <!-- Temporary Status Message -->
-    <div id="statusMessage" class="status-message">Status</div> 
+    <div id="statusMessage" class="status-message"></div> 
     <script src="renderer.js"></script>
   </body>
 </html>

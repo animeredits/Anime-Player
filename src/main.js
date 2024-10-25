@@ -9,7 +9,6 @@ app.commandLine.appendSwitch('ignore-gpu-blacklist');
 let win;
 let tray = null;
 let isPlaying = false;
-let maximizeToggle = false;
 let isQuitting = false;
 const twoDaysInMillis = 2 * 24 * 60 * 60 * 1000; // 2 days in milliseconds
 
@@ -250,8 +249,7 @@ ipcMain.on("Minimize", () => {
 });
 
 ipcMain.on("Maximize", () => {
-  maximizeToggle = !maximizeToggle;
-  maximizeToggle ? win.maximize() : win.unmaximize();
+    win.setFullScreen(!win.isFullScreen());
 });
 
 ipcMain.on("appClose", (event, playbackTime, videoId) => {
@@ -277,7 +275,7 @@ ipcMain.on("appClose", (event, playbackTime, videoId) => {
   if (win) {
     win.close();
   } else {
-    app.quit(); // If no window exists, directly quit the app
+    app.quit(); 
   }
 });
 
@@ -395,3 +393,8 @@ app.on('before-quit', (event) => {
   }
 });
 
+app.on('activate', () => {
+  if (BrowserWindow.getAllWindows().length === 0) {
+      createWindow();
+  }
+});

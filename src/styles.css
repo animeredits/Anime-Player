@@ -20,6 +20,7 @@ body {
   background-color: #000;
   color: #fff;
   overflow: hidden;
+  -webkit-app-region: no-drag;
   -webkit-user-drag: none;
   -webkit-user-select: none;
   user-select: none;
@@ -28,7 +29,6 @@ body {
 .hidden {
   opacity: 0;
   visibility: hidden;
-  cursor: none;
   transition: opacity 0.8s ease-in-out,
     visibility 0.7s  ease-in-out;
 }
@@ -299,8 +299,7 @@ main {
   outline: none;
   position: absolute;
   object-fit: cover;
-  transition: transform 0.5s ease;
-  transform-origin: center center;
+
   filter: saturate(120%);
 }
 
@@ -1200,7 +1199,7 @@ input[type="range"]::-moz-range-thumb:active {
   position: fixed;  /* Position relative to the whole page (viewport) */
   top: 38px; 
   right: 20px;  
-  background-color: rgba(0, 0, 0, 0.7);
+  background-color: rgba(0, 0, 0, 0.626);
   color: white;
   padding: 10px 15px;
   border-radius: 4px;
