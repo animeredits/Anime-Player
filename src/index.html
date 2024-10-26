@@ -87,24 +87,6 @@
                 </div>
               </div>
             </div>
-            <!-- Dolby Atmos Dropdown -->
-            <div class="sub-dropdown" id="audioModeDropdown">
-              <a href="javascript:void(0)" class="sub-dropbtn">Dolby Atmos</a>
-              <div class="sub-dropdown-content" id="audioModedropdowns">
-                <!-- Auto Sub-dropdown -->
-                <div class="sub-dropdown">
-                  <a href="javascript:void(0)" class="sub-dropbtn" data-mode="auto">Auto</a>
-                </div>
-                <!-- Movie Sub-dropdown -->
-                <div class="sub-dropdown">
-                  <a href="javascript:void(0)" class="sub-dropbtn" data-mode="movie">Movie</a>
-                </div>
-                <!-- Music Sub-dropdown -->
-                <div class="sub-dropdown">
-                  <a href="javascript:void(0)" class="sub-dropbtn" data-mode="music">Music</a>
-                </div>
-              </div>
-            </div> 
             <a class="increase-volume">Increase Volume</a>
             <a class="decrease-volume">Decrease Volume</a>
             <a id="mic-access-button">Allow Microphone Access</a>
@@ -166,28 +148,46 @@
       <div id="contextMenu" class="context-menu">
         <ul>
           <li>
-            <a id="contextTogglePlayPause">Play</a>
+            <a id="contextTogglePlayPause">
+              <span class="icon">&#9658;</span>
+              <span class="text">Play</span>
+            </a>
           </li>
           <li>
-            <a class="">Audio</a>
+            <a class="">
+              <span class="icon">&#128266;</span>
+              <span class="text">Audio</span>
+            </a>
           </li>
           <li>
-            <a class="">Subtitle</a>
+            <a class="">
+              <span class="icon">&#128264;</span>
+              <span class="text">Subtitle</span>
+            </a>
           </li>
           <li>
-            <a id="contextOpenFile">Open File... </a>
+            <a id="contextOpenFile">
+              <span class="icon">&#128194;</span>
+              <span class="text">Open File...</span>
+            </a>
           </li>
           <li>
-            <a id="contextOpenFolder">Open Folder... </a>
+            <a id="contextOpenFolder">
+              <span class="icon">&#128448;</span>
+              <span class="text">Open Folder...</span>
+            </a>
           </li>
           <li>
-            <a id="quit">Quit</a>
+            <a id="quit">
+              <span class="icon">&#10060;</span>
+              <span class="text">Quit</span>
+            </a>
           </li>
         </ul>
-      </div>
+      </div>        
       <!-- Media Player -->
       <div id="mediaPlayer" style="position: relative">
-        <video id="media" style="display: none;">
+        <video id="media" preload="auto" style="display: none;">
           <source id="videoSource" />
           <source id="audioSource" />
         </video>
@@ -204,15 +204,17 @@
         <!-- Folder input to select a directory containing media files -->
         <input type="file" id="folderInput" webkitdirectory style="display: none;" />
       </div>
+
       <!-- Navigation Arrows -->
       <div class="nav-arrows">
         <button id="prevVideo" class="card arrow-button left-arrow" >
-          <span class="material-symbols-sharp"> arrow_back_ios </span>
+          <span class="left-arrow">&#10092;</span>
         </button>
         <button id="nextVideo" class="card arrow-button right-arrow" >
-          <span class="material-symbols-sharp"> arrow_forward_ios </span>
+          <span class="">&#10093; </span>
         </button>
       </div>
+
       <!-- Shortcut Modal  -->
       <div id="shortcutsModal" class="modal">
         <div class="modal-content">
@@ -413,13 +415,13 @@
       </div>
       <div class="media-controls">
         <div id="rewind" class="card" >
-          <img src="../assets/icons/backward.png" alt="backward">
+          <img src="../assets/icons/skip-15-seconds-back.png" alt="backward">
         </div>
         <div class="play-pause card" >
           <i class="fa-light fa-play" id="playPauseBtn"></i>
         </div>
         <div id="forward" class="card" >
-          <img src="../assets/icons/forward.png" alt="forward">
+          <img src="../assets/icons/skip-15-seconds-next.png" alt="forward">
         </div>
       </div>
       <div class="video-settings">

@@ -8,10 +8,10 @@
   box-sizing: border-box;
   margin: 0;
   padding: 0;
+  /* cursor: url('../assets/icons/icons8-select-cursor-24.png') 4 4, auto !important; */
 }
 
 body {
-  /* cursor: url('../assets/icons/mouse.png') 4 4, auto !important; */
   display: flex;
   flex-direction: column;
   width: 100%;
@@ -29,15 +29,13 @@ body {
 .hidden {
   opacity: 0;
   visibility: hidden;
-  transition: opacity 0.8s ease-in-out,
-    visibility 0.7s  ease-in-out;
+  transition: opacity 0.8s ease-in-out, visibility 0.7s ease-in-out;
 }
 
 .visible {
   opacity: 1;
   visibility: visible;
-  transition: opacity 0.8s ease-in-out,
-    visibility 0.7s  ease-in-out;
+  transition: opacity 0.8s ease-in-out, visibility 0.7s ease-in-out;
 }
 
 /* Navigation Bar */
@@ -103,7 +101,7 @@ nav::before {
   background: linear-gradient(
     to top,
     rgba(0, 0, 0, 0) 0%,
-    rgba(0, 0, 0, 0.353) 100% 
+    rgba(0, 0, 0, 0.353) 100%
   );
   opacity: 1;
   z-index: 1;
@@ -299,7 +297,7 @@ main {
   outline: none;
   position: absolute;
   object-fit: cover;
-
+  transition: transform 0.3s ease-out;
   filter: saturate(120%);
 }
 
@@ -319,20 +317,38 @@ main {
   list-style: none;
 }
 
+.context-menu ul li {
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+}
+
 .context-menu ul li a {
   color: #fff;
   padding: 10px;
   text-decoration: none;
-  display: block;
-  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  width: 100%;
 }
 
-.context-menu li:hover {
-  background-color: rgba(255, 255, 255, 0.1);
+.context-menu ul li a .icon {
+  margin-right: 10px;
+  font-size: 14px;
+  width: 20px; /* Fixed width for icon section */
+  text-align: center;
+}
+
+.context-menu ul li a .text {
+  padding-left: 10px;
 }
 
 .context-menu ul li a {
   transition: background-color 0.2s ease;
+}
+
+.context-menu li:hover {
+  background-color: rgba(255, 255, 255, 0.1);
 }
 
 /* Navigation Arrows */
@@ -358,6 +374,7 @@ main {
   justify-content: center;
   align-items: center;
   cursor: none;
+  transition: opacity 0.3s ease, visibility 0.3s ease; /* Smooth transition for opacity and visibility */
 }
 
 /* Card styling for both buttons and other elements */
@@ -378,11 +395,11 @@ main {
 .nav-arrows .card span {
   z-index: 1;
   font-size: 27px;
-  color: white; /* Ensure the icon is visible */
+  color: white;
 }
 
 .nav-arrows .card:hover {
-  border-color: 0.3px solid rgba(255, 255, 255, 0.364);
+  border-color: rgba(255, 255, 255, 0.364); /* Corrected border color */
   background-color: rgba(255, 255, 255, 0.1);
 }
 
@@ -408,13 +425,8 @@ main {
   content: "";
   position: absolute;
   inset: 1px;
-  background-color: rgba(0, 0, 0, 0.9);
+  background: transparent;
   z-index: 0;
-}
-
-.left-arrow span {
-  position: relative;
-  left: 5px;
 }
 
 #audioLogo img {
@@ -559,7 +571,7 @@ main {
   background: transparent;
 }
 
-.keys span:hover{
+.keys span:hover {
   border: 1px solid #ededed;
 }
 
@@ -786,7 +798,7 @@ span {
   content: "";
   position: absolute;
   inset: 1px;
-  background-color: rgba(0, 0, 0, 0.9);
+  background: transparent;
   z-index: 0;
 }
 
@@ -844,7 +856,7 @@ span {
   content: "";
   position: absolute;
   inset: 1px;
-  background-color: rgba(0, 0, 0, 0.9);
+  background: transparent;
   z-index: 0; /* Ensure it is behind the content */
 }
 
@@ -1193,18 +1205,17 @@ input[type="range"]::-moz-range-thumb:active {
   object-fit: contain; /* Contain the image within the preview box */
 }
 
-
 /* Temporary Status Message - Positioned at top-right of the page */
 .status-message {
-  position: fixed;  /* Position relative to the whole page (viewport) */
-  top: 38px; 
-  right: 20px;  
-  background-color: rgba(0, 0, 0, 0.626);
+  position: fixed; /* Position relative to the whole page (viewport) */
+  top: 38px;
+  right: 20px;
+  /* background-color: rgba(0, 0, 0, 0.626); */
   color: white;
   padding: 10px 15px;
   border-radius: 4px;
   opacity: 0;
   transition: opacity 0.3s ease-in-out;
   pointer-events: none;
-  z-index: 9999;  /* Ensure it stays on top */
+  z-index: 9999; /* Ensure it stays on top */
 }

@@ -45,6 +45,10 @@ function createWindow() {
       enableRemoteModule: false,
       nodeIntegration: false,
       experimentalFeatures: true,
+      webSecurity: true, 
+      enableHardwareAcceleration: true,
+      webgl: true,
+      backgroundThrottling: false,
       devTools:true
     }
   });
@@ -93,29 +97,30 @@ function updateThumbarButtons() {
   win.setThumbarButtons([
     {
       tooltip: 'Previous',
-      icon: path.join(__dirname, '../assets/icons/backward.png'),
+      icon: path.join(__dirname, '../assets/icons/back.png'),
       click() {
         win.webContents.send('previous');
       },
     },
     {
-      tooltip: isPlaying ? 'Pause' : 'Play', 
-      icon: path.join(__dirname, '../assets/icons/icon.ico'),
+      tooltip: !isPlaying ? 'Pause' : 'Play',
+      icon: path.join(__dirname, !isPlaying ? '../assets/icons/pause.png' : '../assets/icons/play.png'),
       click() {
         isPlaying = !isPlaying; 
         win.webContents.send('play-pause');
-        updateThumbarButtons();
+        updateThumbarButtons(); // Update thumbnail buttons again to reflect new state
       },
     },
     {
       tooltip: 'Next',
-      icon: path.join(__dirname, '../assets/icons/forward.png'),
+      icon: path.join(__dirname, '../assets/icons/next.png'),
       click() {
         win.webContents.send('next');
       },
     },
   ]);
 }
+
 
 function createTray() {
   tray = new Tray(path.join(__dirname, "../assets/icons/icon.ico"));
@@ -198,6 +203,7 @@ app.on('ready', () => {
   const animePlayerPath = app.getPath('userData');
   const savePath = path.join(animePlayerPath, 'playback-time.json');
 
+ 
   createWindow();
 
   // Load playback data and remove outdated entries

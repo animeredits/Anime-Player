@@ -37,11 +37,9 @@ contextBridge.exposeInMainWorld('electron', {
       });
     });
   },
-  onAppClosing: (callback) => {
-    ipcRenderer.on('app-closing', () => {
-      callback(); // Notify renderer to save playback time
-    });
-  },
+  
+  onAppClosing: (callback) => ipcRenderer.on('app-closing', callback),
+
   loadPlaybackTime: (callback) => {
     ipcRenderer.on('load-playback-time', (event, playbackData) => {
       callback(playbackData); // Load saved playback time

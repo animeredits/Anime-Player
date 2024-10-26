@@ -11,6 +11,8 @@ const video = document.getElementById("media");
 const gifImageElement = document.getElementById("gifImage");
 const rewind = document.getElementById("rewind");
 const forward = document.getElementById("forward");
+const nextButton  = document.getElementById("nextVideo");
+const prevButton  = document.getElementById("prevVideo");
 const playPauseBtn = document.getElementById("playPauseBtn");
 const progressBarContainer = document.getElementById("progressBarContainer");
 const progressBarWrapper = document.getElementById("progressBarWrapper");
@@ -651,11 +653,16 @@ function deleteCustomLogo(fileName) {
 }
 
 function loadMediaFile(file) {
+  if (!file) {
+    return; 
+  }
+
   const fileType = file.type.split("/")[0]; // Determine if it's audio, video, or image
   const fileURL = URL.createObjectURL(file);
   const fileName = file.name;
 
   videoId = getVideoId(fileName); // Get unique video ID from file name
+
 
   // Reset styles
   gifImageElement.style.display = "none";
@@ -748,14 +755,13 @@ function loadMediaFile(file) {
           console.error("Error playing media:", error);
         });
     });
-
-     // Reset zoom when video ends
+    // Reset zoom when video ends
      currentMedia.addEventListener("ended", resetZoom);
 
     return; // Exit early
   }
 
-  console.error("Unsupported file type:", file.type);
+  // console.error("Unsupported file type:", file.type);
 }
 
 function getVideoId(fileName) {
@@ -878,9 +884,6 @@ window.addEventListener('load', () => {
   window.electron.loadPlaybackTime((playbackData) => {
     if (playbackData && playbackData.videoId === videoId) {
       lastPlaybackTime = playbackData.time;
-      console.log('Saving playback time:', lastPlaybackTime);
-      console.log('Loaded playback time from local storage:', lastPlaybackTime);
-
       // Show the "Continue" button only if the playback time is greater than 0
       const continueButton = document.getElementById("continueButton");
       if (lastPlaybackTime > 0) {
@@ -1015,10 +1018,16 @@ function handleFileSelection(files) {
       file.type.startsWith("audio/") ||
       file.type === "image/gif"
   );
+
+  // Check if there are valid video files and update navigation buttons
   if (videoFiles.length > 0) {
     currentVideoIndex = 0; // Default to the first file
     playMedia(videoFiles[currentVideoIndex]);
     audioLogo.style.display = videoFiles[0].type.startsWith("video/") ? "none" : "block";
+    updateNavigationButtons();
+  } else {
+    nextButton.classList.add("hidden");
+    prevButton.classList.add("hidden");
   }
 }
 
@@ -1046,12 +1055,12 @@ function togglePlayPause() {
   if (video.paused) {
     video.play();
     hideVideoTitle();
-    window.electron.sendPlayPauseState("playing"); // Send 'playing' state to main process
+    window.electron.sendPlayPauseState("playing");
   } else {
     video.pause();
     stopGifPlayback();
     showVideoTitle();
-    window.electron.sendPlayPauseState("paused"); // Send 'paused' state to main process
+    window.electron.sendPlayPauseState("paused");
   }
 }
 
@@ -1082,6 +1091,26 @@ function getPreviousIndex() {
   return (currentVideoIndex - 1 + videoFiles.length) % videoFiles.length;
 }
 
+// Function to update the visibility of next and previous buttons
+function updateNavigationButtons() {
+  const nextIndex = getNextIndex();
+  const prevIndex = getPreviousIndex();
+  
+  // Hide next button if no next video
+  if (nextIndex == null || videoFiles.length === 0) {
+    nextButton.classList.add("hidden");
+  } else {
+    nextButton.classList.remove("hidden");
+  }
+
+  // Hide previous button if no previous video
+  if (prevIndex == null || videoFiles.length === 0) {
+    prevButton.classList.add("hidden");
+  } else {
+    prevButton.classList.remove("hidden");
+  }
+}
+
 // Function to play the next video
 function playNext() {
   const nextIndex = getNextIndex();
@@ -1092,7 +1121,7 @@ function playNext() {
 
   lastPlayedIndex = nextIndex;
   playVideoByIndex(nextIndex);
-  updateAudioLogo(nextIndex);
+  updateNavigationButtons(); // Update button visibility
 }
 
 // Function to play the previous video
@@ -1105,13 +1134,7 @@ function playPrevious() {
 
   lastPlayedIndex = prevIndex;
   playVideoByIndex(prevIndex);
-  updateAudioLogo(prevIndex);
-}
-
-// Function to update the audio logo based on the current file type
-function updateAudioLogo(index) {
-  const currentFile = videoFiles[index];
-  audioLogo.style.display = currentFile.type.startsWith("audio/") ? "block" : "none";
+  updateNavigationButtons(); // Update button visibility
 }
 
 // Function to stop playback and reset the media player
@@ -1128,16 +1151,24 @@ function stopPlayback() {
   progressBar.style.width = `0%`;
   progressHandle.style.left = `0%`;
   stopGifPlayback();
+  updateNavigationButtons(); // Update button visibility
   console.log("All videos have been played. Playback stopped.");
 }
 
 // Event listeners for stop playback and navigation buttons
-document.getElementById("stopPlayback").addEventListener("click", stopPlayback);
-document.getElementById("prevVideo").addEventListener("click", playPrevious);
-document.getElementById("nextVideo").addEventListener("click", playNext);
+document.getElementById("stopPlayback").addEventListener("click", () => {
+  stopPlayback();
+  updateNavigationButtons(); // Ensure buttons are updated when stopped
+});
+
+prevButton.addEventListener("click", playPrevious);
+nextButton.addEventListener("click", playNext);
 
 // Handle video end event (to automatically play the next video)
-video.addEventListener("ended", playNext);
+video.addEventListener("ended", () => {
+  playNext();
+  updateNavigationButtons(); 
+});
 
 // Rewind and Forward video 10 sec
 rewind.addEventListener("click", () => {
@@ -1146,6 +1177,9 @@ rewind.addEventListener("click", () => {
 forward.addEventListener("click", () => {
   currentMedia.currentTime = Math.min(currentMedia.duration, currentMedia.currentTime + 10);
 });
+
+// Initial button visibility update
+updateNavigationButtons();
 
 
 // Function to update video title with truncation
@@ -1300,8 +1334,7 @@ function updateVolume(newVolume) {
 function showTooltip(volume) {
   tooltip.textContent = `Volume: ${(volume * 100).toFixed(0)}%`;
   const sliderRect = volumeSlider.getBoundingClientRect();
-  const sliderX =
-    sliderRect.left + volumeSlider.offsetWidth * (volumeSlider.value / 150);
+  const sliderX = sliderRect.left + volumeSlider.offsetWidth * (volumeSlider.value / 150);
   tooltip.style.left = `${sliderX}px`;
   tooltip.style.top = `${sliderRect.top - 30}px`;
   tooltip.style.display = "block";
@@ -1340,7 +1373,7 @@ fontSizeTooltip.style.display = "none"; // Initially hidden
 document.body.appendChild(fontSizeTooltip);
 
 // Text size adjustment functionality (CTRL + Mouse Wheel)
-// Handle zoom and text scaling separately
+// Handle text scaling separately
 mediaPlayer.addEventListener("wheel", (event) => {
   // Prevent default behavior
   event.preventDefault();
@@ -1360,6 +1393,7 @@ mediaPlayer.addEventListener("wheel", (event) => {
     // Show zoom percentage in statusMessage
     const zoomPercentage = Math.round(scale * 100);
     showStatusMessage(`Zoom: ${zoomPercentage}%`);
+
   } else if (event.ctrlKey) {
     // Adjust font size with CTRL + Wheel (no SHIFT)
     if (event.deltaY < 0) {
@@ -1384,6 +1418,24 @@ mediaPlayer.addEventListener("wheel", (event) => {
     setTimeout(() => {
       fontSizeTooltip.style.display = "none";
     }, 1500);
+
+  } else {
+    // Adjust volume with mouse wheel
+    if (event.deltaY < 0) {
+      updateVolume(Math.min(2, gainNode.gain.value + 0.1)); // Increase volume up to 200%
+    } else if (event.deltaY > 0) {
+      updateVolume(Math.max(0, gainNode.gain.value - 0.1)); // Decrease volume
+    }
+
+    // Show volume tooltip for wheel interaction
+    tooltip.style.left = `${event.pageX}px`;
+    tooltip.style.top = `${event.pageY - 30}px`;
+    tooltip.textContent = `Volume: ${(gainNode.gain.value * 100).toFixed(0)}%`;
+    tooltip.style.display = "block";
+
+    setTimeout(() => {
+      tooltip.style.display = "none";
+    }, 3900);
   }
 });
 
@@ -1476,7 +1528,7 @@ function showStatusMessage(text) {
 
 
 // Zoom functionality (CTRL + Shift + Mouse Wheel)
-// Handle zoom and text scaling separately
+// Handle zoom separately
 mediaPlayer.addEventListener("wheel", (event) => {
   // Prevent default behavior
   event.preventDefault();
@@ -1488,20 +1540,19 @@ mediaPlayer.addEventListener("wheel", (event) => {
     } else {
       scale = Math.max(scale - 0.1, minZoom); // Min zoom level (no zoom)
     }
-
+    
     // Apply zoom along with rotation and pan
     applyTransformations();
 
   }
 });
 
-// Pan functionality with CTRL + Shift + Left-Click
+// Move functionality with CTRL + Shift + Left-Click
 video.addEventListener("mousedown", (event) => {
   if (event.ctrlKey && event.shiftKey) {
     isPanning = true;
     startX = event.clientX - panX;
     startY = event.clientY - panY;
-    video.style.transition = "all 0.3s ease-out";
     video.style.cursor = "move"; // Change cursor to indicate panning
     event.preventDefault(); // Prevent text selection or other default behavior
   }
@@ -1636,69 +1687,68 @@ document.addEventListener("DOMContentLoaded", function () {
   const footer = document.querySelector("footer");
   const video = document.querySelector("video");
   const navArrows = document.querySelector(".nav-arrows");
-  const winButton = document.querySelector(".win-buttons ");
+  const winButton = document.querySelector(".win-buttons");
   let hideTimeout;
-  let videoLoaded = false; // Flag to track if video is loaded
-
+  
   // Function to hide navbar, footer, nav arrows, and cursor
   function hideControls() {
-    if (videoLoaded && !video.paused) {
+    if (!video.paused) {
       // Only hide controls if video is loaded and playing
       navbar.classList.remove("visible");
       navbar.classList.add("hidden");
-
+  
       footer.classList.remove("visible");
       footer.classList.add("hidden");
-
+  
       navArrows.classList.add("hidden");
       winButton.classList.remove("visible");
       winButton.classList.add("hidden");
-
+  
       document.body.style.cursor = "none"; 
     }
   }
-
+  
   // Function to show navbar, footer, nav arrows, and cursor
   function showControls() {
     navbar.classList.remove("hidden");
     navbar.classList.add("visible");
-
+  
     footer.classList.remove("hidden");
     footer.classList.add("visible");
-
+  
     navArrows.classList.remove("hidden");
     winButton.classList.remove("hidden");
     winButton.classList.add("visible");
-
+  
     document.body.style.cursor = "default"; 
-
-    // Clear the previous timeout and start a new one to hide controls after 1800ms
+  
+    // Clear the previous timeout and start a new one to hide controls after 1000ms
     clearTimeout(hideTimeout);
-    if (videoLoaded && !video.paused) {
+  
+    if (!video.paused) {
       // Only start hide timeout if video is loaded and playing
-      hideTimeout = setTimeout(hideControls, 1000); // Hide after 1800ms of inactivity
+      hideTimeout = setTimeout(hideControls, 1000); // Hide after 1000ms of inactivity
     }
   }
-
+  
   // Event listener for when the video's metadata is loaded
   video.addEventListener("loadedmetadata", function () {
-    videoLoaded = true; // Set the flag to true once the video is loaded
     hideTimeout = setTimeout(hideControls, 1000); // Start hide timeout
   });
-
+  
   // Event listener for when the video is paused
   video.addEventListener("pause", function () {
     showControls(); // Always show controls when video is paused
   });
-
+  
   // Event listener for when the video is played
   video.addEventListener("play", function () {
     hideTimeout = setTimeout(hideControls, 1000); // Hide controls shortly after playing
   });
-
+  
   // Show controls when the mouse moves and reset the timeout
   video.addEventListener("mousemove", showControls);
-
+  
   // Event listener for the left mouse button to hide/show controls
   video.addEventListener("click", function (event) {
     if (event.button === 0) {
@@ -1710,8 +1760,8 @@ document.addEventListener("DOMContentLoaded", function () {
       }
     }
   });
-
-  // Event listeners for mouseover on navbar, winButton, navArrows and footer to stop hiding controls
+  
+  // Event listeners for mouseover on navbar, winButton, navArrows, and footer to stop hiding controls
   navbar.addEventListener("mouseover", function () {
     clearTimeout(hideTimeout);
   });
@@ -1724,7 +1774,14 @@ document.addEventListener("DOMContentLoaded", function () {
   footer.addEventListener("mouseover", function () {
     clearTimeout(hideTimeout);
   });
-
+  
+  // Additional mousemove event listener to show controls and hide cursor if video is playing
+  video.addEventListener("mousemove", function () {
+    if (!video.paused) {
+      showControls();
+    }
+  });
+  
   // Ensure controls are shown on initial load
   showControls();
 
@@ -1734,6 +1791,8 @@ document.addEventListener("DOMContentLoaded", function () {
     contextMenu.style.top = `${event.clientY}px`;
     contextMenu.style.left = `${event.clientX}px`;
     contextMenu.style.display = "block";
+    updateContextTogglePlayPause(); // Update the context menu state
+
   }
 
   // Function to hide the context menu
@@ -1747,27 +1806,36 @@ document.addEventListener("DOMContentLoaded", function () {
   // Hide the context menu when clicking elsewhere
   document.addEventListener("click", hideContextMenu);
 
-  // Handle context menu item clicks
-  contextMenuItems.forEach((item) => {
-    item.addEventListener("click", (event) => {
-      const target = event.target;
+// Function to update the context menu toggle play/pause item based on video state
+function updateContextTogglePlayPause() {
+  const contextTogglePlayPause = document.querySelector("#contextTogglePlayPause");
+  const textElement = contextTogglePlayPause.querySelector(".text");
+  const iconElement = contextTogglePlayPause.querySelector(".icon");
+  
+  if (video.paused) {
+    textElement.innerText = "Play"; // Update text to Play
+    iconElement.innerHTML = "&#9658;"; // Change icon to play
+  } else {
+    textElement.innerText = "Pause"; // Update text to Pause
+    iconElement.innerHTML = "&#10074;&#10074;"; // Change icon to pause
+  }
+}
 
-      if (target.closest("#contextOpenFile")) {
-        fileInput.click();
-      } else if (target.closest("#contextOpenFolder")) {
-        folderInput.click();
-      } else if (target.closest("#contextTogglePlayPause")) {
-        if (video.paused) {
-          video.play();
-          document.getElementById("contextTogglePlayPause").innerText = "Pause";
-        } else {
-          video.pause();
-          document.getElementById("contextTogglePlayPause").innerText = "Play";
-        }
-      }
-      hideContextMenu(); // Hide context menu after clicking an item
-    });
+// Handle context menu item clicks
+contextMenuItems.forEach((item) => {
+  item.addEventListener("click", (event) => {
+    const target = event.target;
+
+    if (target.closest("#contextOpenFile")) {
+      fileInput.click();
+    } else if (target.closest("#contextOpenFolder")) {
+      folderInput.click();
+    } else if (target.closest("#contextTogglePlayPause")) {
+      togglePlayPause(); // Call the toggle function
+    }
+    hideContextMenu(); // Hide context menu after clicking an item
   });
+});  
 });
 
 // Format time to HH:MM:SS
@@ -1925,7 +1993,7 @@ document.addEventListener("keydown", (event) => {
     return;
   }
 
-  if (event.ctrlKey && event.key === "-") {
+  if (event.ctrlKey && event.key === "`") {
     event.preventDefault();
     window.electron.minimize();
     return;
@@ -1952,23 +2020,23 @@ document.addEventListener("keydown", (event) => {
     m: () => volumeBtn.click(),
     8: () => {
       rotateVideo(0);
-      showStatusMessage("Video rotated to 0°");
+      showStatusMessage(" rotated 0°");
     },
     6: () => {
       rotateVideo(90);
-      showStatusMessage("Video rotated to 90°");
+      showStatusMessage("rotated 90°");
     },
     4: () => {
       rotateVideo(-90);
-      showStatusMessage("Video rotated to -90°");
+      showStatusMessage("rotated -90°");
     },
     2: () => {
       rotateVideo(180);
-      showStatusMessage("Video rotated to 180°");
+      showStatusMessage("rotated 180°");
     },
     0: () => {
       resetZoom();
-      showStatusMessage("Zoom reset");
+      showStatusMessage("Zoom Reset");
     }
   };
   
@@ -2051,9 +2119,7 @@ function rotateVideo(degrees) {
 
 // Add event listener for full screen change
 document.addEventListener("fullscreenchange", () => {
-  if (document.fullscreenElement) {
-    applyRotation(); // Apply rotation in full screen
-  }
+    applyRotation(); 
 });
 
 // Set initial rotation angle (example setting to 0 degrees)
