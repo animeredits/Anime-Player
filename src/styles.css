@@ -1219,3 +1219,4 @@ input[type="range"]::-moz-range-thumb:active {
   pointer-events: none;
   z-index: 9999; /* Ensure it stays on top */
 }
+

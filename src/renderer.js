@@ -305,6 +305,7 @@ let isGifPlaying = false;
 let lastPlayedIndex = -1;
 let showRemainingTime = false;
 let lastPlaybackTime = 0;
+let lastPlayedStack = [];
 let videoId;
 let hideContinueButtonTimeout;
 let isVideoPaused = false;
@@ -1019,6 +1020,9 @@ function handleFileSelection(files) {
       file.type === "image/gif"
   );
 
+  // Update the playlist dropdown
+  updatePlaylistDropdown();
+
   // Check if there are valid video files and update navigation buttons
   if (videoFiles.length > 0) {
     currentVideoIndex = 0; // Default to the first file
@@ -1030,6 +1034,22 @@ function handleFileSelection(files) {
     prevButton.classList.add("hidden");
   }
 }
+
+// Function to update the playlist dropdown
+function updatePlaylistDropdown() {
+  const playlistContainer = document.getElementById("play-list");
+  playlistContainer.innerHTML = ""; // Clear existing items
+
+  // Loop through videoFiles and create <a> elements for each file
+  videoFiles.forEach((file, index) => {
+    const fileLink = document.createElement("a");
+    fileLink.href = "javascript:void(0)"; // Prevent default behavior
+    fileLink.textContent = file.name; // Set the file name as the link text
+    fileLink.addEventListener("click", () => playVideoByIndex(index)); // Play the video on click
+    playlistContainer.appendChild(fileLink); // Add the link to the playlist
+  });
+}
+
 
 // Event listener for multiple file selection
 CSOInput.addEventListener("change", (event) => handleFileSelection(event.target.files));
@@ -1082,11 +1102,8 @@ function getNextIndex() {
 
 // Function to determine previous video index
 function getPreviousIndex() {
-  if (isRandom) {
-    let remainingVideos = videoFiles.filter((_, index) => !playedVideos.includes(index));
-    return remainingVideos.length > 0 
-      ? videoFiles.indexOf(remainingVideos[Math.floor(Math.random() * remainingVideos.length)]) 
-      : null;
+  if (!isRandom && lastPlayedStack.length > 0) {
+    return lastPlayedStack[lastPlayedStack.length - 1]; // Return last played video from stack
   }
   return (currentVideoIndex - 1 + videoFiles.length) % videoFiles.length;
 }
@@ -1119,6 +1136,7 @@ function playNext() {
     return;
   }
 
+  lastPlayedStack.push(currentVideoIndex); // Store the last played index before playing next
   lastPlayedIndex = nextIndex;
   playVideoByIndex(nextIndex);
   updateNavigationButtons(); // Update button visibility
@@ -1126,15 +1144,11 @@ function playNext() {
 
 // Function to play the previous video
 function playPrevious() {
-  const prevIndex = getPreviousIndex();
-  if (prevIndex === null && !isLooping) {
-    stopPlayback();
-    return;
+  if (lastPlayedStack.length > 0) {
+    const prevIndex = lastPlayedStack.pop(); // Get the last played video index from the stack
+    playVideoByIndex(prevIndex);
+    updateNavigationButtons(); // Update button visibility
   }
-
-  lastPlayedIndex = prevIndex;
-  playVideoByIndex(prevIndex);
-  updateNavigationButtons(); // Update button visibility
 }
 
 // Function to stop playback and reset the media player
@@ -1637,6 +1651,7 @@ function toggleRandomMode() {
     randomButton.classList.remove("active");
     showStatusMessage("Random: Off");
     playedVideos = [];
+    lastPlayedStack = []; // Clear the stack when random is turned off
   }
 }
 
@@ -2005,13 +2020,18 @@ document.addEventListener("keydown", (event) => {
   }
 
   const keyActions = {
-    ArrowLeft: () =>
-      (currentMedia.currentTime = Math.max(0, currentMedia.currentTime - 5)),
-    ArrowRight: () =>
-      (currentMedia.currentTime = Math.min(
-        currentMedia.duration,
-        currentMedia.currentTime + 5
-      )),
+    ArrowLeft: () => {
+      currentMedia.currentTime = Math.max(0, currentMedia.currentTime - 5);
+      showStatusMessage(
+        `${formatTime(currentMedia.currentTime)} / ${formatTime(currentMedia.duration)}`
+      ); // Show current time and total duration
+    },
+    ArrowRight: () => {
+      currentMedia.currentTime = Math.min(currentMedia.duration, currentMedia.currentTime + 5);
+      showStatusMessage(
+        `${formatTime(currentMedia.currentTime)} / ${formatTime(currentMedia.duration)}`
+      ); // Show current time and total duration
+    },
     f: () => toggleFullScreen(),
     r: () => toggleRandomMode(),
     p: () => playPrevious(),
@@ -2020,7 +2040,7 @@ document.addEventListener("keydown", (event) => {
     m: () => volumeBtn.click(),
     8: () => {
       rotateVideo(0);
-      showStatusMessage(" rotated 0°");
+      showStatusMessage("rotated 0°");
     },
     6: () => {
       rotateVideo(90);
@@ -2038,8 +2058,7 @@ document.addEventListener("keydown", (event) => {
       resetZoom();
       showStatusMessage("Zoom Reset");
     }
-  };
-  
+  };  
   if (keyActions[event.key]) {
     keyActions[event.key]();
   }

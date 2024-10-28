@@ -97,6 +97,12 @@
           <a href="javascript:void(0)" class="dropbtn">Video</a>
           <div class="dropdown-content">
             <a class="">Video Track </a>
+            <div class="sub-dropdown">
+              <a href="javascript:void(0)" class="sub-dropbtn">Playlist</a>
+              <div class="sub-dropdown-content" id="play-list">
+                <!-- Play list will be dynamically inserted here -->
+              </div>
+            </div>
             <a class="">Full Screen</a>
           </div>
         </li>
@@ -116,6 +122,7 @@
         </li>
       </ul>
     </nav>
+    
     <!-- Custom Confirm Dialog -->
     <div id="customConfirmDialog" class="gif-modal">
       <div class="gif-modal-content">
@@ -196,11 +203,11 @@
           <img id="audioImage" src="../assets/icons/icon.ico" alt="Visualization" style="display: none;" />
         </div>
         <!-- File input for selecting a single video or audio file -->
-        <input type="file" id="fileInput" accept="video/*, video/x-matroska, video/hevc,video/x-h10
-        video/x-h264, audio/*," style="display: none;" />
+        <input type="file" id="fileInput" accept="video/*,video/x-matroska,video/x-hevc,video/x-h264,audio/*"
+        style="display: none;" />
         <!-- Input to select multiple video and audio files -->
-        <input type="file" id="CSOInput" multiple accept="video/*,video/x-matroska, video/hevc,video/x-h10
-        video/x-h264, audio/*," style="display: none;" />
+        <input type="file" id="CSOInput" multiple accept="video/*,video/x-matroska,video/x-hevc,video/x-h264,audio/*"
+        style="display: none;" />
         <!-- Folder input to select a directory containing media files -->
         <input type="file" id="folderInput" webkitdirectory style="display: none;" />
       </div>
@@ -355,7 +362,7 @@
                 <div class="description">Minimize</div>
                 <div class="keys">
                   <span class="key">Ctrl</span>
-                  <span class="key">-</span>
+                  <span class="key">`</span>
                 </div>
               </div>
               <div class="shortcut">

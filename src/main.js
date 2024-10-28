@@ -47,9 +47,8 @@ function createWindow() {
       experimentalFeatures: true,
       webSecurity: true, 
       enableHardwareAcceleration: true,
-      webgl: true,
       backgroundThrottling: false,
-      devTools:true
+      // devTools:true
     }
   });
 
@@ -73,7 +72,7 @@ function createWindow() {
     win.maximize();
     createTray();
     setThumbarButtons();
-     win.webContents.openDevTools();
+    //  win.webContents.openDevTools();
   });
 
   win.on("show", setThumbarButtons);
@@ -104,7 +103,7 @@ function updateThumbarButtons() {
     },
     {
       tooltip: !isPlaying ? 'Pause' : 'Play',
-      icon: path.join(__dirname, !isPlaying ? '../assets/icons/pause.png' : '../assets/icons/play.png'),
+      icon: path.join(__dirname, isPlaying ? '../assets/icons/play.png' : '../assets/icons/pause.png'),
       click() {
         isPlaying = !isPlaying; 
         win.webContents.send('play-pause');
