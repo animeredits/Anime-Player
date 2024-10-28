@@ -1220,3 +1220,29 @@ input[type="range"]::-moz-range-thumb:active {
   z-index: 9999; /* Ensure it stays on top */
 }
 
+#play-list {
+  max-width: 890px;
+  max-height: 450px;
+  overflow-y: auto;  
+  overflow-x: hidden; 
+}
+
+#play-list a {
+  cursor: default;
+  scroll-behavior: smooth;
+}
+
+#play-list::-webkit-scrollbar {
+  width: 10px;
+  padding-top: 10px;
+}
+
+#play-list::-webkit-scrollbar-thumb {
+  background: #888;
+  border-radius: 5px;
+}
+
+#play-list::-webkit-scrollbar-thumb:hover {
+  background: #555;
+}
+

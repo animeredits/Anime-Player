@@ -13,6 +13,14 @@ const rewind = document.getElementById("rewind");
 const forward = document.getElementById("forward");
 const nextButton  = document.getElementById("nextVideo");
 const prevButton  = document.getElementById("prevVideo");
+const playbackSpeedLinks = document.querySelectorAll("#Playback-Speed a");
+const speedOptions = {
+  increase: [1.25, 1.5, 1.75, 2],
+  decrease: [0.75, 0.5, 0.25],
+};
+
+// Get the default speed
+let currentSpeedIndex = 3; // Starts at 'Normal' (1)
 const playPauseBtn = document.getElementById("playPauseBtn");
 const progressBarContainer = document.getElementById("progressBarContainer");
 const progressBarWrapper = document.getElementById("progressBarWrapper");
@@ -23,7 +31,6 @@ const durationDisplay = document.getElementById("duration");
 const pipButton = document.getElementById("pip");
 const fullscreenBtn = document.getElementById("fullscreenBtn");
 const volumeBtn = document.getElementById("volumeBtn");
-const contextMenu = document.getElementById("contextMenu");
 const videoTitleElement = document.getElementById("videoTitle");
 const switchAudio = document.getElementById("switchAudioTrack");
 const contextMenuItems = document.querySelectorAll(".context-menu li");
@@ -1196,6 +1203,62 @@ forward.addEventListener("click", () => {
 updateNavigationButtons();
 
 
+
+// Function to set playback speed
+function setPlaybackSpeed(speed) {
+  video.playbackRate = speed;
+  console.log(`Playback speed set to: ${speed}`);
+}
+
+// Add click event listeners to each speed option
+playbackSpeedLinks.forEach(link => {
+  link.addEventListener("click", () => {
+      const speedText = link.textContent; // Get the text content of the clicked link
+      let speed;
+
+      // Determine the playback speed based on the link text
+      switch (speedText) {
+          case "0.25":
+              speed = 0.25;
+              break;
+          case "0.5":
+              speed = 0.5;
+              break;
+          case "0.75":
+              speed = 0.75;
+              break;
+          case "Normal":
+              speed = 1;
+              break;
+          case "1.25":
+              speed = 1.25;
+              break;
+          case "1.5":
+              speed = 1.5;
+              break;
+          case "1.75":
+              speed = 1.75;
+              break;
+          case "2":
+              speed = 2;
+              break;
+          default:
+              speed = 1; // Default to normal speed if not matched
+              break;
+      }
+
+      // Set the playback speed
+      setPlaybackSpeed(speed);
+
+      // Optional: Highlight the selected speed
+      playbackSpeedLinks.forEach(l => l.classList.remove("selected")); // Remove selected class from all
+      link.classList.add("selected"); // Add selected class to the clicked link
+  });
+});
+
+// Optional: Initialize to normal speed
+setPlaybackSpeed(1); // Default to normal playback speed
+
 // Function to update video title with truncation
 function updateVideoTitle(title) {
   const videoTitleElement = document.getElementById("videoTitle");
@@ -1708,7 +1771,8 @@ document.addEventListener("DOMContentLoaded", function () {
   // Function to hide navbar, footer, nav arrows, and cursor
   function hideControls() {
     if (!video.paused) {
-      // Only hide controls if video is loaded and playing
+      document.body.style.cursor = "none"; 
+
       navbar.classList.remove("visible");
       navbar.classList.add("hidden");
   
@@ -1718,13 +1782,13 @@ document.addEventListener("DOMContentLoaded", function () {
       navArrows.classList.add("hidden");
       winButton.classList.remove("visible");
       winButton.classList.add("hidden");
-  
-      document.body.style.cursor = "none"; 
     }
   }
   
   // Function to show navbar, footer, nav arrows, and cursor
   function showControls() {
+    document.body.style.cursor = "default"; 
+
     navbar.classList.remove("hidden");
     navbar.classList.add("visible");
   
@@ -1734,8 +1798,6 @@ document.addEventListener("DOMContentLoaded", function () {
     navArrows.classList.remove("hidden");
     winButton.classList.remove("hidden");
     winButton.classList.add("visible");
-  
-    document.body.style.cursor = "default"; 
   
     // Clear the previous timeout and start a new one to hide controls after 1000ms
     clearTimeout(hideTimeout);
@@ -2062,6 +2124,21 @@ document.addEventListener("keydown", (event) => {
   if (keyActions[event.key]) {
     keyActions[event.key]();
   }
+  if (event.key === "+") {
+    // Increase speed
+    if (video.playbackRate < 2) { // Limit max speed to 2
+      const newSpeed = video.playbackRate + 0.25;
+      setPlaybackSpeed(newSpeed);
+      showStatusMessage(`Speed: ${newSpeed}x`); // Show updated speed
+    }
+  } else if (event.key === "-") {
+    // Decrease speed
+    if (video.playbackRate > 0.25) { // Limit min speed to 0.25
+      const newSpeed = video.playbackRate - 0.25;
+      setPlaybackSpeed(newSpeed);
+      showStatusMessage(`Speed: ${newSpeed}x`); // Show updated speed
+    }
+  }
 });
 
 // Function to toggle the shortcuts info box (modal)
@@ -2288,7 +2365,7 @@ video.addEventListener("loadeddata", populateAudioTracks);
 document.querySelectorAll(".sub-dropdown").forEach((subDropdown) => {
   const subDropdownContent = subDropdown.querySelector(".sub-dropdown-content");
 
-  // Add a click event to toggle visibility
+  // Add a click event to toggle visibility and lock/unlock
   subDropdown.addEventListener("click", function (e) {
     e.stopPropagation(); // Prevents click event from bubbling up
 
@@ -2311,23 +2388,34 @@ window.addEventListener("click", function () {
     .forEach((content) => (content.style.display = "none"));
 });
 
-// Show the sub-dropdown content on hover (but not lock it)
+// Show the sub-dropdown content on hover
 document.querySelectorAll(".sub-dropdown").forEach((subDropdown) => {
   const subDropdownContent = subDropdown.querySelector(".sub-dropdown-content");
 
   // Show on hover
   subDropdown.addEventListener("mouseover", function () {
-    if (subDropdownContent.style.display !== "block") {
-      // Only show if it's not locked by click
-      subDropdownContent.style.display = "block";
-    }
+    subDropdownContent.style.display = "block"; // Always show if hovered
   });
 
-  // Hide on mouseout (unless it's locked by click)
-  subDropdown.addEventListener("mouseout", function () {
-    if (!subDropdown.contains(document.activeElement)) {
-      // Don't hide if it's clicked
-      subDropdownContent.style.display = "none";
+  // Hide on mouseout (unless it's locked by click or hovered on content)
+  subDropdown.addEventListener("mouseout", function (e) {
+    // Check if mouse is not entering the sub-dropdown content
+    if (!subDropdown.contains(document.activeElement) && !subDropdownContent.contains(e.relatedTarget)) {
+      subDropdownContent.style.display = "none"; // Hide only if mouse leaves both
+    }
+  });
+});
+
+// Prevent hiding the dropdown when the mouse is over the sub-dropdown content or scrollbar
+document.querySelectorAll(".sub-dropdown-content").forEach((content) => {
+  content.addEventListener("mouseover", function () {
+    content.style.display = "block"; // Keep it visible
+  });
+
+  content.addEventListener("mouseout", function (e) {
+    // Check if mouse is leaving the sub-dropdown content
+    if (!content.parentElement.contains(document.activeElement) && !content.contains(e.relatedTarget)) {
+      content.style.display = "none"; // Hide if the mouse leaves
     }
   });
 });

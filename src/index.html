@@ -44,6 +44,24 @@
           </div>
         </li>
         <li class="dropdown">
+          <a href="javascript:void(0)" class="dropbtn">Playback</a>
+          <div class="dropdown-content">
+            <div class="sub-dropdown">
+              <a href="javascript:void(0)" class="sub-dropbtn">Plaback Speed</a>
+              <div class="sub-dropdown-content" id="Playback-Speed">
+                <a href="javascript:void(0)">0.25</a>
+                <a href="javascript:void(0)">0.5</a>
+                <a href="javascript:void(0)">0.75</a>
+                <a href="javascript:void(0)">Normal</a>
+                <a href="javascript:void(0)">1.25</a>
+                <a href="javascript:void(0)">1.5</a>
+                <a href="javascript:void(0)">1.75</a>
+                <a href="javascript:void(0)">2</a>
+              </div>
+            </div>
+          </div>
+        </li>
+        <li class="dropdown">
           <a href="javascript:void(0)" class="dropbtn">Audio</a>
           <div class="dropdown-content">
             <div class="sub-dropdown">
@@ -151,47 +169,54 @@
     </div>
     <!-- Main Content -->
     <main>
-      <!-- Context Menu -->
-      <div id="contextMenu" class="context-menu">
-        <ul>
-          <li>
-            <a id="contextTogglePlayPause">
-              <span class="icon">&#9658;</span>
-              <span class="text">Play</span>
-            </a>
-          </li>
-          <li>
-            <a class="">
-              <span class="icon">&#128266;</span>
-              <span class="text">Audio</span>
-            </a>
-          </li>
-          <li>
-            <a class="">
-              <span class="icon">&#128264;</span>
-              <span class="text">Subtitle</span>
-            </a>
-          </li>
-          <li>
-            <a id="contextOpenFile">
-              <span class="icon">&#128194;</span>
-              <span class="text">Open File...</span>
-            </a>
-          </li>
-          <li>
-            <a id="contextOpenFolder">
-              <span class="icon">&#128448;</span>
-              <span class="text">Open Folder...</span>
-            </a>
-          </li>
-          <li>
-            <a id="quit">
-              <span class="icon">&#10060;</span>
-              <span class="text">Quit</span>
-            </a>
-          </li>
-        </ul>
-      </div>        
+     <!-- Context Menu -->
+<div id="contextMenu" class="context-menu">
+  <ul>
+    <li>
+      <a id="contextTogglePlayPause">
+        <span class="icon">&#9658;</span>
+        <span class="text">Play</span>
+      </a>
+    </li>
+    <li>
+      <a>
+        <span class="icon">&#128266;</span>
+        <span class="text">Audio</span>
+      </a>
+    </li>
+    <li>
+      <a>
+        <span class="icon">&#128264;</span>
+        <span class="text">Subtitle</span>
+      </a>
+    </li>
+    <li>
+      <a id="Playlist">
+        <span class="icon">&#43;</span>
+        <span class="text" id="context-play-list">Playlist</span>
+      </a>
+    </li>
+    <li>
+      <a id="contextOpenFile">
+        <span class="icon">&#128194;</span>
+        <span class="text">Open File...</span>
+      </a>
+    </li>
+    <li>
+      <a id="contextOpenFolder">
+        <span class="icon">&#128448;</span>
+        <span class="text">Open Folder...</span>
+      </a>
+    </li>
+    <li>
+      <a id="quit">
+        <span class="icon">&#10060;</span>
+        <span class="text">Quit</span>
+      </a>
+    </li>
+  </ul>
+</div>
+
       <!-- Media Player -->
       <div id="mediaPlayer" style="position: relative">
         <video id="media" preload="auto" style="display: none;">
