@@ -38,14 +38,18 @@
             </a>
             <a id="folder">Open Folder... <span class="shortcut">Ctrl + F</span>
             </a>
-            <a id="stopPlayback">Stop</a>
-            <a id="quit">Quit... <span class="shortcut">Ctrl + Q</span>
-            </a>
+            <a id="quit">Quit... <span class="shortcut">Ctrl + Q</span></a>
           </div>
         </li>
         <li class="dropdown">
           <a href="javascript:void(0)" class="dropbtn">Playback</a>
           <div class="dropdown-content">
+            <div class="sub-dropdown">
+              <a href="javascript:void(0)" class="sub-dropbtn">Playlist</a>
+              <div class="sub-dropdown-content" id="play-list">
+                <!-- Play list will be dynamically inserted here -->
+              </div>
+            </div>
             <div class="sub-dropdown">
               <a href="javascript:void(0)" class="sub-dropbtn">Plaback Speed</a>
               <div class="sub-dropdown-content" id="Playback-Speed">
@@ -59,6 +63,7 @@
                 <a href="javascript:void(0)">2</a>
               </div>
             </div>
+            <a id="stopPlayback">Stop</a> 
           </div>
         </li>
         <li class="dropdown">
@@ -115,12 +120,6 @@
           <a href="javascript:void(0)" class="dropbtn">Video</a>
           <div class="dropdown-content">
             <a class="">Video Track </a>
-            <div class="sub-dropdown">
-              <a href="javascript:void(0)" class="sub-dropbtn">Playlist</a>
-              <div class="sub-dropdown-content" id="play-list">
-                <!-- Play list will be dynamically inserted here -->
-              </div>
-            </div>
             <a class="">Full Screen</a>
           </div>
         </li>
@@ -447,13 +446,13 @@
       </div>
       <div class="media-controls">
         <div id="rewind" class="card" >
-          <img src="../assets/icons/skip-15-seconds-back.png" alt="backward">
+          <img src="../assets/icons/skip-15-seconds-back.png" alt="">
         </div>
         <div class="play-pause card" >
           <i class="fa-light fa-play" id="playPauseBtn"></i>
         </div>
         <div id="forward" class="card" >
-          <img src="../assets/icons/skip-15-seconds-next.png" alt="forward">
+          <img src="../assets/icons/skip-15-seconds-next.png" alt="">
         </div>
       </div>
       <div class="video-settings">

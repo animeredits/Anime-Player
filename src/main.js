@@ -4,7 +4,13 @@ const log = require('electron-log');
 const path = require('path');
 const fs = require('fs');
 
+
 app.commandLine.appendSwitch('ignore-gpu-blacklist');
+app.commandLine.appendSwitch('enable-gpu-rasterization');
+app.commandLine.appendSwitch('enable-oop-rasterization');
+app.commandLine.appendSwitch('enable-zero-copy');
+app.commandLine.appendSwitch('disable-web-security', 'true');
+
 
 let win;
 let tray = null;
@@ -102,12 +108,12 @@ function updateThumbarButtons() {
       },
     },
     {
-      tooltip: !isPlaying ? 'Pause' : 'Play',
-      icon: path.join(__dirname, isPlaying ? '../assets/icons/play.png' : '../assets/icons/pause.png'),
+      tooltip: isPlaying ? 'Pause' : 'Play',
+      icon: path.join(__dirname, isPlaying ? '../assets/icons/pause.png' : '../assets/icons/play.png'), // Update icon based on isPlaying
       click() {
-        isPlaying = !isPlaying; 
+        isPlaying = isPlaying; 
         win.webContents.send('play-pause');
-        updateThumbarButtons(); // Update thumbnail buttons again to reflect new state
+        updateThumbarButtons(); 
       },
     },
     {
@@ -119,7 +125,6 @@ function updateThumbarButtons() {
     },
   ]);
 }
-
 
 function createTray() {
   tray = new Tray(path.join(__dirname, "../assets/icons/icon.ico"));
@@ -315,6 +320,13 @@ autoUpdater.on('update-downloaded', () => {
 ipcMain.on('restart_app', () => {
   autoUpdater.quitAndInstall();
 });
+
+// Update thumbnail buttons when state changes
+ipcMain.on('play-pause-state', (event, state) => {
+  isPlaying = (state === 'playing');
+  updateThumbarButtons(); 
+});
+
 
 // Save custom logo to a user directory "Visualization" in this folder
 ipcMain.handle('save-gif', async (event, filePath, fileName) => {

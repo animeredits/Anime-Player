@@ -8,7 +8,7 @@
   box-sizing: border-box;
   margin: 0;
   padding: 0;
-  /* cursor: url('../assets/icons/icons8-select-cursor-24.png') 4 4, auto !important; */
+  /* cursor: url('../assets/icons/cursor.png') 4 4, auto !important; */
 }
 
 body {
@@ -36,6 +36,10 @@ body {
   opacity: 1;
   visibility: visible;
   transition: opacity 0.8s ease-in-out, visibility 0.7s ease-in-out;
+}
+
+.hide-cursor {
+  cursor: none;
 }
 
 /* Navigation Bar */
@@ -754,7 +758,8 @@ span {
 .media-controls .card {
   position: relative;
   width: 2.4%;
-  height: 42px;
+  height: 50px;
+  left: 15px;
   background: transparent;
   overflow: hidden;
   transition: background-color 0.3s ease, border 0.3s ease;
@@ -768,38 +773,8 @@ span {
 }
 
 .media-controls .card img {
-  height: 27px;
+  height: 25px;
   z-index: 1;
-}
-
-.media-controls .card:hover {
-  border-color: 0.3px solid rgba(255, 255, 255, 0.364);
-  background-color: rgba(255, 255, 255, 0.216);
-}
-
-.media-controls .card::before {
-  content: "";
-  position: absolute;
-  top: var(--y);
-  left: var(--x);
-  transform: translate(-45%, -55%);
-  background: radial-gradient(var(--clr), transparent, transparent);
-  width: 120px;
-  height: 90px;
-  opacity: 0;
-  transition: opacity 0.5s ease, top 0s, left 0s;
-}
-
-.media-controls .card.hovered::before {
-  opacity: 1;
-}
-
-.media-controls .card::after {
-  content: "";
-  position: absolute;
-  inset: 1px;
-  background: transparent;
-  z-index: 0;
 }
 
 /* Video Settings */
@@ -825,39 +800,6 @@ span {
   display: flex;
   justify-content: center;
   align-items: center;
-}
-
-/* Hover Effect on Cards */
-.video-settings .card:hover {
-  border-color: 0.3px solid rgba(255, 255, 255, 0.364);
-  background-color: rgba(255, 255, 255, 0.1);
-}
-
-/* Radial Glow Effect */
-.video-settings .card::before {
-  content: "";
-  position: absolute;
-  top: var(--y);
-  left: var(--x);
-  transform: translate(-45%, -55%);
-  background: radial-gradient(var(--clr), transparent, transparent);
-  width: 150px;
-  height: 120px;
-  opacity: 0;
-  transition: opacity 0.5s ease, top 0s, left 0s;
-}
-
-.video-settings .card.hovered::before {
-  opacity: 1;
-}
-
-/* Radial Glow Effect */
-.video-settings .card::after {
-  content: "";
-  position: absolute;
-  inset: 1px;
-  background: transparent;
-  z-index: 0; /* Ensure it is behind the content */
 }
 
 /* Icon Styles */

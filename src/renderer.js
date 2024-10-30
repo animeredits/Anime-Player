@@ -1057,7 +1057,6 @@ function updatePlaylistDropdown() {
   });
 }
 
-
 // Event listener for multiple file selection
 CSOInput.addEventListener("change", (event) => handleFileSelection(event.target.files));
 
@@ -1072,8 +1071,10 @@ folder.addEventListener("click", () => folderInput.click());
 // Functions to toggle play/pause icon
 function updatePlayPauseIcon(isPlaying) {
   playPauseBtn.classList.toggle("fa-play", !isPlaying);
+  playPauseBtn.setAttribute("title", isPlaying ? "pause" : "play");
   playPauseBtn.classList.toggle("fa-pause", isPlaying);
 }
+
 
 function togglePlayPause() {
   if (video.readyState < 3) {
@@ -1089,6 +1090,7 @@ function togglePlayPause() {
     showVideoTitle();
     window.electron.sendPlayPauseState("paused");
   }
+
 }
 
 // Event listeners for play/pause button
@@ -1195,14 +1197,19 @@ video.addEventListener("ended", () => {
 rewind.addEventListener("click", () => {
   currentMedia.currentTime = Math.max(0, currentMedia.currentTime - 10);
 });
+
+// Add tooltip for rewind button
+rewind.setAttribute("title", "Rewind 10 seconds");
+
 forward.addEventListener("click", () => {
   currentMedia.currentTime = Math.min(currentMedia.duration, currentMedia.currentTime + 10);
 });
 
+// Add tooltip for forward button
+forward.setAttribute("title", "Forward 10 seconds");
+
 // Initial button visibility update
 updateNavigationButtons();
-
-
 
 // Function to set playback speed
 function setPlaybackSpeed(speed) {
@@ -1771,7 +1778,7 @@ document.addEventListener("DOMContentLoaded", function () {
   // Function to hide navbar, footer, nav arrows, and cursor
   function hideControls() {
     if (!video.paused) {
-      document.body.style.cursor = "none"; 
+      document.body.classList.add("hide-cursor");
 
       navbar.classList.remove("visible");
       navbar.classList.add("hidden");
@@ -1787,7 +1794,7 @@ document.addEventListener("DOMContentLoaded", function () {
   
   // Function to show navbar, footer, nav arrows, and cursor
   function showControls() {
-    document.body.style.cursor = "default"; 
+    document.body.classList.remove("hide-cursor");
 
     navbar.classList.remove("hidden");
     navbar.classList.add("visible");
@@ -1814,10 +1821,8 @@ document.addEventListener("DOMContentLoaded", function () {
   });
   
   // Event listener for when the video is paused
-  video.addEventListener("pause", function () {
-    showControls(); // Always show controls when video is paused
-  });
-  
+  video.addEventListener("pause", showControls);
+
   // Event listener for when the video is played
   video.addEventListener("play", function () {
     hideTimeout = setTimeout(hideControls, 1000); // Hide controls shortly after playing
@@ -1838,25 +1843,9 @@ document.addEventListener("DOMContentLoaded", function () {
     }
   });
   
-  // Event listeners for mouseover on navbar, winButton, navArrows, and footer to stop hiding controls
-  navbar.addEventListener("mouseover", function () {
-    clearTimeout(hideTimeout);
-  });
-  winButton.addEventListener("mouseover", function () {
-    clearTimeout(hideTimeout);
-  });
-  navArrows.addEventListener("mouseover", function () {
-    clearTimeout(hideTimeout);
-  });
-  footer.addEventListener("mouseover", function () {
-    clearTimeout(hideTimeout);
-  });
-  
-  // Additional mousemove event listener to show controls and hide cursor if video is playing
-  video.addEventListener("mousemove", function () {
-    if (!video.paused) {
-      showControls();
-    }
+  // Stop hiding controls on mouseover of any interactive UI elements
+  [navbar, winButton, navArrows, footer].forEach(element => {
+    element.addEventListener("mouseover", () => clearTimeout(hideTimeout));
   });
   
   // Ensure controls are shown on initial load

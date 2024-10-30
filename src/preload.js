@@ -45,4 +45,11 @@ contextBridge.exposeInMainWorld('electron', {
       callback(playbackData); // Load saved playback time
     });
   },
+
+  send: (channel, data) => {
+    ipcRenderer.send(channel, data);
+  },
+  on: (channel, func) => {
+    ipcRenderer.on(channel, (event, ...args) => func(...args));
+  }
 });
