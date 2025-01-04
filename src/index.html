@@ -3,222 +3,315 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="description" content="Anime Player is an advanced media player for anime enthusiasts, offering features like customizable audio tracks, fixed navigation bar, and seamless video playback. Enjoy your favorite anime with enhanced controls and intuitive navigation.">
-    <meta name="keywords" content="anime player, media player, anime streaming, video player, customizable audio tracks, fixed navigation bar, seamless playback, anime controls, intuitive navigation">
-    <meta name="author" content="animeredits">
+    <meta name="description" content="Anime Player is an advanced media player for anime enthusiasts, offering features like customizable audio tracks, fixed navigation bar, and seamless video playback. Enjoy your favorite anime with enhanced controls and voice controls intuitive navigation." />
+    <meta name="keywords" content="anime player, media player, anime streaming, video player, customizable audio tracks, fixed navigation bar, seamless playback, anime controls, intuitive navigation" />
+    <meta name="author" content="animeredits" />
     <meta http-equiv="Content-Security-Policy" content="script-src 'self' 'unsafe-inline';" />
     <title>Anime Player</title>
+    <!-- Open Graph Meta Tags -->
+    <meta property="og:title" content="Anime Player" />
+    <meta property="og:description" content="Enjoy seamless playback and advanced voice controls with Anime Player, designed for anime enthusiasts!" />
+    <meta property="og:url" content="https://aniplayer.netlify.app/" />
+    <meta property="og:image" content="https://aniplayer.netlify.app/assets/icons/Sicon.png" />
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="Anime Player" />
+    <!-- Twitter Card Meta Tags -->
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Anime Player" />
+    <meta name="twitter:description" content="Enjoy seamless playback and advanced voice controls with Anime Player, designed for anime enthusiasts!" />
+    <meta property="og:image" content="https://aniplayer.netlify.app/assets/icons/Sicon.png" />
     <!-- Favicon -->
     <link rel="icon" type="image/png" sizes="16x16" href="../favicon/favicon-16x16.png" />
     <link rel="icon" type="image/png" sizes="32x32" href="../favicon/favicon-32x32.png" />
     <link rel="icon" type="image/x-icon" href="../favicon/favicon.ico" />
-    <link rel="apple-touch-icon" sizes="180x180" href="../favicon/apple-touch-icon.png" />
+    <link rel="apple-touch-icon" sizes="180x180" href=".../favicon/apple-touch-icon.png" />
     <link rel="icon" sizes="192x192" href="../favicon/android-chrome-192x192.png" />
     <link rel="icon" sizes="512x512" href="../favicon/android-chrome-512x512.png" />
     <!-- Fonts and Icons -->
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,300,0,0" />
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@24,300,0,0" />
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Sharp:opsz,wght,FILL,GRAD@20,100,0,0" />
-    <link rel="stylesheet" href="https://site-assets.fontawesome.com/releases/v6.4.2/css/all.css">
+    <link rel="stylesheet" href="https://site-assets.fontawesome.com/releases/v6.4.2/css/all.css" />
     <link rel="stylesheet" href="styles.css" />
+    <link rel="manifest" href="/manifest.json">
   </head>
   <body>
-    <!-- Navigation Bar -->
-    <nav style="-webkit-app-region: drag">
-      <ul>
-        <li class="nav-image">
-          <img src="../assets/icons/icon.ico" alt="Logo" />
-        </li>
-        <li class="dropdown">
-          <a href="javascript:void(0)" class="dropbtn">Media</a>
-          <div class="dropdown-content">
-            <a id="Ofile">Open File... <span class="shortcut">Ctrl + O</span>
-            </a>
-            <a id="CSO">Open Multiple Files... <span class="shortcut">Shift + O</span>
-            </a>
-            <a id="folder">Open Folder... <span class="shortcut">Ctrl + F</span>
-            </a>
-            <a id="quit">Quit... <span class="shortcut">Ctrl + Q</span></a>
+    <!-- Media Player -->
+    <div id="mediaPlayer">
+      <!-- Navigation Bar -->
+      <nav style="-webkit-app-region: drag">
+        <ul>
+          <li class="nav-image">
+            <img src="../assets/icons/icon.ico" alt="Logo" />
+          </li>
+          <li class="dropdown">
+            <a href="javascript:void(0)" class="dropbtn">Media</a>
+            <div class="dropdown-content">
+              <a id="Ofile">Open File... <span class="shortcut">Ctrl + O</span>
+              </a>
+              <a id="CSO">Open Multiple Files... <span class="shortcut">Shift + O</span>
+              </a>
+              <a id="folder">Open Folder... <span class="shortcut">Ctrl + F</span>
+              </a>
+              <a class="quit">Quit... <span class="shortcut">Ctrl + Q</span>
+              </a>
+            </div>
+          </li>
+          <li class="dropdown">
+            <a href="javascript:void(0)" class="dropbtn">Playback</a>
+            <div class="dropdown-content">
+              <div class="sub-dropdown">
+                <a href="javascript:void(0)" class="sub-dropbtn">Playlist</a>
+                <div class="sub-dropdown-content play-list">
+                  <!-- Play list will be dynamically inserted here -->
+                </div>
+              </div>
+              <div class="sub-dropdown">
+                <a href="javascript:void(0)" class="sub-dropbtn">Playback Speed</a>
+                <div class="sub-dropdown-content" id="Playback-Speed">
+                  <a href="javascript:void(0)" data-speed="0.25">0.25</a>
+                  <a href="javascript:void(0)" data-speed="0.5">0.5</a>
+                  <a href="javascript:void(0)" data-speed="0.75">0.75</a>
+                  <a href="javascript:void(0)" data-speed="1" class="selected">Normal</a>
+                  <a href="javascript:void(0)" data-speed="1.25">1.25</a>
+                  <a href="javascript:void(0)" data-speed="1.5">1.5</a>
+                  <a href="javascript:void(0)" data-speed="1.75">1.75</a>
+                  <a href="javascript:void(0)" data-speed="2">2</a>
+                </div>
+              </div>
+              <a class="">Play</a>
+              <a class="nextbtn">Next</a>
+              <a class="previousbtn">Previous</a>
+              <a class="stopPlayback">Stop</a>
+            </div>
+          </li>
+          <li class="dropdown">
+            <a href="javascript:void(0)" class="dropbtn">Audio</a>
+            <div class="dropdown-content">
+              <div class="sub-dropdown">
+                <a href="javascript:void(0)" class="sub-dropbtn">Audio Track</a>
+                <div class="sub-dropdown-content audio-track-list">
+                  <!-- Tracks will be dynamically inserted here -->
+                </div>
+              </div>
+              <!-- Audio Logo Selection -->
+              <div class="sub-dropdown" id="audioLogoDropdown">
+                <a href="javascript:void(0)" class="sub-dropbtn">Visualization</a>
+                <div class="sub-dropdown-content" id="logoOptions">
+                  <!-- Default Logos Sub-dropdown -->
+                  <div class="sub-dropdown">
+                    <a href="javascript:void(0)" class="sub-dropbtn">Default Visualization</a>
+                    <div class="sub-dropdown-content">
+                      <a href="javascript:void(0)" data-src="../assets/icons/icon.ico">None</a>
+                      <a href="javascript:void(0)" data-src="../assets/icons/icon.ico">Default</a>
+                      <a href="javascript:void(0)" data-src="../assets/Gif/Zero Two dance Tiktok.gif">Zero Two dance</a>
+                      <a href="javascript:void(0)" data-src="../assets/Gif/download.gif">Yamate Kyoko D4dj</a>
+                      <a href="javascript:void(0)" data-src="../assets/Gif/Ghost in Shell.gif">Ghost in Shell</a>
+                      <a href="javascript:void(0)" data-src="../assets/Gif/10006971374054297431.gif">Danmachi and Kekkai</a>
+                      <a href="javascript:void(0)" data-src="../assets/Gif/10623970183937040275.gif">Shikanoko Nokonoko </a>
+                      <a href="javascript:void(0)" data-src="../assets/Gif/10690612485779226054.gif">Kyoma dance</a>
+                      <a href="javascript:void(0)" data-src="../assets/Gif/14893715557068450646.gif">Takanashi Rikka</a>
+                      <a href="javascript:void(0)" data-src="../assets/Gif/1700499298878234638.gif">Partyhard Homealone</a>
+                      <a href="javascript:void(0)" data-src="../assets/Gif/3245754771082903423.gif">Honey pie!</a>
+                      <a href="javascript:void(0)" data-src="../assets/Gif/6858083560546435565.gif">Shikanoko Nokonoko </a>
+                      <a href="javascript:void(0)" data-src="../assets/Gif/7464694309340495606.gif">Obito</a>
+                      <a href="javascript:void(0)" data-src="../assets/Gif/8752356467101843848.gif">Oshi No Ko</a>
+                      <a href="javascript:void(0)" data-src="../assets/Gif/9497885369133574502.gif">Chika dance</a>
+                      <div id="playAllButtonContainer"></div>
+                      <div id="logoPreviewContainer" class="logo-preview-container">
+                        <img id="logoPreviewImage" class="logo-preview-image" alt="Logo Preview">
+                      </div>
+                    </div>
+                  </div>
+                  <!-- Custom Logos Sub-dropdown -->
+                  <div class="sub-dropdown">
+                    <a href="javascript:void(0)" class="sub-dropbtn" id="customLogoLink">Upload Visualization</a>
+                    <input type="file" id="customLogoInput" accept="image/*,image/gif" style="display: none;" />
+                  </div>
+                </div>
+              </div>
+              <a class="increase-volume">Increase Volume</a>
+              <a class="decrease-volume">Decrease Volume</a>
+              <a id="mic-access-button">Start Voice Recognition</a>
+              <a class="mute-btn">Mute</a>
+            </div>
+          </li>
+          <li class="dropdown">
+            <a href="javascript:void(0)" class="dropbtn">Video</a>
+            <div class="dropdown-content">
+              <a class="fullscreenBtn">Full Screen</a>
+              <div class="sub-dropdown">
+                <a href="javascript:void(0)" class="sub-dropbtn">Zoom</a>
+                <div class="sub-dropdown-content" id="zoom-track-list">
+                  <a>1.3x</a>
+                  <a>1.5x</a>
+                  <a>2x</a>
+                  <a>2.5x</a>
+                  <a>3x</a>
+                  <a>Reset</a>
+                </div>
+              </div>
+              <!-- <div class="sub-dropdown"><a href="javascript:void(0)" class="sub-dropbtn">Aspect Ratio / Crop</a><div class="sub-dropdown-content" id="aspect-ratio-list"><a data-aspect="default">Default</a><a data-aspect="16:10">16:10</a><a data-aspect="16:9">16:9</a><a data-aspect="4:3">4:3</a><a data-aspect="1.85:1">1.85:1</a><a data-aspect="2.21:1">2.21:1</a><a data-aspect="2.35:1">2.35:1</a><a data-aspect="2.39:1">2.39:1</a><a data-aspect="5:4">5:4</a><a data-aspect="5:1">5:1</a></div></div> -->
+            </div>
+          </li>
+          <li class="dropdown">
+            <a href="javascript:void(0)" class="dropbtn">Subtitle</a>
+            <div class="dropdown-content">
+              <a class="">Add Subtitle file...</a>
+              <div class="sub-dropdown">
+                <a href="javascript:void(0)" class="sub-dropbtn">Subtitle Track</a>
+                <div class="sub-dropdown-content" id="subtitle-track-list">
+                  <!-- Subtitle tracks will be dynamically inserted here -->
+                </div>
+              </div>
+            </div>
+          </li>
+          <li class="dropdown">
+            <a href="javascript:void(0)" class="dropbtn">Help</a>
+            <div class="dropdown-content">
+              <a id="showShortcuts">Shortcuts <span class="shortcut">Ctrl + /</span>
+              </a>
+            </div>
+          </li>
+          <!-- GIF Search Section within the Visualization sub-dropdown -->
+          <div id="gifSearchContainer">
+            <div class="search-box">
+              <button class="btn-search" id="gifSearchButton">
+                <i class="fas fa-search"></i>
+              </button>
+              <input type="text" class="input-search" id="gifSearchInput" placeholder="Search GIFs...">
+            </div>
+            <!-- Results will show up here -->
+            <div id="gifResultsContainer" style="display: none; background: none"></div>
           </div>
-        </li>
-        <li class="dropdown">
-          <a href="javascript:void(0)" class="dropbtn">Playback</a>
-          <div class="dropdown-content">
-            <div class="sub-dropdown">
-              <a href="javascript:void(0)" class="sub-dropbtn">Playlist</a>
-              <div class="sub-dropdown-content" id="play-list">
+        </ul>
+      </nav>
+      <main>
+        <!-- Custom Confirm Dialog -->
+        <div id="customConfirmDialog" class="gif-modal">
+          <div class="gif-modal-content">
+            <p>Do you want to save this logo as a default dropdown?</p>
+            <div>
+              <input type="checkbox" id="autoSaveLogoConfirm" />
+              <label for="autoSaveLogoConfirm">Automatically save logo without asking</label>
+            </div>
+            <button id="confirmButton">Yes</button>
+            <button id="cancelButton">No</button>
+          </div>
+        </div>
+        <!-- Window Controls -->
+        <div class="win-buttons">
+          <button id="minimize">
+            <i class="fa-light fa-window-minimize"></i>
+          </button>
+          <button id="maximize">
+            <i class="fa-light fa-square"></i>
+          </button>
+          <button class="close" id="windws-close" aria-label="Close">
+            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="none" viewBox="0 0 24 24" class="icon-md">
+              <path fill="currentColor" fill-rule="evenodd" d="M5.636 5.636a1 1 0 0 1 1.414 0l4.95 4.95 4.95-4.95a1 1 0 0 1 1.414 1.414L13.414 12l4.95 4.95a1 1 0 0 1-1.414 1.414L12 13.414l-4.95 4.95a1 1 0 0 1-1.414-1.414l4.95-4.95-4.95-4.95a1 1 0 0 1 0-1.414" clip-rule="evenodd"></path>
+            </svg>
+          </button>
+        </div>
+        <!-- Context Menu -->
+        <div id="contextMenu" class="context-menu">
+          <ul>
+            <li>
+              <a id="contextTogglePlayPause">
+                <span class="icon">&#9658;</span>
+                <span class="text">Play</span>
+              </a>
+            </li>
+            <li>
+              <a class="nextbtn">
+                <span class="icon">&#x23ED;</span>
+                <span class="text">Next</span>
+              </a>
+            </li>
+            <li>
+              <a class="previousbtn">
+                <span class="icon">&#x23EE;</span>
+                <span class="text">Previous</span>
+              </a>
+            </li>
+            <li>
+              <a class="stopPlayback">
+                <span class="icon">&#x23F9;</span>
+                <span class="text">Stop</span>
+              </a>
+            </li>
+            <li id="context-menu-audio-track" class="sub-dropdown">
+              <a href="javascript:void(0)" class="sub-dropbtn">
+                <span class="icon">&#128266;</span>
+                <span class="text">Audio</span>
+              </a>
+              <div class="sub-dropdown-content audio-track-list">
+                <!-- Audio tracks will be dynamically inserted here -->
+              </div>
+            </li>
+            <li class="sub-dropdown">
+              <a href="javascript:void(0)" class="sub-dropbtn">
+                <span class="icon">&#127909;</span>
+                <span class="text">Video</span>
+              </a>
+              <div class="sub-dropdown-content">
+                <div class="sub-dropdown">
+                  <a href="javascript:void(0)" class="sub-dropbtn">Zoom</a>
+                  <div class="sub-dropdown-content" id="zoom-track-list">
+                    <a>1.3x</a>
+                    <a>1.5x</a>
+                    <a>2x</a>
+                    <a>2.5x</a>
+                    <a>3x</a>
+                    <a>Reset</a>
+                  </div>
+                  <a class="fullscreenBtn">Full Screen</a>
+                </div>
+              </div>
+            </li>
+            <li>
+              <a>
+                <span class="icon">&#128250;</span>
+                <span class="text">Subtitle Track</span>
+              </a>
+            </li>
+            <li id="context-menu-playlist" class="sub-dropdown">
+              <a href="javascript:void(0)" class="sub-dropbtn">
+                <span class="icon">&#127925;</span>
+                <span class="text" id="context-play-list">Playlist</span>
+              </a>
+              <div class="sub-dropdown-content play-list">
                 <!-- Play list will be dynamically inserted here -->
               </div>
-            </div>
-            <div class="sub-dropdown">
-              <a href="javascript:void(0)" class="sub-dropbtn">Plaback Speed</a>
-              <div class="sub-dropdown-content" id="Playback-Speed">
-                <a href="javascript:void(0)">0.25</a>
-                <a href="javascript:void(0)">0.5</a>
-                <a href="javascript:void(0)">0.75</a>
-                <a href="javascript:void(0)">Normal</a>
-                <a href="javascript:void(0)">1.25</a>
-                <a href="javascript:void(0)">1.5</a>
-                <a href="javascript:void(0)">1.75</a>
-                <a href="javascript:void(0)">2</a>
-              </div>
-            </div>
-            <a id="stopPlayback">Stop</a> 
-          </div>
-        </li>
-        <li class="dropdown">
-          <a href="javascript:void(0)" class="dropbtn">Audio</a>
-          <div class="dropdown-content">
-            <div class="sub-dropdown">
-              <a href="javascript:void(0)" class="sub-dropbtn">Audio Track</a>
-              <div class="sub-dropdown-content" id="audio-track-list">
-                <!-- Tracks will be dynamically inserted here -->
-              </div>
-            </div>
-            <!-- Audio Logo Selection -->
-            <div class="sub-dropdown" id="audioLogoDropdown">
-              <a href="javascript:void(0)" class="sub-dropbtn">Visualization</a>
-              <div class="sub-dropdown-content" id="logoOptions">
-                <!-- Default Logos Sub-dropdown -->
+            </li>
+            <li class="sub-dropdown">
+              <a href="javascript:void(0)" class="sub-dropbtn">
+                <span class="icon">&#128194;</span>
+                <span class="text">Open Media</span>
+              </a>
+              <div class="sub-dropdown-content">
                 <div class="sub-dropdown">
-                  <a href="javascript:void(0)" class="sub-dropbtn">Default Visualization</a>
-                  <div class="sub-dropdown-content">
-                    <a href="javascript:void(0)" data-src="../assets/icons/icon.ico">Default</a>
-                      <a href="javascript:void(0)" data-src="../assets/Gif/Zero Two dance Tiktok.gif">Zero Two dance</a>
-                    <a href="javascript:void(0)" data-src="../assets/Gif/download.gif">dance</a>
-                    <a href="javascript:void(0)" data-src="../assets/Gif/Ghost in Shell.gif">Ghost in Shell</a>
-                    <a href="javascript:void(0)" data-src="../assets/Gif/10006971374054297431.gif">d</a>
-                    <a href="javascript:void(0)" data-src="../assets/Gif/10623970183937040275.gif">Shikanoko Nokonoko </a>
-                    <a href="javascript:void(0)" data-src="../assets/Gif/10690612485779226054.gif">boy dance</a>
-                    <a href="javascript:void(0)" data-src="../assets/Gif/14893715557068450646.gif">sharingan</a>
-                    <a href="javascript:void(0)" data-src="../assets/Gif/1700499298878234638.gif">sharingan</a>
-                    <a href="javascript:void(0)" data-src="../assets/Gif/3245754771082903423.gif">Honey pie!</a>
-                    <a href="javascript:void(0)" data-src="../assets/Gif/6858083560546435565.gif">Shikanoko Nokonoko </a>
-                    <a href="javascript:void(0)" data-src="../assets/Gif/7464694309340495606.gif">Obito</a>
-                    <a href="javascript:void(0)" data-src="../assets/Gif/8752356467101843848.gif">Oshi No Ko</a>
-                    <a href="javascript:void(0)" data-src="../assets/Gif/9497885369133574502.gif">sharingan</a>
-                    <div id="playAllButtonContainer"></div>
-                    <div id="logoPreviewContainer" class="logo-preview-container">
-                      <img id="logoPreviewImage" class="logo-preview-image" alt="Logo Preview">
-                  </div>
-                  </div>
-                </div>
-                <!-- Custom Logos Sub-dropdown -->
-                <div class="sub-dropdown">
-                  <a href="javascript:void(0)" class="sub-dropbtn" id="customLogoLink">Custom Visualization</a>
-                  <input type="file" id="customLogoInput" accept="image/*,image/gif" style="display: none;" />
+                  <a id="contextOpenFile">
+                    <span class="icon">&#128194;</span>
+                    <span class="text">Open File</span>
+                  </a>
+                  <a id="contextOpenFolder">
+                    <span class="icon">&#128448;</span>
+                    <span class="text">Open Folder...</span>
+                  </a>
                 </div>
               </div>
-            </div>
-            <a class="increase-volume">Increase Volume</a>
-            <a class="decrease-volume">Decrease Volume</a>
-            <a id="mic-access-button">Allow Microphone Access</a>
-            <a class="mute-btn">Mute</a>
-          </div>
-        </li>
-        <li class="dropdown">
-          <a href="javascript:void(0)" class="dropbtn">Video</a>
-          <div class="dropdown-content">
-            <a class="">Video Track </a>
-            <a class="">Full Screen</a>
-          </div>
-        </li>
-        <li class="dropdown">
-          <a href="javascript:void(0)" class="dropbtn">Subtitle</a>
-          <div class="dropdown-content">
-            <a class="">Add Subtitle file...</a>
-            <a class="">Sub Track</a>
-          </div>
-        </li>
-        <li class="dropdown">
-          <a href="javascript:void(0)" class="dropbtn">Help</a>
-          <div class="dropdown-content">
-            <a id="showShortcuts">Shortcuts <span class="shortcut">Ctrl + /</span>
-            </a>
-          </div>
-        </li>
-      </ul>
-    </nav>
-    
-    <!-- Custom Confirm Dialog -->
-    <div id="customConfirmDialog" class="gif-modal">
-      <div class="gif-modal-content">
-        <p>Do you want to save this logo as a default dropdown?</p>
-        <div>
-          <input type="checkbox" id="autoSaveLogoConfirm" />
-          <label for="autoSaveLogoConfirm">Automatically save logo without asking</label>
+            </li>
+            <li>
+              <a id="quit">
+                <span class="icon">&#10060;</span>
+                <span class="text quit">Quit</span>
+              </a>
+            </li>
+          </ul>
         </div>
-        <button id="confirmButton">Yes</button>
-        <button id="cancelButton">No</button>
-      </div>
-    </div>
-    <!-- Window Controls -->
-    <div class="win-buttons">
-      <button id="minimize">
-        <i class="fa-light fa-window-minimize"></i>
-      </button>
-      <button id="maximize">
-        <i class="fa-light fa-square"></i>
-      </button>
-      <button class="close" id="windws-close" aria-label="Close">
-        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="none" viewBox="0 0 24 24" class="icon-md">
-          <path fill="currentColor" fill-rule="evenodd" d="M5.636 5.636a1 1 0 0 1 1.414 0l4.95 4.95 4.95-4.95a1 1 0 0 1 1.414 1.414L13.414 12l4.95 4.95a1 1 0 0 1-1.414 1.414L12 13.414l-4.95 4.95a1 1 0 0 1-1.414-1.414l4.95-4.95-4.95-4.95a1 1 0 0 1 0-1.414" clip-rule="evenodd"></path>
-        </svg>
-      </button>
-    </div>
-    <!-- Main Content -->
-    <main>
-     <!-- Context Menu -->
-<div id="contextMenu" class="context-menu">
-  <ul>
-    <li>
-      <a id="contextTogglePlayPause">
-        <span class="icon">&#9658;</span>
-        <span class="text">Play</span>
-      </a>
-    </li>
-    <li>
-      <a>
-        <span class="icon">&#128266;</span>
-        <span class="text">Audio</span>
-      </a>
-    </li>
-    <li>
-      <a>
-        <span class="icon">&#128264;</span>
-        <span class="text">Subtitle</span>
-      </a>
-    </li>
-    <li>
-      <a id="Playlist">
-        <span class="icon">&#43;</span>
-        <span class="text" id="context-play-list">Playlist</span>
-      </a>
-    </li>
-    <li>
-      <a id="contextOpenFile">
-        <span class="icon">&#128194;</span>
-        <span class="text">Open File...</span>
-      </a>
-    </li>
-    <li>
-      <a id="contextOpenFolder">
-        <span class="icon">&#128448;</span>
-        <span class="text">Open Folder...</span>
-      </a>
-    </li>
-    <li>
-      <a id="quit">
-        <span class="icon">&#10060;</span>
-        <span class="text">Quit</span>
-      </a>
-    </li>
-  </ul>
-</div>
-
-      <!-- Media Player -->
-      <div id="mediaPlayer" style="position: relative">
-        <video id="media" preload="auto" style="display: none;">
+        <!-- Media -->
+        <video id="media" style="display: none;">
           <source id="videoSource" />
           <source id="audioSource" />
         </video>
@@ -227,246 +320,430 @@
           <img id="audioImage" src="../assets/icons/icon.ico" alt="Visualization" style="display: none;" />
         </div>
         <!-- File input for selecting a single video or audio file -->
-        <input type="file" id="fileInput" accept="video/*,video/x-matroska,video/x-hevc,video/x-h264,audio/*"
-        style="display: none;" />
+        <input type="file" id="fileInput" accept="video/*,video/x-matroska,video/x-hevc,video/x-h264,audio/*" style="display: none;" />
         <!-- Input to select multiple video and audio files -->
-        <input type="file" id="CSOInput" multiple accept="video/*,video/x-matroska,video/x-hevc,video/x-h264,audio/*"
-        style="display: none;" />
+        <input type="file" id="CSOInput" multiple accept="video/*,video/x-matroska,video/x-hevc,video/x-h264,audio/*" style="display: none;" />
         <!-- Folder input to select a directory containing media files -->
         <input type="file" id="folderInput" webkitdirectory style="display: none;" />
-      </div>
-
-      <!-- Navigation Arrows -->
-      <div class="nav-arrows">
-        <button id="prevVideo" class="card arrow-button left-arrow" >
-          <span class="left-arrow">&#10092;</span>
-        </button>
-        <button id="nextVideo" class="card arrow-button right-arrow" >
-          <span class="">&#10093; </span>
-        </button>
-      </div>
-
-      <!-- Shortcut Modal  -->
-      <div id="shortcutsModal" class="modal">
-        <div class="modal-content">
-          <div class="modal-header">
-            <h2>Keyboard Shortcuts</h2>
-            <button class="modalClose" aria-label="Close">
-              <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24" class="icon-md">
-                <path fill="currentColor" fill-rule="evenodd" d="M5.636 5.636a1 1 0 0 1 1.414 0l4.95 4.95 4.95-4.95a1 1 0 0 1 1.414 1.414L13.414 12l4.95 4.95a1 1 0 0 1-1.414 1.414L12 13.414l-4.95 4.95a1 1 0 0 1-1.414-1.414l4.95-4.95-4.95-4.95a1 1 0 0 1 0-1.414" clip-rule="evenodd"></path>
-              </svg>
-            </button>
+        <!-- Navigation Arrows -->
+        <div class="nav-arrows">
+          <button id="prevVideo" class="card arrow-button left-arrow ">
+            <span class="left-arrow">&#10092;</span>
+          </button>
+          <button id="nextVideo" class="card arrow-button right-arrow ">
+            <span class="">&#10093; </span>
+          </button>
+        </div>
+        <!-- Status Message -->
+        <div id="statusMessage" class="status-message"></div>
+        <!-- media player controls -->
+        <div class="controls">
+          <div id="videoTitle" style="display: none;"></div>
+          <div id="progressBarContainer">
+            <span id="currentTime">0:00</span>
+            <div id="progressBarWrapper" role="slider" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" aria-label="Video progress">
+              <div id="progressBar">
+                <div id="progressHandle" tabindex="0"></div>
+              </div>
+            </div>
+            <span id="duration">0:00</span>
           </div>
-          <div class="modal-body">
-            <div class="shortcut-list">
-              <div class="shortcut">
-                <div class="description">Rewind</div>
-                <div class="keys">
-                  <span class="key"> &#x2190; Arrow Left</span>
+          <div class="volume-rendom">
+            <div class="card">
+              <i id="volumeBtn" class="fa-light fa-volume-high"></i>
+            </div>
+            <div class="card">
+              <span id="switchAudioTrack" class="material-symbols-outlined">subtitles</span>
+            </div>
+            <div class="card">
+              <span id="repeatBtn" class="material-symbols-outlined">repeat</span>
+            </div>
+            <div class="card">
+              <i id="shuffleButton" class="fa-light fa-shuffle"></i>
+            </div>
+            <input type="range" class="range blue" id="volume-slider" min="0" max="200" value="100" step="1">
+          </div>
+          <div class="media-controls">
+            <div id="rewind" class="card">
+              <img src="../assets/icons/skip-15-seconds-back.png" alt="">
+            </div>
+            <div class="play-pause card">
+              <i class="fa-light fa-play" id="playPauseBtn"></i>
+            </div>
+            <div id="forward" class="card">
+              <img src="../assets/icons/skip-15-seconds-next.png" alt="">
+            </div>
+          </div>
+          <div class="video-settings">
+            <button id="continueButton" style="display: none;">Continue Watching</button>
+            <div class="card fullscreenBtn">
+              <span class="material-symbols-outlined">fullscreen</span>
+            </div>
+            <div id="pip" class="card">
+              <span class="material-symbols-outlined">pip</span>
+            </div>
+          </div>
+        </div>
+        <!-- Shortcut Modal  -->
+        <div id="shortcutsModal" class="modal">
+          <div class="modal-content">
+            <div class="modal-header">
+              <h2 id="keyboardTab" class="active-tab">Keyboard Shortcuts</h2>
+              <h2 id="voiceTab">Voice Shortcuts</h2>
+              <input type="text" id="shortcutSearch" placeholder="Search Shortcuts...">
+              <button class="modalClose" aria-label="Close">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24" class="icon-md">
+                  <path fill="currentColor" fill-rule="evenodd" d="M5.636 5.636a1 1 0 0 1 1.414 0l4.95 4.95 4.95-4.95a1 1 0 0 1 1.414 1.414L13.414 12l4.95 4.95a1 1 0 0 1-1.414 1.414L12 13.414l-4.95 4.95a1 1 0 0 1-1.414-1.414l4.95-4.95-4.95-4.95a1 1 0 0 1 0-1.414" clip-rule="evenodd"></path>
+                </svg>
+              </button>
+            </div>
+            <div class="modal-body">
+              <div id="keyboardShortcuts" class="shortcut-list">
+                <div class="shortcut">
+                  <div class="description">Rewind</div>
+                  <div class="keys">
+                    <span class="key">Left Arrow</span>
+                  </div>
+                </div>
+                <div class="shortcut">
+                  <div class="description">Forward</div>
+                  <div class="keys">
+                    <span class="key"> Right Arrow </span>
+                  </div>
+                </div>
+                <div class="shortcut">
+                  <div class="description">Increase volume</div>
+                  <div class="keys">
+                    <span class="key"> Up Arrow </span>
+                  </div>
+                </div>
+                <div class="shortcut">
+                  <div class="description">Decrease volume</div>
+                  <div class="keys">
+                    <span class="key">Down Arrow</span>
+                  </div>
+                </div>
+                <div class="shortcut">
+                  <div class="description">Open File</div>
+                  <div class="keys">
+                    <span class="key">Ctrl</span>
+                    <span class="key">O</span>
+                  </div>
+                </div>
+                <div class="shortcut">
+                  <div class="description">Open Multiple Files</div>
+                  <div class="keys">
+                    <span class="key">Shift</span>
+                    <span class="key">O</span>
+                  </div>
+                </div>
+                <div class="shortcut">
+                  <div class="description">Open Folder</div>
+                  <div class="keys">
+                    <span class="key">Ctrl</span>
+                    <span class="key">F</span>
+                  </div>
+                </div>
+                <div class="shortcut">
+                  <div class="description">Play/Pause</div>
+                  <div class="keys">
+                    <span class="key">Space</span>
+                  </div>
+                </div>
+                <div class="shortcut">
+                  <div class="description">Play Next</div>
+                  <div class="keys">
+                    <span class="key">N</span>
+                  </div>
+                </div>
+                <div class="shortcut">
+                  <div class="description">Play Previous</div>
+                  <div class="keys">
+                    <span class="key">P</span>
+                  </div>
+                </div>
+                <div class="shortcut">
+                  <div class="description">Change Audio Track</div>
+                  <div class="keys">
+                    <span class="key">B</span>
+                  </div>
+                </div>
+                <div class="shortcut">
+                  <div class="description">Change Subtitle Track</div>
+                  <div class="keys">
+                    <span class="key">V</span>
+                  </div>
+                </div>
+                <div class="shortcut">
+                  <div class="description">Toggle Fullscreen</div>
+                  <div class="keys">
+                    <span class="key">F</span>
+                  </div>
+                </div>
+                <div class="shortcut">
+                  <div class="description">Toggle Shuffle Mode</div>
+                  <div class="keys">
+                    <span class="key">R</span>
+                  </div>
+                </div>
+                <div class="shortcut">
+                  <div class="description">Toggle Repeat</div>
+                  <div class="keys">
+                    <span class="key">L</span>
+                  </div>
+                </div>
+                <div class="shortcut">
+                  <div class="description">Mute/Unmute</div>
+                  <div class="keys">
+                    <span class="key">M</span>
+                  </div>
+                </div>
+                <div class="shortcut">
+                  <div class="description">Rotate 0°</div>
+                  <div class="keys">
+                    <span class="key">8</span>
+                  </div>
+                </div>
+                <div class="shortcut">
+                  <div class="description">Rotate 90°</div>
+                  <div class="keys">
+                    <span class="key">6</span>
+                  </div>
+                </div>
+                <div class="shortcut">
+                  <div class="description">Rotate -90°</div>
+                  <div class="keys">
+                    <span class="key">4</span>
+                  </div>
+                </div>
+                <div class="shortcut">
+                  <div class="description">Rotate 180°</div>
+                  <div class="keys">
+                    <span class="key">2</span>
+                  </div>
+                </div>
+                <div class="shortcut">
+                  <div class="description">Minimize</div>
+                  <div class="keys">
+                    <span class="key">Ctrl</span>
+                    <span class="key">`</span>
+                  </div>
+                </div>
+                <div class="shortcut">
+                  <div class="description">Close Media</div>
+                  <div class="keys">
+                    <span class="key">Ctrl</span>
+                    <span class="key">Q</span>
+                  </div>
+                </div>
+                <div class="shortcut">
+                  <div class="description">Zoom Video</div>
+                  <div class="keys">
+                    <span class="key">Ctrl</span>
+                    <span class="key">&#8679;</span>
+                    <span class="key">Mouse wheel</span>
+                  </div>
+                </div>
+                <div class="shortcut">
+                  <div class="description">Video Move</div>
+                  <div class="keys">
+                    <span class="key">Ctrl</span>
+                    <span class="key">&#8679;</span>
+                    <span class="key">Mouse Left button</span>
+                  </div>
                 </div>
               </div>
-              <div class="shortcut">
-                <div class="description">Forward</div>
-                <div class="keys">
-                  <span class="key"> &#x2192; Arrow Right </span>
+              <div id="voiceShortcuts" class="shortcut-list" style="display: none;">
+                <div class="shortcut">
+                  <div class="description">Open File</div>
+                  <div class="keys">
+                    <span class="key">Open File</span>
+                  </div>
                 </div>
-              </div>
-              <div class="shortcut">
-                <div class="description">Increase volume</div>
-                <div class="keys">
-                  <span class="key"> &#x2191; Arrow Up </span>
+                <div class="shortcut">
+                  <div class="description">Play/Pause</div>
+                  <div class="keys">
+                    <span class="key">Play</span>
+                    <span class="key">Start</span>
+                    <span class="key">Pause</span>
+                    <span class="key">Stop</span>
+                  </div>
                 </div>
-              </div>
-              <div class="shortcut">
-                <div class="description">Decrease volume</div>
-                <div class="keys">
-                  <span class="key">&#x2193; Arrow Down </span>
+                <div class="shortcut">
+                  <div class="description">Next Track</div>
+                  <div class="keys">
+                    <span class="key">Next</span>
+                  </div>
                 </div>
-              </div>
-              <div class="shortcut">
-                <div class="description">Open File</div>
-                <div class="keys">
-                  <span class="key">Ctrl</span>
-                  <span class="key">O</span>
+                <div class="shortcut">
+                  <div class="description">Previous Track</div>
+                  <div class="keys">
+                    <span class="key">Previous</span>
+                  </div>
                 </div>
-              </div>
-              <div class="shortcut">
-                <div class="description">Open Multiple Files</div>
-                <div class="keys">
-                  <span class="key">Shift</span>
-                  <span class="key">O</span>
+                <div class="shortcut">
+                  <div class="description">Rewind Track</div>
+                  <div class="keys">
+                    <span class="key">Rewind</span>
+                  </div>
                 </div>
-              </div>
-              <div class="shortcut">
-                <div class="description">Open Folder</div>
-                <div class="keys">
-                  <span class="key">Ctrl</span>
-                  <span class="key">F</span>
+                <div class="shortcut">
+                  <div class="description">Forward Track</div>
+                  <div class="keys">
+                    <span class="key">Forward</span>
+                  </div>
                 </div>
-              </div>
-              <div class="shortcut">
-                <div class="description">Play/Pause</div>
-                <div class="keys">
-                  <span class="key">Space</span>
+                <div class="shortcut">
+                  <div class="description">Mute/Unmute</div>
+                  <div class="keys">
+                    <span class="key">Mute</span>
+                    <span class="key">loud</span>
+                  </div>
                 </div>
-              </div>
-              <div class="shortcut">
-                <div class="description">Play Next</div>
-                <div class="keys">
-                  <span class="key">N</span>
+                <div class="shortcut">
+                  <div class="description">Volume Up</div>
+                  <div class="keys">
+                    <span class="key">Volume Up</span>
+                  </div>
                 </div>
-              </div>
-              <div class="shortcut">
-                <div class="description">Play Previous</div>
-                <div class="keys">
-                  <span class="key">P</span>
+                <div class="shortcut">
+                  <div class="description">Volume down</div>
+                  <div class="keys">
+                    <span class="key">Volume down</span>
+                  </div>
                 </div>
-              </div>
-              <div class="shortcut">
-                <div class="description">Change Audio Track</div>
-                <div class="keys">
-                  <span class="key">B</span>
+                <div class="shortcut">
+                  <div class="description">low Volume</div>
+                  <div class="keys">
+                    <span class="key">Volume low / low Volume</span>
+                  </div>
                 </div>
-              </div>
-              <div class="shortcut">
-                <div class="description">Change Subtitle Track</div>
-                <div class="keys">
-                  <span class="key">V</span>
+                <div class="shortcut">
+                  <div class="description">Medium volume</div>
+                  <div class="keys">
+                    <span class="key">Medium volume</span>
+                  </div>
                 </div>
-              </div>
-              <div class="shortcut">
-                <div class="description">Toggle Fullscreen</div>
-                <div class="keys">
-                  <span class="key">F</span>
+                <div class="shortcut">
+                  <div class="description">Max Volume</div>
+                  <div class="keys">
+                    <span class="key">Max Volume</span>
+                  </div>
                 </div>
-              </div>
-              <div class="shortcut">
-                <div class="description">Toggle Random Mode</div>
-                <div class="keys">
-                  <span class="key">R</span>
+                <div class="shortcut">
+                  <div class="description">Video Speed Up</div>
+                  <div class="keys">
+                    <span class="key">Speed up</span>
+                  </div>
                 </div>
-              </div>
-              <div class="shortcut">
-                <div class="description">Toggle Repeat</div>
-                <div class="keys">
-                  <span class="key">L</span>
+                <div class="shortcut">
+                  <div class="description">Video Speed Down</div>
+                  <div class="keys">
+                    <span class="key">Slow down</span>
+                  </div>
                 </div>
-              </div>
-              <div class="shortcut">
-                <div class="description">Mute/Unmute</div>
-                <div class="keys">
-                  <span class="key">M</span>
+                <div class="shortcut">
+                  <div class="description">Double Speed</div>
+                  <div class="keys">
+                    <span class="key">Double Speed</span>
+                  </div>
                 </div>
-              </div>
-              <div class="shortcut">
-                <div class="description">Rotate 0°</div>
-                <div class="keys">
-                  <span class="key">8</span>
+                <div class="shortcut">
+                  <div class="description">Normal Speed</div>
+                  <div class="keys">
+                    <span class="key">Normal Speed</span>
+                  </div>
                 </div>
-              </div>
-              <div class="shortcut">
-                <div class="description">Rotate 90°</div>
-                <div class="keys">
-                  <span class="key">6</span>
+                <div class="shortcut">
+                  <div class="description">Repeat / Loop</div>
+                  <div class="keys">
+                    <span class="key">Repeat / Loop</span>
+                  </div>
                 </div>
-              </div>
-              <div class="shortcut">
-                <div class="description">Rotate -90°</div>
-                <div class="keys">
-                  <span class="key">4</span>
+                <div class="shortcut">
+                  <div class="description">Repeat / Loop off</div>
+                  <div class="keys">
+                    <span class="key">Repeat / Loop off</span>
+                  </div>
                 </div>
-              </div>
-              <div class="shortcut">
-                <div class="description">Rotate 180°</div>
-                <div class="keys">
-                  <span class="key">2</span>
+                <div class="shortcut">
+                  <div class="description">Shuffle</div>
+                  <div class="keys">
+                    <span class="key">Shuffle</span>
+                  </div>
                 </div>
-              </div>
-              <div class="shortcut">
-                <div class="description">Minimize</div>
-                <div class="keys">
-                  <span class="key">Ctrl</span>
-                  <span class="key">`</span>
+                <div class="shortcut">
+                  <div class="description">Shuffle off</div>
+                  <div class="keys">
+                    <span class="key">Shuffle off</span>
+                  </div>
                 </div>
-              </div>
-              <div class="shortcut">
-                <div class="description">Close Media</div>
-                <div class="keys">
-                  <span class="key">Ctrl</span>
-                  <span class="key">Q</span>
+                <div class="shortcut">
+                  <div class="description">Resume Video</div>
+                  <div class="keys">
+                    <span class="key">Continue</span>
+                  </div>
                 </div>
-              </div>
-              <div class="shortcut">
-                <div class="description">Video Zoom</div>
-                <div class="keys">
-                  <span class="key">Ctrl</span>
-                  <span class="key">&#8679;</span>
-                  <span class="key">Mouse wheel</span>
+                <div class="shortcut">
+                  <div class="description">Restart video</div>
+                  <div class="keys">
+                    <span class="key">Restart</span>
+                  </div>
                 </div>
-              </div>
-              <div class="shortcut">
-                <div class="description">Video Move</div>
-                <div class="keys">
-                  <span class="key">Ctrl</span>
-                  <span class="key">&#8679;</span>
-                  <span class="key">Mouse Left button</span>
+                <div class="shortcut">
+                  <div class="description">Landscape Video</div>
+                  <div class="keys">
+                    <span class="key">Landscape</span>
+                  </div>
+                </div>
+                <div class="shortcut">
+                  <div class="description">Portrait Video</div>
+                  <div class="keys">
+                    <span class="key">Portrait</span>
+                  </div>
+                </div>
+                <div class="shortcut">
+                  <div class="description">Zoom Video</div>
+                  <div class="keys">
+                    <span class="key">Magnify</span>
+                  </div>
+                </div>
+                <div class="shortcut">
+                  <div class="description">Pop Up Screen</div>
+                  <div class="keys">
+                    <span class="key">Mini Screen</span>
+                  </div>
+                </div>
+                <div class="shortcut">
+                  <div class="description">Refresh App</div>
+                  <div class="keys">
+                    <span class="key">Refresh</span>
+                  </div>
+                </div>
+                <div class="shortcut">
+                  <div class="description">Full Screen</div>
+                  <div class="keys">
+                    <span class="key">Full Screen</span>
+                  </div>
+                </div>
+                <div class="shortcut">
+                  <div class="description">Exit Full Screen</div>
+                  <div class="keys">
+                    <span class="key">Exit Full Screen</span>
+                  </div>
+                </div>
+                <div class="shortcut">
+                  <div class="description">Close App</div>
+                  <div class="keys">
+                    <span class="key">Close</span>
+                  </div>
                 </div>
               </div>
             </div>
           </div>
         </div>
-      </div>
-    </main>
-    <!-- Footer -->
-    <footer>
-      <div id="videoTitle" style="display: none;"></div>
-      <div id="progressBarContainer">
-        <span id="currentTime">0:00</span>
-        <div id="progressBarWrapper" role="slider" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" aria-label="Video progress">
-          <div id="progressBar">
-            <div id="progressHandle" tabindex="0"></div>
-          </div>
-        </div>
-        <span id="duration">0:00</span>
-      </div>
-      <div class="volume-rendom">
-        <div class="card">
-          <i id="volumeBtn" class="fa-light fa-volume-high"></i>
-        </div>
-        <div class="card">
-          <span id="switchAudioTrack" class="material-symbols-outlined">subtitles</span>
-        </div>
-        <div class="card">
-          <span id="repeatBtn" class="material-symbols-outlined">repeat</span>
-        </div>
-        <div class="card">
-          <i id="randomButton" class="fa-light fa-shuffle"></i>
-        </div>
-        <input type="range" class="range blue" id="volume-slider" min="0" max="200" value="100" step="1">
-      </div>
-      <div class="media-controls">
-        <div id="rewind" class="card" >
-          <img src="../assets/icons/skip-15-seconds-back.png" alt="">
-        </div>
-        <div class="play-pause card" >
-          <i class="fa-light fa-play" id="playPauseBtn"></i>
-        </div>
-        <div id="forward" class="card" >
-          <img src="../assets/icons/skip-15-seconds-next.png" alt="">
-        </div>
-      </div>
-      <div class="video-settings">
-        <button id="continueButton" style="display: none;">Continue Watching</button>
-        <div id="fullscreenBtn" class="card" >
-          <span class="material-symbols-outlined ">fullscreen</span>
-        </div>
-        <div id="pip" class="card" >
-          <span class="material-symbols-outlined">pip</span>
-        </div>
-      </div>
-    </footer>
-    <!-- Temporary Status Message -->
-    <div id="statusMessage" class="status-message"></div> 
+      </main>
+    </div>
     <script src="renderer.js"></script>
   </body>
 </html>
