@@ -22,7 +22,7 @@
     "electron-store": "^10.0.0",
     "electron-updater": "^6.3.4",
     "latest-version": "^9.0.0",
-    "nodemon": "^3.1.7",
+    "nodemon": "^3.1.9",
     "trash": "^9.0.0"
   },
   "devDependencies": {
