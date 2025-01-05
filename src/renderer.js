@@ -1444,8 +1444,6 @@ function updatePlayPauseIcon(isPlaying) {
 	playPauseBtn.classList.toggle("fa-pause", isPlaying);
 }
 
-
-
 function togglePlayPause() {
 	if (video.readyState < 3) {
 		return;
@@ -1460,7 +1458,6 @@ function togglePlayPause() {
 		showVideoTitle();
 		window.electron.sendPlayPauseState("paused");
 	}
-
 }
 
 // Event listeners for play/pause button
@@ -2135,31 +2132,27 @@ switchAudio.addEventListener("click", populateAudioTracks);
 // Select the full-screen button elements
 const fullscreenButtons = document.querySelectorAll(".fullscreenBtn");
 
-// Function to update text and icon
+// Function to update the fullscreen button UI
 function updateFullScreenUI(isFullscreen) {
+	const fullscreenButtons = document.querySelectorAll('.fullscreenBtn');
 	fullscreenButtons.forEach((button) => {
-		if (button.tagName === "A") {
-			// Update text for the <a> element
-			button.textContent = isFullscreen ? "Exit Full Screen" : "Full Screen";
-		} else if (button.classList.contains("card")) {
-			// Update icon for the div element
-			const icon = button.querySelector(".material-symbols-outlined");
-			if (icon) {
-				icon.textContent = isFullscreen ? "fullscreen_exit" : "fullscreen";
-			}
-		}
-	});
+const icon = button.querySelector(".material-symbols-outlined");
+if (icon) {
+	icon.textContent = isFullscreen ? "fullscreen_exit" : "fullscreen";
+}
+});
 }
 
+ // Fullscreen toggle function
 function toggleFullScreen() {
-	if (document.fullscreenElement == null) {
-		window.electron.toggleFullscreen();
-		updateFullScreenUI(true); // Update UI when entering full screen
-	} else {
-		window.electron.toggleFullscreen();
-		updateFullScreenUI(false); // Update UI when exiting full screen
-	}
+window.electron.toggleFullscreen(); // Notify the main process to toggle fullscreen
 }
+
+ // Listen for fullscreen state changes (from main process or DOM events)
+window.electron.onFullscreenStateChanged((isFullscreen) => {
+updateFullScreenUI(isFullscreen);
+});
+
 
 // Add event listeners for full-screen buttons
 fullscreenButtons.forEach((element) => {
@@ -2199,6 +2192,7 @@ document.addEventListener("DOMContentLoaded", function() {
 	const Mediacontrols = document.querySelector(".controls");
 	const video = document.querySelector("video");
 	const navArrows = document.querySelector(".nav-arrows");
+	const winButton = document.querySelector(".win-buttons");
 	let hideTimeout;
 
 	// Function to hide navbar, Mediacontrols, nav arrows, and cursor
@@ -2213,6 +2207,8 @@ document.addEventListener("DOMContentLoaded", function() {
 			Mediacontrols.classList.add("hidden");
 
 			navArrows.classList.add("hidden");
+			winButton.classList.remove("visible");
+			winButton.classList.add("hidden");
 		}
 	}
 
@@ -2227,6 +2223,8 @@ document.addEventListener("DOMContentLoaded", function() {
 		Mediacontrols.classList.add("visible");
 
 		navArrows.classList.remove("hidden");
+		winButton.classList.remove("hidden");
+		winButton.classList.add("visible")
 
 		// Clear the previous timeout and start a new one to hide controls after 1000ms
 		clearTimeout(hideTimeout);
@@ -2266,7 +2264,7 @@ document.addEventListener("DOMContentLoaded", function() {
 	});
 
 	// Stop hiding controls on mouseover of any interactive UI elements
-	[navbar, navArrows, Mediacontrols].forEach(element => {
+	[navbar, navArrows, winButton, Mediacontrols].forEach((element) => {
 		element.addEventListener("mouseover", () => clearTimeout(hideTimeout));
 	});
 
@@ -2395,6 +2393,7 @@ progressBarWrapper.addEventListener("click", (e) => {
 // Handle dragging for smoother seeking
 let isDragging = false;
 let seekUpdateInterval;
+let temporaryTime = 0;
 const updateInterval = 20; // Adjust this to control speed (e.g., 20ms for smoother, faster updates)
 
 function updateDragging(e) {
@@ -2407,6 +2406,9 @@ function updateDragging(e) {
 		progressBar.style.width = `${percentage * 100}%`;
 		progressHandle.style.left = `${percentage * 100}%`;
 
+        // Update temporary time for display
+        temporaryTime = percentage * video.duration;
+        currentTimeDisplay.textContent = formatTime(temporaryTime);
 
 		// Calculate the new time based on drag position
 		const newTime = percentage * video.duration;
@@ -2496,7 +2498,7 @@ updateDurationDisplay();
 // Event listeners for all nav components
 document.querySelectorAll(".quit").forEach((element) => {
 	element.addEventListener("click", () => {
-		window.close();
+		window.electron.close();
 	});
 });
 
@@ -3035,6 +3037,16 @@ document.querySelector("#maximize").addEventListener("click", () => {
 	window.electron.maximize();
 });
 
+// Listen for updates from the main process to change the icon dynamically
+window.electron.onWindowStateChange((isFullScreen) => {
+    const maximizeIcon = document.querySelector("#maximize i");
+    if (isFullScreen) {
+        maximizeIcon.className = "fa-light fa-down-left-and-up-right-to-center"; // Icon for "Restore" or "Normal Screen"
+    } else {
+        maximizeIcon.className = "fa-light fa-square"; // Icon for "Maximize"
+    }
+});
+
 document.querySelector("#windws-close").addEventListener("click", () => {
 	window.electron.close();
 });
@@ -3069,12 +3081,3 @@ window.electron.onDecreaseVolume(() => {
 	decreaseVolume();
 });
 
-
-const updateOnlineStatus = () => {
-	console.log(navigator.onLine ? 'online' : 'offline');
-}
-
-window.addEventListener('online', updateOnlineStatus);
-window.addEventListener('offline', updateOnlineStatus);
-
-updateOnlineStatus();

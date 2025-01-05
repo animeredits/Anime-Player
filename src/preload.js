@@ -3,12 +3,22 @@ const { contextBridge, ipcRenderer } = require('electron');
 contextBridge.exposeInMainWorld('electron', {
   // Window Controls
   minimize: () => ipcRenderer.send('Minimize'),
-  maximize: () => ipcRenderer.send('Maximize'),
-  close: () => ipcRenderer.send('appClose'),
+  maximize: () => ipcRenderer.send("Maximize"),
+  onWindowStateChange: (callback) => {
+      ipcRenderer.on("window-state-changed", (_, isFullScreen) => {
+          callback(isFullScreen);
+      });
+  },  close: () => ipcRenderer.send('appClose'),
   toggleFullscreen: () => ipcRenderer.send('toggle-fullscreen'),
+  onFullscreenStateChanged: (callback) => {
+    ipcRenderer.on('fullscreen-state-changed', (_, isFullscreen) => {
+      callback(isFullscreen);
+    });
+  },
 
   // Media Controls
   onPlayPause: (callback) => ipcRenderer.on('play-pause', callback),
+  sendPlayPauseState: (state) => ipcRenderer.send('play-pause-state', state),
   onNext: (callback) => ipcRenderer.on('next', callback),
   onPrevious: (callback) => ipcRenderer.on('previous', callback),
   onMute: (callback) => ipcRenderer.on('mute', callback),
@@ -20,8 +30,6 @@ contextBridge.exposeInMainWorld('electron', {
   onUpdateDownloaded: (callback) => ipcRenderer.on('update_downloaded', callback),
   restartApp: () => ipcRenderer.send('restart_app'),
 
-  // Send Play/Pause State to Main Process
-  sendPlayPauseState: (state) => ipcRenderer.send('play-pause-state', state),
 
   // Custom Logo Handling
   saveCustomLogo: (filePath, fileName) => {return ipcRenderer.invoke('save-gif', filePath, fileName);},

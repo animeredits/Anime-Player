@@ -259,7 +259,11 @@ ipcMain.on("Minimize", () => {
 });
 
 ipcMain.on("Maximize", () => {
-    win.setFullScreen(!win.isFullScreen());
+  const isFullScreen = !win.isFullScreen();
+  win.setFullScreen(isFullScreen);
+
+  // Notify the renderer process about the window state change
+  win.webContents.send("window-state-changed", isFullScreen);
 });
 
 ipcMain.on("appClose", (event, playbackTime, videoId) => {
@@ -291,8 +295,12 @@ ipcMain.on("appClose", (event, playbackTime, videoId) => {
 
 
 // Handle toggle full-screen event
-ipcMain.on('toggle-fullscreen', () => {
-  win.setFullScreen(!win.isFullScreen());
+ipcMain.on('toggle-fullscreen', (event) => {
+  const isFullscreen = !win.isFullScreen();
+  win.setFullScreen(isFullscreen);
+
+  // Notify renderer about the updated fullscreen state
+  event.sender.send('fullscreen-state-changed', isFullscreen);
 });
 
 // Logging for auto-updater
