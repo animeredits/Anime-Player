@@ -760,7 +760,7 @@ function setSelectedLogo(logoSrc) {
 	);
 	defaultLogoLinks.forEach((link, index) => {
 		if (link.getAttribute("data-src") === logoSrc) {
-			if (index === 0) {
+			if (index === 1) {
 				audioImage.classList.add("D-logo-rotate-animation");
 			} else {
 				audioImage.classList.remove("D-logo-rotate-animation");
