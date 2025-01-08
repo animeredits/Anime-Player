@@ -4,14 +4,6 @@ const log = require('electron-log');
 const path = require('path');
 const fs = require('fs');
 
-
-app.commandLine.appendSwitch('ignore-gpu-blacklist');
-app.commandLine.appendSwitch('enable-gpu-rasterization');
-app.commandLine.appendSwitch('enable-oop-rasterization');
-app.commandLine.appendSwitch('enable-zero-copy');
-app.commandLine.appendSwitch('disable-web-security', 'true');
-
-
 let win;
 let tray = null;
 let isPlaying = false;
@@ -206,8 +198,12 @@ function createTray() {
 app.on('ready', () => {
   const animePlayerPath = app.getPath('userData');
   const savePath = path.join(animePlayerPath, 'playback-time.json');
-
- 
+  app.commandLine.appendSwitch('enable-gpu-rasterization');
+  app.commandLine.appendSwitch('enable-oop-rasterization');
+  app.commandLine.appendSwitch('enable-zero-copy');
+  app.commandLine.appendSwitch('enable-media-playback-hinting');
+  app.commandLine.appendSwitch('enable-hardware-media-decode')
+  
   createWindow();
 
   // Load playback data and remove outdated entries
