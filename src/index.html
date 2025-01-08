@@ -189,14 +189,19 @@
       <main>
         <!-- Custom Confirm Dialog -->
         <div id="customConfirmDialog" class="gif-modal">
-          <div class="gif-modal-content">
-            <p>Do you want to save this logo as a default dropdown?</p>
-            <div>
-              <input type="checkbox" id="autoSaveLogoConfirm" />
-              <label for="autoSaveLogoConfirm">Automatically save logo without asking</label>
+          <div class="gif-modal-content" style="--m-shadow: 0 0 10rem 0">
+            <h1 class="modal__title">Do you want to save this logo as a default dropdown?</h1>
+            <div class="checkbox-wrapper-43">
+              <input type="checkbox" id="cbx-43">
+              <label for="cbx-43" class="check modal__text ">
+                <svg width="18px" height="15px" viewBox="0 0 18 18">
+                  <path d="M1,9 L1,3.5 C1,2 2,1 3.5,1 L14.5,1 C16,1 17,2 17,3.5 L17,14.5 C17,16 16,17 14.5,17 L3.5,17 C2,17 1,16 1,14.5 L1,9 Z"></path>
+                  <polyline points="1 9 7 14 15 4"></polyline>
+                </svg>Automatically save logo without asking
+              </label>
             </div>
-            <button id="confirmButton">Yes</button>
-            <button id="cancelButton">No</button>
+            <button id="confirmButton" class="modal__btn">Yes</button>
+            <button id="cancelButton" class="modal__btn">No</button>
           </div>
         </div>
         <!-- Window Controls -->

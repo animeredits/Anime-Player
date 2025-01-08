@@ -25,6 +25,14 @@ body {
   -webkit-user-select: none;
   user-select: none;
   scroll-behavior: smooth;
+  --light: hsl(220, 50%, 90%);
+  --primary: hsl(255, 30%, 55%);
+  --focus: hsl(210, 90%, 50%);
+  --border-color: hsla(0, 0%, 100%, .2);
+  --global-background: hsl(220, 25%, 10%);
+  --background: linear-gradient(to right, hsl(210, 30%, 20%), hsl(255, 30%, 25%));
+  --shadow-1: hsla(236, 50%, 50%, .3);
+  --shadow-2: hsla(236, 50%, 50%, .4);
 }
 
 .hidden {
@@ -237,49 +245,133 @@ nav > * {
 }
 
 .gif-modal {
-  display: none; /* Hidden by default */
-  position: fixed; /* Stay in place */
-  z-index: 1; /* Sit on top */
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  width: 25vw;
-  height: 45vh;
+  display: none; 
+  position: fixed;
+  z-index: 10; 
+  justify-content: center;
+  align-items: center;
+  width: 30%;
+  height: 32%;
   overflow: hidden;
   pointer-events: auto;
 }
 
 .gif-modal-content {
-  backdrop-filter: blur(30px) saturate(180%);
-  background-color: #2f2f2f99;
-  border-radius: 12px;
-  border: 1px solid rgba(255, 255, 255, 0.125);
-  margin: 15% auto; /* Centered */
-  padding: 20px;
-  width: auto;
-  margin: 20px;
-  height: auto;
-  max-width: 200;
-  max-height: 302px;
-  border-radius: 16px;
-  display: flex;
-  flex-direction: column;
+  width: 32rem;
+  padding: 3rem 1rem;
+  color: var(--light);
+  border-radius: 0.8rem;
+  background: var(--background);
+  box-shadow: var(--m-shadow, .4rem .4rem 10.2rem .2rem) var(--shadow-1);
+  position: relative;
   overflow: hidden;
-  letter-spacing: 0.5px;
-  cursor: auto;
 }
 
-#confirmButton,
-#cancelButton {
-  margin: 5px;
-  background: none;
-  border: none;
-  cursor: pointer;
+.modal__title {
   font-size: 1.5rem;
-  color: #fff;
-  padding: 0;
-  width: 40px;
-  height: 40px;
+  letter-spacing: .1rem;
+  line-height: 2rem;
+  margin-left: 1rem;
+  font-weight: 500;
+}
+
+.modal__text {
+  padding: 0 1rem;
+  margin-top: 1.2rem;
+  font-size: 1rem;
+  line-height: 2;
+  letter-spacing: .1rem;
+}
+
+.modal__btn {
+  margin-top: 1.8rem;
+  margin-left: 1rem;
+  padding: 0.8rem 0.9rem;
+  border: 1px solid var(--border-color);
+  border-radius: 100rem;
+  color: inherit;
+  background: transparent;
+  font-size: 1rem;
+  font-family: inherit;
+  letter-spacing: .2rem;
+  transition: .2s;
+  cursor: pointer;
+}
+
+.modal__btn:nth-of-type(2) {
+  padding: 0.8rem 1.2rem;
+}
+
+.modal__btn:hover,
+.modal__btn:focus {
+  background: var(--focus);
+  border-color: var(--focus);
+  transform: translateY(-.2rem);
+}
+
+.checkbox-wrapper-43 input[type="checkbox"] {
+  display: none;
+  visibility: hidden;
+}
+
+.checkbox-wrapper-43 label {
+  display: inline-block;
+}
+
+.checkbox-wrapper-43 .check {
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transform: translate3d(0, 0, 0);
+}
+.checkbox-wrapper-43 .check:before {
+  content: "";
+  position: absolute;
+  top: -15px;
+  left: -15px;
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: rgba(34,50,84,0.03);
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+.checkbox-wrapper-43 .check svg {
+  position: relative;
+  margin-right: 10px;
+  z-index: 1;
+  fill: none;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke: #c8ccd4;
+  stroke-width: 1.5;
+  transform: translate3d(0, 0, 0);
+  transition: all 0.2s ease;
+}
+.checkbox-wrapper-43 .check svg path {
+  stroke-dasharray: 60;
+  stroke-dashoffset: 0;
+}
+.checkbox-wrapper-43 .check svg polyline {
+  stroke-dasharray: 22;
+  stroke-dashoffset: 66;
+}
+.checkbox-wrapper-43 .check:hover:before {
+  opacity: 1;
+}
+.checkbox-wrapper-43 .check:hover svg {
+  stroke: #4285f4;
+}
+.checkbox-wrapper-43 input[type="checkbox"]:checked + .check svg {
+  stroke: #4285f4;
+}
+.checkbox-wrapper-43 input[type="checkbox"]:checked + .check svg path {
+  stroke-dashoffset: 60;
+  transition: all 0.3s linear;
+}
+.checkbox-wrapper-43 input[type="checkbox"]:checked + .check svg polyline {
+  stroke-dashoffset: 42;
+  transition: all 0.2s linear;
+  transition-delay: 0.15s;
 }
 
 /* Preview container for logo preview */

@@ -617,7 +617,7 @@ function showCustomConfirm() {
 		const cancelButton = document.getElementById("cancelButton");
 		const autoSaveCheckbox = document.getElementById("autoSaveLogoConfirm");
 
-		modal.style.display = "block"; // Show the modal
+		modal.style.display = "flex"; // Show the modal
 
 		confirmButton.onclick = () => {
 			resolve({
