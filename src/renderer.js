@@ -2274,39 +2274,62 @@ document.addEventListener("DOMContentLoaded", function() {
 	// Function to show the context menu
 	function showContextMenu(event) {
 		event.preventDefault();
-		contextMenu.style.top = `${event.clientY}px`;
-		contextMenu.style.left = `${event.clientX}px`;
-		contextMenu.style.display = "block";
-		updateContextTogglePlayPause(); // Update the context menu state
-
-	}
-
-	// Function to hide the context menu
-	function hideContextMenu() {
-		contextMenu.style.display = "none";
-	}
-
-	// Attach event listener to mediaPlayer to show context menu
-	mediaPlayer.addEventListener("contextmenu", showContextMenu);
-
-	// Hide the context menu when clicking elsewhere
-	document.addEventListener("click", hideContextMenu);
-
-	// Function to update the context menu toggle play/pause item based on video state
-	function updateContextTogglePlayPause() {
-		const contextTogglePlayPause = document.querySelector("#contextTogglePlayPause");
-		const textElement = contextTogglePlayPause.querySelector(".text");
-		const iconElement = contextTogglePlayPause.querySelector(".icon");
-
-		if (video.paused) {
-			textElement.innerText = "Play";
-			iconElement.innerHTML = "&#9658;";
-		} else {
-			textElement.innerText = "Pause";
-			iconElement.innerHTML = "&#10074;&#10074;";
+	
+		const { clientX: mouseX, clientY: mouseY } = event;
+		const { innerWidth: screenWidth, innerHeight: screenHeight } = window;
+	
+		// Get the context menu dimensions
+		const contextMenuHeight = contextMenu.offsetHeight;
+		const contextMenuWidth = contextMenu.offsetWidth;
+	
+		// Calculate the position dynamically
+		let top = mouseY;
+		let left = mouseX;
+	
+		// Adjust if the menu would overflow the bottom of the screen
+		if (mouseY + contextMenuHeight > screenHeight) {
+			top = screenHeight - contextMenuHeight; // Position to fit within the screen
 		}
+	
+		// Adjust if the menu would overflow the right of the screen
+		if (mouseX + contextMenuWidth > screenWidth) {
+			left = screenWidth - contextMenuWidth; // Position to fit within the screen
+		}
+	
+		// Set the calculated position and display the menu
+		contextMenu.style.top = `${top}px`;
+		contextMenu.style.left = `${left}px`;
+		contextMenu.style.display = "block";
+	
+		updateContextTogglePlayPause(); // Update the context menu state
 	}
-
+	
+		// Function to hide the context menu
+		function hideContextMenu() {
+			contextMenu.style.display = "none";
+		}
+	
+		// Attach event listener to mediaPlayer to show context menu
+		mediaPlayer.addEventListener("contextmenu", showContextMenu);
+	
+		// Hide the context menu when clicking elsewhere
+		document.addEventListener("click", hideContextMenu);
+	
+		// Function to update the context menu toggle play/pause item based on video state
+		function updateContextTogglePlayPause() {
+			const contextTogglePlayPause = document.querySelector("#contextTogglePlayPause");
+			const textElement = contextTogglePlayPause.querySelector(".text");
+			const iconElement = contextTogglePlayPause.querySelector(".icon");
+	
+			if (video.paused) {
+				textElement.innerText = "Play";
+				iconElement.innerHTML = "&#9658;";
+			} else {
+				textElement.innerText = "Pause";
+				iconElement.innerHTML = "&#10074;&#10074;";
+			}
+		}
+		
 	// Handle context menu item clicks
 	contextMenuItems.forEach((item) => {
 		item.addEventListener("click", (event) => {
@@ -2602,6 +2625,11 @@ document.addEventListener("keydown", (event) => {
 		},
 		l: () => toggleRepeat(),
 		m: () => volumeBtn.click(),
+		t: () => {
+			showStatusMessage(
+				`- ${formatTime(currentMedia.currentTime)} /${formatTime(currentMedia.duration)}`
+			); // Show current time and total duration
+		},
 		8: () => {
 			rotateVideo(0);
 			showStatusMessage("Rotated 0°");
