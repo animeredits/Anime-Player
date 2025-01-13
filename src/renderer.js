@@ -615,7 +615,7 @@ function showCustomConfirm() {
 		const modal = document.getElementById("customConfirmDialog");
 		const confirmButton = document.getElementById("confirmButton");
 		const cancelButton = document.getElementById("cancelButton");
-		const autoSaveCheckbox = document.getElementById("autoSaveLogoConfirm");
+		const autoSaveCheckbox = document.getElementById("cbx-43");
 
 		modal.style.display = "flex"; // Show the modal
 
@@ -637,57 +637,61 @@ function showCustomConfirm() {
 }
 
 // Updated customLogoInput change event
-customLogoInput.addEventListener("change", async function(event) {
+customLogoInput.addEventListener("change", async function (event) {
 	const file = event.target.files[0];
 	if (file) {
-		const filePath = file.path; // Get the actual file path of the uploaded file
-		audioImage.src = filePath; // Set the logo to the uploaded image or GIF
-		audioImage.style.display = "block"; // Show the logo
-		audioImage.classList.remove("D-logo-rotate-animation");
-
+	  const fileName = file.name; // Get file name
+  
+	  // Use FileReader to read the file as an ArrayBuffer
+	  const reader = new FileReader();
+	  reader.onload = async function (e) {
+		const fileBuffer = e.target.result; // ArrayBuffer of the file content
+  
 		// Check if auto-save is enabled
 		const autoSaveLogo =
-			JSON.parse(localStorage.getItem("autoSaveLogo")) || false;
-
+		  JSON.parse(localStorage.getItem("autoSaveLogo")) || false;
+  
 		if (autoSaveLogo) {
-			// Automatically save the logo without asking
-			const fileName = file.name; // Get the file name
-			const response = await window.electron.saveCustomLogo(filePath, fileName);
-			if (response.success) {
-				console.log("GIF saved successfully at:", response.path);
-				saveCustomLogo(filePath, fileName); // Immediately add to the logo list
-			} else {
-				console.error("Failed to save GIF");
-			}
+		  // Automatically save the logo without asking
+		  const response = await window.electron.saveCustomLogo(fileBuffer, fileName);
+		  if (response.success) {
+			console.log("GIF saved successfully at:", response.path);
+			saveCustomLogo(URL.createObjectURL(file), fileName); // Add to the logo list
+		  } else {
+			console.error("Failed to save GIF:", response.error);
+		  }
 		} else {
-			// Use custom confirm dialog
-			const {
-				confirmed,
-				autoSave
-			} = await showCustomConfirm();
-			if (confirmed) {
-				const fileName = file.name; // Get the file name
-				const response = await window.electron.saveCustomLogo(
-					filePath,
-					fileName
-				);
-				if (response.success) {
-					console.log("GIF saved successfully at:", response.path);
-					saveCustomLogo(filePath, fileName); // Immediately add to the logo list
-
-					// If checkbox is checked, save the auto-save preference
-					if (autoSave) {
-						localStorage.setItem("autoSaveLogo", JSON.stringify(true));
-					}
-				} else {
-					console.error("Failed to save GIF");
-				}
+		  // Use custom confirm dialog
+		  const { confirmed, autoSave } = await showCustomConfirm();
+		  if (confirmed) {
+			const response = await window.electron.saveCustomLogo(
+			  fileBuffer,
+			  fileName
+			);
+			if (response.success) {
+			  console.log("GIF saved successfully at:", response.path);
+			  saveCustomLogo(URL.createObjectURL(file), fileName); // Add to the logo list
+  
+			  // If checkbox is checked, save the auto-save preference
+			  if (autoSave) {
+				localStorage.setItem("autoSaveLogo", JSON.stringify(true));
+			  }
+			} else {
+			  console.error("Failed to save GIF:", response.error);
 			}
+		  }
 		}
+	  };
+  
+	  reader.onerror = function () {
+		console.error("Failed to read the file");
+	  };
+	  reader.readAsArrayBuffer(file); // Read the file as ArrayBuffer
 	} else {
-		console.error("No file selected or invalid file");
+	  console.error("No file selected or invalid file");
 	}
-});
+  });
+  
 
 // Function to check and show the "Play All" button
 function checkPlayAllButton() {

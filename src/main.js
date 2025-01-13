@@ -346,7 +346,7 @@ ipcMain.on('play-pause-state', (event, state) => {
 
 
 // Save custom logo to a user directory "Visualization" in this folder
-ipcMain.handle('save-gif', async (event, filePath, fileName) => {
+ipcMain.handle('save-gif', async (event, fileBuffer, fileName) => {
   try {
     const savePath = path.join(visualizationPath, fileName);
 
@@ -355,14 +355,15 @@ ipcMain.handle('save-gif', async (event, filePath, fileName) => {
       fs.mkdirSync(visualizationPath, { recursive: true });
     }
 
-    // Copy the file to the Visualization directory
-    fs.copyFileSync(filePath, savePath);
+    // Write the file buffer to the target path
+    fs.writeFileSync(savePath, Buffer.from(fileBuffer)); // Save the buffer
     return { success: true, path: savePath };
   } catch (error) {
     console.error('Failed to save GIF:', error);
-    return { success: false };
+    return { success: false, error: error.message };
   }
 });
+
 
 // Modify your delete logo handler to use dynamic import
 ipcMain.handle('delete-logo', async (event, fileName) => {

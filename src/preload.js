@@ -35,8 +35,9 @@ contextBridge.exposeInMainWorld('electron', {
 
 
   // Custom Logo Handling
-  saveCustomLogo: (filePath, fileName) => {return ipcRenderer.invoke('save-gif', filePath, fileName);},
-  deleteLogo: (fileName) => ipcRenderer.invoke('delete-logo', fileName), // New delete logo function
+  saveCustomLogo: (fileBuffer, fileName) => { return ipcRenderer.invoke('save-gif', fileBuffer, fileName);},
+  
+    deleteLogo: (fileName) => ipcRenderer.invoke('delete-logo', fileName), // New delete logo function
 
   // Playback State Management
   savePlaybackTime: (playbackTime, videoId) => {
