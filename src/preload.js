@@ -24,6 +24,9 @@ contextBridge.exposeInMainWorld('electron', {
   onMute: (callback) => ipcRenderer.on('mute', callback),
   onIncreaseVolume: (callback) => ipcRenderer.on('increase-volume', callback),
   onDecreaseVolume: (callback) => ipcRenderer.on('decrease-volume', callback),
+  onShuffleState: (callback) => ipcRenderer.on('shuffle', callback),
+  sendShuffleState: (state) => ipcRenderer.send('shuffle-state', state),
+
 
   // Update Controls
   onUpdateAvailable: (callback) => ipcRenderer.on('update_available', callback),

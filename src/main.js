@@ -7,6 +7,7 @@ const fs = require('fs');
 let win;
 let tray = null;
 let isPlaying = false;
+let shuffleState = 'off';
 let isQuitting = false;
 const twoDaysInMillis = 2 * 24 * 60 * 60 * 1000; // 2 days in milliseconds
 
@@ -124,6 +125,7 @@ function createTray() {
 
   const updateContextMenu = (playbackState = 'paused') => {
     const playPauseLabel = (playbackState === 'playing') ? 'Pause' : 'Play';
+    const shuffleLabel = (shuffleState === 'off') ? 'Shuffle Off' : 'Shuffle On'; 
 
     const contextMenu = Menu.buildFromTemplate([
       {
@@ -148,6 +150,12 @@ function createTray() {
         label: "Previous",
         click: () => {
           win.webContents.send('previous');
+        }
+      }, 
+      {
+        label: shuffleLabel,
+        click: () => {
+          win.webContents.send('shuffle'); 
         }
       },
       {
@@ -192,6 +200,11 @@ function createTray() {
   ipcMain.on('play-pause-state', (event, state) => {
     updateContextMenu(state);
   });
+
+    // Listen for shuffle state change from the renderer process
+    ipcMain.on('shuffle-state', (event, state) => {
+      updateContextMenu(state);  // Update context menu
+    });
 }
 
 // Prevent all global shortcuts and register new shortcut

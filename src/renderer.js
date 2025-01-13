@@ -2103,11 +2103,15 @@ function toggleShuffleMode() {
 	if (isShuffle) {
 		shuffleButton.classList.add("active");
 		showStatusMessage("Shuffle: On");
+		window.electron.sendShuffleState("on");
+
 	} else {
 		shuffleButton.classList.remove("active");
 		showStatusMessage("Shuffle: Off");
 		playedVideos = [];
 		lastPlayedStack = [];
+		window.electron.sendShuffleState("off");
+
 	}
 }
 
@@ -3107,5 +3111,10 @@ window.electron.onIncreaseVolume(() => {
 // Handle volume decrease action from tray
 window.electron.onDecreaseVolume(() => {
 	decreaseVolume();
+});
+
+// Handle shuffle action from tray
+window.electron.onShuffleState(() => {
+	toggleShuffleMode();
 });
 
