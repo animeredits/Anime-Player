@@ -641,57 +641,73 @@ customLogoInput.addEventListener("change", async function (event) {
 	const file = event.target.files[0];
 	if (file) {
 	  const fileName = file.name; // Get file name
-  
 	  // Use FileReader to read the file as an ArrayBuffer
-	  const reader = new FileReader();
-	  reader.onload = async function (e) {
+	const reader = new FileReader();
+	reader.onload = async function (e) {
 		const fileBuffer = e.target.result; // ArrayBuffer of the file content
-  
+
 		// Check if auto-save is enabled
 		const autoSaveLogo =
-		  JSON.parse(localStorage.getItem("autoSaveLogo")) || false;
-  
+		JSON.parse(localStorage.getItem("autoSaveLogo")) || false;
+
 		if (autoSaveLogo) {
 		  // Automatically save the logo without asking
-		  const response = await window.electron.saveCustomLogo(fileBuffer, fileName);
-		  if (response.success) {
+		const response = await window.electron.saveCustomLogo(fileBuffer, fileName);
+		if (response.success) {
 			console.log("GIF saved successfully at:", response.path);
 			saveCustomLogo(URL.createObjectURL(file), fileName); // Add to the logo list
-		  } else {
+		} else {
 			console.error("Failed to save GIF:", response.error);
-		  }
+		}
 		} else {
 		  // Use custom confirm dialog
-		  const { confirmed, autoSave } = await showCustomConfirm();
-		  if (confirmed) {
+		const { confirmed, autoSave } = await showCustomConfirm();
+		if (confirmed) {
 			const response = await window.electron.saveCustomLogo(
-			  fileBuffer,
-			  fileName
+			fileBuffer,
+			fileName
 			);
 			if (response.success) {
-			  console.log("GIF saved successfully at:", response.path);
+			console.log("GIF saved successfully at:", response.path);
 			  saveCustomLogo(URL.createObjectURL(file), fileName); // Add to the logo list
-  
 			  // If checkbox is checked, save the auto-save preference
-			  if (autoSave) {
+			if (autoSave) {
 				localStorage.setItem("autoSaveLogo", JSON.stringify(true));
-			  }
-			} else {
-			  console.error("Failed to save GIF:", response.error);
 			}
-		  }
+			} else {
+			console.error("Failed to save GIF:", response.error);
+			}
 		}
-	  };
-  
-	  reader.onerror = function () {
+		}
+	};
+	reader.onerror = function () {
 		console.error("Failed to read the file");
-	  };
+	};
 	  reader.readAsArrayBuffer(file); // Read the file as ArrayBuffer
 	} else {
-	  console.error("No file selected or invalid file");
+	console.error("No file selected or invalid file");
 	}
-  });
-  
+});
+
+// Function to delete the custom logo
+function deleteCustomLogo(fileName) {
+    window.electron.deleteLogo(fileName)
+        .then(response => {
+            if (response.success) {
+                console.log(response.message); // Log success message
+                // Optionally, update the UI or notify the user
+                document.getElementById("audioLogo").style.display = "block";
+                const audioImage = document.getElementById("audioImage");
+                if (audioImage) {
+                    audioImage.style.display = "block";
+                }
+                loadCustomLogos(); 
+            }
+        })
+        .catch(error => {
+            console.error('Error deleting the logo:', error);
+        });
+}
 
 // Function to check and show the "Play All" button
 function checkPlayAllButton() {
@@ -797,20 +813,6 @@ defaultLogoLinks.forEach((link) => {
 		}
 	});
 });
-
-// Function to delete the custom logo
-function deleteCustomLogo(fileName) {
-	window.electron.deleteLogo(fileName)
-		.then(response => {
-			if (response.success) {
-				console.log(response.message); // Log success message
-				// Optionally, update the UI or notify the user that the file was deleted
-			}
-		})
-		.catch(error => {
-			console.error('Error deleting the logo:', error);
-		});
-}
 
 
 // Function to search GIFs
