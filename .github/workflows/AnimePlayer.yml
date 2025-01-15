@@ -25,7 +25,13 @@ jobs:
         run: |
           npm install
 
+      - name: Set up GitHub CLI
+        run: |
+          sudo apt-get install gh
+
       - name: Build Anime Player App
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }} 
         run: |
           npm run dist
 
@@ -37,7 +43,7 @@ jobs:
 
       - name: Publish Release
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}  
         run: |
           git tag "v${{ github.sha }}"
           git push origin "v${{ github.sha }}"
