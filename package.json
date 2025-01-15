@@ -66,33 +66,9 @@
     "fileAssociations": [
       {
         "ext": [
-          "3gp",
-          "avi",
-          "flv",
-          "mkv",
-          "mov",
-          "mp4",
-          "mpeg",
-          "mpg",
-          "webm",
-          "wmv",
-          "vob",
-          "ogg",
-          "m4v",
-          "iso",
-          "aac",
-          "ac3",
-          "aiff",
-          "alac",
-          "amr",
-          "ape",
-          "flac",
-          "mka",
-          "mp3",
-          "ogg",
-          "opus",
-          "wav",
-          "wma"
+          "3gp", "avi", "flv", "mkv", "mov", "mp4", "mpeg", "mpg", "webm", "wmv",
+          "vob", "ogg", "m4v", "iso", "aac", "ac3", "aiff", "alac", "amr", "ape",
+          "flac", "mka", "mp3", "opus", "wav", "wma"
         ],
         "name": "Anime Player",
         "description": "Anime Player Video File",
@@ -106,50 +82,37 @@
       "fileAssociations": [
         {
           "ext": [
-            "3gp",
-            "avi",
-            "flv",
-            "mkv",
-            "mov",
-            "mp4",
-            "mpeg",
-            "mpg",
-            "webm",
-            "wmv",
-            "vob",
-            "ogg",
-            "m4v",
-            "iso",
-            "aac",
-            "ac3",
-            "aiff",
-            "alac",
-            "amr",
-            "ape",
-            "flac",
-            "mka",
-            "mp3",
-            "ogg",
-            "opus",
-            "wav",
-            "wma"
+            "3gp", "avi", "flv", "mkv", "mov", "mp4", "mpeg", "mpg", "webm", "wmv",
+            "vob", "ogg", "m4v", "iso", "aac", "ac3", "aiff", "alac", "amr", "ape",
+            "flac", "mka", "mp3", "opus", "wav", "wma"
           ],
           "name": "Anime Player",
           "role": "Viewer"
         }
       ]
     },
-    "linux": {
-      "icon": "assets/icons/icon.png",
-      "target": [
-        {
-          "target": "AppImage",
-          "arch": [
-            "x64"
-          ]
-        }
+"linux": {
+  "icon": "assets/icons/icon.png",
+  "target": [
+    {
+      "target": "AppImage",
+      "arch": [
+        "x64"
       ]
-    },
+    }
+  ],
+  "fileAssociations": [
+    {
+      "ext": [
+        "3gp", "avi", "flv", "mkv", "mov", "mp4", "mpeg", "mpg", "webm", "wmv",
+        "vob", "ogg", "m4v", "iso", "aac", "ac3", "aiff", "alac", "amr", "ape",
+        "flac", "mka", "mp3", "opus", "wav", "wma"
+      ],
+      "name": "Anime Player",
+      "role": "Viewer"
+    }
+  ]
+},
     "files": [
       "**/*",
       "!**/*.map",
