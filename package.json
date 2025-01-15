@@ -9,7 +9,7 @@
     "anime",
     "media player",
     "video player",
-    "audio player"
+    "anime player"
   ],
   "scripts": {
     "start": " electron .",
