@@ -609,6 +609,7 @@ function loadCustomLogos() {
 		}
 	}
 }
+
 // Show custom confirm dialog and return a promise
 function showCustomConfirm() {
 	return new Promise((resolve) => {
@@ -695,13 +696,20 @@ function deleteCustomLogo(fileName) {
         .then(response => {
             if (response.success) {
                 console.log(response.message); // Log success message
+                
+                // Stop Play All playback
+				stopGifPlayback();
+
                 // Optionally, update the UI or notify the user
                 document.getElementById("audioLogo").style.display = "block";
                 const audioImage = document.getElementById("audioImage");
                 if (audioImage) {
                     audioImage.style.display = "block";
+                    audioImage.src = ""; // Clear current image source
+                    audioImage.classList.remove("D-logo-rotate-animation");
                 }
-                loadCustomLogos(); 
+                loadCustomLogos(); // Refresh the list of logos
+                checkPlayAllButton(); // Recheck Play All button visibility
             }
         })
         .catch(error => {
@@ -711,50 +719,52 @@ function deleteCustomLogo(fileName) {
 
 // Function to check and show the "Play All" button
 function checkPlayAllButton() {
-	const logos = JSON.parse(localStorage.getItem("customLogos")) || {};
-	const playAllButtonContainer = document.getElementById(
-		"playAllButtonContainer"
-	); // Create a div in HTML for the button
+    const logos = JSON.parse(localStorage.getItem("customLogos")) || {};
+    const playAllButtonContainer = document.getElementById("playAllButtonContainer");
 
-	// Clear existing button if any
-	playAllButtonContainer.innerHTML = "";
+    // Clear existing button if any
+    playAllButtonContainer.innerHTML = "";
 
-	// Create "Play All" button if two or more custom logos exist
-	if (Object.keys(logos).length >= 2) {
-		const playAllButton = document.createElement("button");
-		playAllButton.textContent = "Play All";
-		playAllButton.classList.add("play-all-button");
-		playAllButton.addEventListener("click", playAllCustomLogos);
-		playAllButtonContainer.appendChild(playAllButton);
-	}
+    // Create "Play All" button if two or more custom logos exist
+    if (Object.keys(logos).length >= 2) {
+        const playAllButton = document.createElement("button");
+        playAllButton.textContent = "Play All";
+        playAllButton.classList.add("play-all-button");
+        playAllButton.addEventListener("click", playAllCustomLogos);
+        playAllButtonContainer.appendChild(playAllButton);
+    }
 }
 
+// Function to play all custom logos
 async function playAllCustomLogos() {
-	const logos = JSON.parse(localStorage.getItem("customLogos")) || {};
-	const logoKeys = Object.keys(logos);
+    const logos = JSON.parse(localStorage.getItem("customLogos")) || {};
+    const logoKeys = Object.keys(logos);
 
-	isGifPlaying = true; // Set to true when starting playback
+    isGifPlaying = true; // Set to true when starting playback
 
-	while (isGifPlaying) {
-		// Loop while isGifPlaying is true
-		for (let i = 0; i < logoKeys.length; i++) {
-			if (!isGifPlaying) break; // Exit loop if playback is stopped
+    while (isGifPlaying) {
+        // Loop while isGifPlaying is true
+        for (let i = 0; i < logoKeys.length; i++) {
+            if (!isGifPlaying) break; // Exit loop if playback is stopped
 
-			const logoSrc = logos[logoKeys[i]];
-			audioImage.src = logoSrc;
-			audioImage.style.display = "block";
-			audioImage.classList.remove("D-logo-rotate-animation");
+            const logoSrc = logos[logoKeys[i]];
+            const audioImage = document.getElementById("audioImage");
+            if (audioImage) {
+                audioImage.src = logoSrc;
+                audioImage.style.display = "block";
+                audioImage.classList.remove("D-logo-rotate-animation");
 
-			await new Promise((resolve) => {
-				audioImage.onload = () => {
-					setTimeout(() => {
-						resolve();
-					}, 2000); // Duration in milliseconds
-				};
-				audioImage.src = logoSrc; // This triggers the onload event
-			});
-		}
-	}
+                await new Promise((resolve) => {
+                    audioImage.onload = () => {
+                        setTimeout(() => {
+                            resolve();
+                        }, 2000); // Duration in milliseconds
+                    };
+                    audioImage.src = logoSrc; // This triggers the onload event
+                });
+            }
+        }
+    }
 }
 
 // Function to stop playback
@@ -2107,19 +2117,18 @@ function toggleShuffleMode() {
 	isShuffle = !isShuffle;
 
 	if (isShuffle) {
-		shuffleButton.classList.add("active");
-		showStatusMessage("Shuffle: On");
-		window.electron.sendShuffleState("on");
-
+shuffleButton.classList.add("active");
+showStatusMessage("Shuffle: On");
+	  window.electron.sendShuffleState("on");
 	} else {
-		shuffleButton.classList.remove("active");
-		showStatusMessage("Shuffle: Off");
-		playedVideos = [];
-		lastPlayedStack = [];
-		window.electron.sendShuffleState("off");
-
+shuffleButton.classList.remove("active");
+showStatusMessage("Shuffle: Off");
+playedVideos = [];
+lastPlayedStack = [];
+	  window.electron.sendShuffleState("off");
 	}
 }
+
 
 // Toggle repeat mode and show status
 function toggleRepeat() {
@@ -2586,6 +2595,12 @@ document.addEventListener("keydown", (event) => {
 	if (event.ctrlKey && event.key.toLowerCase() === "p") {
 		event.preventDefault();
 		togglePiPMode();
+		return;
+	}
+
+	if (event.ctrlKey && event.key.toLowerCase() === "`") {
+		event.preventDefault();
+		window.electron.minimize();
 		return;
 	}
 

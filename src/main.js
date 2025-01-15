@@ -123,10 +123,10 @@ function createTray() {
   tray = new Tray(path.join(__dirname, "../assets/icons/icon.ico"));
   tray.setToolTip('Anime Player');
 
-  const updateContextMenu = (playbackState = 'paused') => {
+  const updateContextMenu = (playbackState = 'paused', shuffleState = 'off') => {
     const playPauseLabel = (playbackState === 'playing') ? 'Pause' : 'Play';
-    const shuffleLabel = (shuffleState === 'off') ? 'Shuffle Off' : 'Shuffle On'; 
-
+    const shuffleLabel = (shuffleState === 'off') ? 'Shuffle Off' : 'Shuffle On';
+  
     const contextMenu = Menu.buildFromTemplate([
       {
         label: win.isVisible() ? 'Hide Anime Media Player in Taskbar' : 'Show Anime Media Player',
@@ -151,11 +151,11 @@ function createTray() {
         click: () => {
           win.webContents.send('previous');
         }
-      }, 
+      },
       {
         label: shuffleLabel,
         click: () => {
-          win.webContents.send('shuffle'); 
+          win.webContents.send('shuffle');
         }
       },
       {
@@ -183,9 +183,10 @@ function createTray() {
         }
       }
     ]);
+  
     tray.setContextMenu(contextMenu);
   };
-
+  
   updateContextMenu(); // Initialize with 'paused' state
 
   tray.on("click", () => {
@@ -201,10 +202,11 @@ function createTray() {
     updateContextMenu(state);
   });
 
-    // Listen for shuffle state change from the renderer process
-    ipcMain.on('shuffle-state', (event, state) => {
-      updateContextMenu(state);  // Update context menu
-    });
+  ipcMain.on('shuffle-state', (event, state) => {
+    const playbackState = 'paused'; 
+    updateContextMenu(playbackState, state);
+  });
+  
 }
 
 // Prevent all global shortcuts and register new shortcut
