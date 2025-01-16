@@ -1,4 +1,4 @@
-name: Build and Release Anime Player
+name: Anime Player App
 
 on:
   push:
@@ -10,11 +10,10 @@ on:
 
 jobs:
   build:
-    runs-on: ubuntu-latest
-
     strategy:
       matrix:
-        os: [win, linux]
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
 
     steps:
       - name: Checkout code
@@ -26,20 +25,51 @@ jobs:
           node-version: "20"
 
       - name: Install dependencies
-        run: npm install
+        run: |
+          npm install
 
-      - name: Build for ${{ matrix.os }}
+      - name: Build Anime Player App
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          if [ "${{ matrix.os }}" == "win" ]; then
-            npm run dist -- --win
-          elif [ "${{ matrix.os }}" == "linux" ]; then
-            npm run dist -- --linux
-          fi
+          npm run dist
 
       - name: Upload Artifacts
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
-          name: Anime-Player-${{ matrix.os }}-${{ github.sha }}
-          path: dist/*
+          name: Anime-Player-${{ matrix.os }}
+          path: |
+            dist/*.exe       # Windows
+            dist/*.AppImage  # Linux
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Download Artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: ./artifacts
+
+      - name: Publish Release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # Use the short Git SHA as the version tag
+          TAG="v${{ github.sha }}"
+          
+          # Push the Git tag
+          git tag "$TAG"
+          git push origin "$TAG"
+
+          # Verify downloaded artifacts
+          ls -R ./artifacts
+          
+          # Create a GitHub release with artifacts
+          gh release create "$TAG" ./artifacts/** \
+            --title "Release $TAG" \
+            --notes "Automated release for Linux and Windows"
