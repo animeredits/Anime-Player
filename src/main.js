@@ -7,7 +7,6 @@ const fs = require('fs');
 let win;
 let tray = null;
 let isPlaying = false;
-let shuffleState = 'off';
 let isQuitting = false;
 const twoDaysInMillis = 2 * 24 * 60 * 60 * 1000; // 2 days in milliseconds
 
@@ -71,7 +70,7 @@ function createWindow() {
     win.maximize();
     createTray();
     setThumbarButtons();
-    //  win.webContents.openDevTools();
+    //    
   });
 
   win.on("show", setThumbarButtons);
@@ -104,7 +103,7 @@ function updateThumbarButtons() {
       tooltip: isPlaying ? 'Pause' : 'Play',
       icon: path.join(__dirname, isPlaying ? '../assets/icons/pause.png' : '../assets/icons/play.png'), // Update icon based on isPlaying
       click() {
-        isPlaying = isPlaying; 
+        isPlaying = !isPlaying;
         win.webContents.send('play-pause');
         updateThumbarButtons(); 
       },
@@ -123,10 +122,11 @@ function createTray() {
   tray = new Tray(path.join(__dirname, "../assets/icons/icon.ico"));
   tray.setToolTip('Anime Player');
 
-  const updateContextMenu = (playbackState = 'paused', shuffleState = 'off') => {
+  const updateContextMenu = (playbackState = 'paused', shuffleState = 'off', repeatState = 'off') => {
     const playPauseLabel = (playbackState === 'playing') ? 'Pause' : 'Play';
     const shuffleLabel = (shuffleState === 'off') ? 'Shuffle Off' : 'Shuffle On';
-  
+    const repeatLabel = (repeatState === 'off') ? 'Repeat Off' : 'Repeat On';
+
     const contextMenu = Menu.buildFromTemplate([
       {
         label: win.isVisible() ? 'Hide Anime Media Player in Taskbar' : 'Show Anime Media Player',
@@ -159,6 +159,12 @@ function createTray() {
         }
       },
       {
+        label: repeatLabel,
+        click: () => {
+          win.webContents.send('repeat');
+        }
+      },
+      {
         label: "Mute",
         click: () => {
           win.webContents.send('mute');
@@ -183,11 +189,11 @@ function createTray() {
         }
       }
     ]);
-  
+
     tray.setContextMenu(contextMenu);
   };
-  
-  updateContextMenu(); // Initialize with 'paused' state
+
+  updateContextMenu(); // Initialize with 'paused' state and 'off' for shuffle and repeat
 
   tray.on("click", () => {
     win.isVisible() ? win.hide() : (win.show(), win.maximize());
@@ -206,7 +212,12 @@ function createTray() {
     const playbackState = 'paused'; 
     updateContextMenu(playbackState, state);
   });
-  
+
+  ipcMain.on('repeat-state', (event, state) => {
+    const playbackState = 'paused';
+    const shuffleState = 'off'; // Keep shuffleState unchanged
+    updateContextMenu(playbackState, shuffleState, state);
+  });
 }
 
 // Prevent all global shortcuts and register new shortcut
@@ -242,7 +253,6 @@ app.on('ready', () => {
     });
   }
 
-  
   // Unregister any global shortcuts
   globalShortcut.unregisterAll();
 
@@ -303,7 +313,6 @@ ipcMain.on("appClose", (event, playbackTime, videoId) => {
     app.quit(); 
   }
 });
-
 
 // Handle toggle full-screen event
 ipcMain.on('toggle-fullscreen', (event) => {
@@ -366,7 +375,6 @@ ipcMain.handle('save-gif', async (event, fileBuffer, fileName) => {
   }
 });
 
-
 // Modify your delete logo handler to use dynamic import
 ipcMain.handle('delete-logo', async (event, fileName) => {
   try {
@@ -416,7 +424,6 @@ ipcMain.on('save-playback-time', (event, playbackTime, videoId) => {
   }
 });
 
-
 // Ensure playback time is saved before the app quits
 app.on('before-quit', (event) => {
   if (!isQuitting) {
@@ -431,7 +438,13 @@ app.on('before-quit', (event) => {
 });
 
 app.on('activate', () => {
-  if (BrowserWindow.getAllWindows().length === 0) {
+  if (win === 0) {
       createWindow();
+  }
+});
+
+app.on('window-all-closed', () => {
+  if (process.platform !== 'darwin') {
+    app.quit();
   }
 });

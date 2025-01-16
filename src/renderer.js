@@ -2136,10 +2136,12 @@ function toggleRepeat() {
 	currentMedia.loop = isRepeat;
 
 	if (isRepeat) {
-		showStatusMessage("Loop: On");
+		showStatusMessage("Repeat: On");
+		window.electron.sendRepeatState("on");
 		video.play();
 	} else {
-		showStatusMessage("Loop: Off");
+		showStatusMessage("Repeat: Off");
+		window.electron.sendRepeatState("off");
 	}
 }
 
@@ -3070,7 +3072,6 @@ document.querySelectorAll(".sub-dropdown-content").forEach((content) => {
 	});
 });
 
-
 document.addEventListener("click", () => {
 	if (!audioContext) {
 		audioContext = new AudioContext();
@@ -3078,8 +3079,6 @@ document.addEventListener("click", () => {
 		audioContext.resume();
 	}
 });
-
-
 
 // Electron window controls
 document.querySelector("#minimize").addEventListener("click", () => {
@@ -3103,6 +3102,9 @@ window.electron.onWindowStateChange((isFullScreen) => {
 document.querySelector("#windws-close").addEventListener("click", () => {
 	window.electron.close();
 });
+
+
+// Handle actions from tray
 
 // Handle play/pause action from tray
 window.electron.onPlayPause(() => {
@@ -3137,5 +3139,10 @@ window.electron.onDecreaseVolume(() => {
 // Handle shuffle action from tray
 window.electron.onShuffleState(() => {
 	toggleShuffleMode();
+});
+
+// Handle Repate action from tray
+window.electron.onRepeatState(() => {
+	toggleRepeat();
 });
 
