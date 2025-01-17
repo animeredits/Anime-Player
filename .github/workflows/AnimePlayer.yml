@@ -42,7 +42,7 @@ jobs:
             dist/*.exe       # Windows
             dist/*.AppImage  # Linux
 
-    release:
+  release:
     needs: build
     runs-on: ubuntu-latest
 
@@ -51,7 +51,8 @@ jobs:
         uses: actions/checkout@v3
 
       - name: Create artifacts directory
-        run: mkdir -p ./artifacts
+        run: |
+          mkdir -p ./artifacts
 
       - name: Download Artifacts
         uses: actions/download-artifact@v4
@@ -60,29 +61,20 @@ jobs:
 
       - name: Verify Artifacts
         run: |
-          echo "Downloaded Artifacts:"
-          ls -R ./artifacts
-
-      - name: Rename files (optional)
-        run: |
-          find ./artifacts -name "*[!a-zA-Z0-9._-]*" -exec rename 's/[^a-zA-Z0-9._-]/_/g' {} +
+          ls -R ./artifacts  # Verify if artifacts are downloaded correctly
 
       - name: Publish Release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           # Use the short Git SHA as the version tag
-          TAG="v${{ github.sha:0:7 }}"
-
+          TAG="v${{ github.sha }}"
+          
           # Push the Git tag
           git tag "$TAG"
           git push origin "$TAG"
 
           # Create a GitHub release with artifacts
-          gh release create "$TAG" ./artifacts/* \
-            --title "Release $TAG" \
-            --notes "Automated release for Linux and Windows"
-
           gh release create "$TAG" ./artifacts/** \
             --title "Release $TAG" \
             --notes "Automated release for Linux and Windows"
