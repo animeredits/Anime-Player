@@ -250,30 +250,59 @@
                 <span class="icon">&#128266;</span>
                 <span class="text">Audio</span>
               </a>
-              <div class="sub-dropdown-content audio-track-list">
-                <!-- Audio tracks will be dynamically inserted here -->
+              <div class="sub-dropdown-content">
+                <div class="sub-dropdown">
+                  <a href="javascript:void(0)" class="sub-dropbtn">Audio Track</a>
+                  <div class="sub-dropdown-content audio-track-list">
+                    <!-- Tracks will be dynamically inserted here -->
+                  </div>
+                </div>
+                <a class="increase-volume">
+                  <span class="icon">&#128266;</span> <!-- Speaker icon -->
+                  <span class="text">increase Volume</span>
+                </a>
+                
+                <a class="decrease-volume">
+                  <span class="icon">&#128265;</span> <!-- Lower volume icon -->
+                  <span class="text">Decrease Volume</span>
+                </a>
+                
+                <a id="mic-access-button">
+                  <span class="icon">&#127908;</span> <!-- Microphone icon -->
+                  <span class="text">Start Voice Recognition</span>
+                </a>
+                
+                <a class="mute">
+                  <span class="icon">&#128263;</span> <!-- Mute icon -->
+                  <span class="text">Mute</span>
+                </a>
+                
               </div>
             </li>
             <li class="sub-dropdown">
               <a href="javascript:void(0)" class="sub-dropbtn">
-                <span class="icon">&#127909;</span>
+                <span class="icon">&#127909;</span> <!-- Video camera icon -->
                 <span class="text">Video</span>
               </a>
               <div class="sub-dropdown-content">
                 <div class="sub-dropdown">
-                  <a href="javascript:void(0)" class="sub-dropbtn">Zoom</a>
+                  <a href="javascript:void(0)" class="sub-dropbtn">
+                    <span class="icon">&#128269;</span> <!-- Zoom icon -->
+                    <span class="text">Zoom</span>
+                  </a>
                   <div class="sub-dropdown-content" id="zoom-track-list">
-                    <a>1.3x</a>
-                    <a>1.5x</a>
-                    <a>2x</a>
-                    <a>2.5x</a>
-                    <a>3x</a>
-                    <a>Reset</a>
+                    <a><span class="icon">&#128270;</span> 1.3x</a>
+                    <a><span class="icon">&#128270;</span> 1.5x</a>
+                    <a><span class="icon">&#128270;</span> 2x</a>
+                    <a><span class="icon">&#128270;</span> 2.5x</a>
+                    <a><span class="icon">&#128270;</span> 3x</a>
+                    <a><span class="icon">&#8634;</span> Reset</a> 
                   </div>
                   <a class="fullscreenBtn">Full Screen</a>
                 </div>
               </div>
             </li>
+            
             <li>
               <a>
                 <span class="icon">&#128250;</span>

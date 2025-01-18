@@ -28,6 +28,7 @@ const currentTimeDisplay = document.getElementById("currentTime");
 const durationDisplay = document.getElementById("duration");
 const pipButton = document.getElementById("pip");
 const volumeBtn = document.getElementById("volumeBtn");
+const mute = document.querySelectorAll(".mute");
 const videoTitleElement = document.getElementById("videoTitle");
 const switchAudio = document.getElementById("switchAudioTrack");
 const contextMenuItems = document.querySelectorAll(".context-menu li");
@@ -37,8 +38,8 @@ const audioLogoDropdown = document.getElementById("audioLogoDropdown");
 const customLogoLink = document.getElementById("customLogoLink");
 const customLogoInput = document.getElementById("customLogoInput");
 const deleteLogoButton = document.getElementById("deleteLogoButton");
-const logoPreviewContainer = document.getElementById("logoPreviewContainer");
-const logoPreviewImage = document.getElementById("logoPreviewImage")
+const logoPreviewContainers = document.querySelectorAll(".logo-preview-container");
+const logoPreviewImages = document.querySelectorAll(".logo-preview-image");
 const gifSearchInput = document.getElementById("gifSearchInput");
 const gifSearchButton = document.getElementById("gifSearchButton");
 const gifResultsContainer = document.getElementById("gifResultsContainer");
@@ -255,7 +256,8 @@ const statusMessage = document.getElementById("statusMessage");
 // 	},
 // 	"mute": () => {
 // 		updateVolume(gainNode.gain.value = 0);
-// 		updateVolumeIcon();
+// 		updateVolumeIcon();		
+// 		volumeSlider.value = 0; 
 // 	},
 // 	"default volume": () => {
 // 		updateVolume(gainNode.gain.value = 1.0);
@@ -477,6 +479,18 @@ const maxZoom = 3;
 let recognitionActive = false;
 let isMouseOver = false;
 
+// Function to show the temporary status message
+function showStatusMessage(text) {
+	statusMessage.innerText = text;
+	statusMessage.style.opacity = '1';
+
+	// Hide the message after 1.5 seconds
+	setTimeout(() => {
+		statusMessage.style.opacity = '0';
+	}, 1800);
+}
+
+
 // disabling the dragging behavior
 document.querySelectorAll("a ,img").forEach((link) => {
 	link.setAttribute("draggable", "false");
@@ -507,58 +521,62 @@ customLogoLink.addEventListener("click", function() {
 	customLogoInput.click(); // Programmatically click the file input
 });
 
+
+// Function to show the preview
+function showLogoPreview(logoSrc) {
+    Array.from(logoPreviewImages).forEach((img) => {
+        img.src = logoSrc;
+        img.parentElement.style.display = "block"; // Show the preview container
+    });
+}
+
+// Function to hide the preview
+function hideLogoPreview() {
+    Array.from(logoPreviewContainers).forEach((container) => {
+        container.style.display = "none"; // Hide the preview container
+    });
+}
+
 // Update the saveCustomLogo function to add hover preview functionality
 function saveCustomLogo(filePath, fileName) {
-	const logoOptionsContainer = document.querySelector(
-		"#logoOptions .sub-dropdown-content"
-	);
+    const logoOptionsContainer = document.querySelector("#logoOptions .sub-dropdown-content");
 
-	const newLogoDiv = document.createElement("div");
-	newLogoDiv.classList.add("logo-item", "custom");
-	newLogoDiv.setAttribute("data-filename", fileName);
+    const newLogoDiv = document.createElement("div");
+    newLogoDiv.classList.add("logo-item", "custom");
+    newLogoDiv.setAttribute("data-filename", fileName);
 
-	const newLogoLink = document.createElement("a");
-	newLogoLink.setAttribute("data-src", filePath);
-	newLogoLink.textContent = fileName;
+    const newLogoLink = document.createElement("a");
+    newLogoLink.setAttribute("data-src", filePath);
+    newLogoLink.textContent = fileName;
 
-	// Add hover event listeners to show a preview of the logo
-	newLogoLink.addEventListener("mouseenter", function() {
-		logoPreviewImage.src = filePath;
-		logoPreviewContainer.style.display = "block"; // Show the preview container
-	});
-	newLogoLink.addEventListener("mouseleave", function() {
-		logoPreviewContainer.style.display = "none"; // Hide the preview container
-	});
+    newLogoLink.addEventListener("mouseenter", function () {
+        showLogoPreview(filePath);
+    });
+    newLogoLink.addEventListener("mouseleave", function () {
+        hideLogoPreview();
+    });
 
-	newLogoLink.addEventListener("click", function() {
-		audioImage.src = filePath;
-		audioImage.style.display = "block";
-		audioImage.classList.remove("D-logo-rotate-animation");
-	});
+    newLogoLink.addEventListener("click", function () {
+        const audioImage = document.querySelector(".audio-image"); // Assuming there's a class for the audio image
+        audioImage.src = filePath;
+        audioImage.style.display = "block";
+        audioImage.classList.remove("D-logo-rotate-animation");
+    });
 
-	const deleteIcon = document.createElement("i");
-	deleteIcon.classList.add("fa-thin", "fa-trash", "delete-icon");
+    const deleteIcon = document.createElement("i");
+    deleteIcon.classList.add("fa-thin", "fa-trash", "delete-icon");
 
-	deleteIcon.addEventListener("mouseenter", function() {
-		deleteIcon.classList.add("fa-bounce");
-	});
-	deleteIcon.addEventListener("mouseleave", function() {
-		deleteIcon.classList.remove("fa-bounce");
-	});
+    deleteIcon.addEventListener("click", function () {
+        logoOptionsContainer.removeChild(newLogoDiv);
+        removeCustomLogoFromStorage(fileName); // Assuming this function exists
+    });
 
-	deleteIcon.addEventListener("click", function() {
-		logoOptionsContainer.removeChild(newLogoDiv);
-		removeCustomLogoFromStorage(fileName);
-		deleteCustomLogo(fileName)
-		checkPlayAllButton();
-	});
+    newLogoDiv.appendChild(newLogoLink);
+    newLogoDiv.appendChild(deleteIcon);
+    logoOptionsContainer.appendChild(newLogoDiv);
 
-	newLogoDiv.appendChild(newLogoLink);
-	newLogoDiv.appendChild(deleteIcon);
-	logoOptionsContainer.appendChild(newLogoDiv);
-
-	saveCustomLogoToStorage(filePath, fileName);
-	checkPlayAllButton();
+ saveCustomLogoToStorage(filePath, fileName); // Assuming this function exists
+ checkPlayAllButton();
 }
 
 // Function to remove the logo from localStorage
@@ -805,23 +823,30 @@ const defaultLogoLinks = document.querySelectorAll(
 	"#logoOptions .sub-dropdown-content a[data-src]"
 );
 defaultLogoLinks.forEach((link) => {
-	link.addEventListener("mouseenter", function() {
-		const logoSrc = this.getAttribute("data-src");
-		if (logoSrc) {
-			logoPreviewImage.src = logoSrc;
-			logoPreviewContainer.style.display = "block"; // Show the preview container
-		}
-	});
-	link.addEventListener("mouseleave", function() {
-		logoPreviewContainer.style.display = "none"; // Hide the preview container
-	});
+    link.addEventListener("mouseenter", function () {
+        const logoSrc = this.getAttribute("data-src");
+        if (logoSrc) showLogoPreview(logoSrc);
+    });
 
-	link.addEventListener("click", function() {
-		const logoSrc = this.getAttribute("data-src");
-		if (logoSrc) {
-			setSelectedLogo(logoSrc);
-		}
-	});
+    link.addEventListener("mouseleave", function () {
+        hideLogoPreview();
+    });
+
+    link.addEventListener("click", function () {
+        const logoText = this.textContent.trim();
+        const logoSrc = this.getAttribute("data-src");
+
+        if (logoText === "None") {
+            // Clear the selected logo if "None" is chosen
+            Array.from(logoPreviewImages).forEach((img) => {
+                img.src = '';
+                img.alt = 'No Logo Selected';
+            });
+            setSelectedLogo(''); // Assuming this function exists
+        } else if (logoSrc) {
+            setSelectedLogo(logoSrc); // Assuming this function exists
+        }
+    });
 });
 
 
@@ -1703,6 +1728,7 @@ const tooltip = document.createElement("div");
 tooltip.style.position = "absolute";
 tooltip.style.textShadow = "1px 1px 2px rgba(0, 0, 0, 0.863), -1px -1px 2px rgba(0, 0, 0, 0.733), 1px -1px 2px rgba(0, 0, 0, 0.707),-1px 1px 2px black";
 tooltip.style.color = "#fff";
+tooltip.style.fontWeight = "300";
 // tooltip.style.padding = "5px";
 tooltip.style.borderRadius = "5px";
 tooltip.style.display = "none";
@@ -1941,19 +1967,6 @@ mediaPlayer.addEventListener("wheel", (event) => {
 	}
 });
 
-// Function to show the temporary status message
-function showStatusMessage(text) {
-	const statusMessage = document.getElementById('statusMessage');
-	statusMessage.innerText = text;
-	statusMessage.style.opacity = '1';
-
-	// Hide the message after 1.5 seconds
-	setTimeout(() => {
-		statusMessage.style.opacity = '0';
-	}, 1800);
-}
-
-
 // Add mouse wheel event listener to the volume slider
 volumeSlider.addEventListener("wheel", (e) => {
 	e.preventDefault(); // Prevent the default scrolling behavior
@@ -1998,19 +2011,41 @@ function updateVolumeIcon() {
 
 // Mute/Unmute functionality for volume button
 let previousVolume = gainNode.gain.value; // To store the previous volume
+
 volumeBtn.addEventListener("click", () => {
 	if (gainNode.gain.value > 0) {
 		previousVolume = gainNode.gain.value; // Store current volume
 		gainNode.gain.value = 0; // Mute
+		volumeSlider.value = 0; // Update the slider to 0
 	} else {
 		gainNode.gain.value = previousVolume; // Restore volume
+		volumeSlider.value = previousVolume * 100; // Restore slider value (adjust scale if needed)
 	}
 
 	// Update the icon and tooltip based on the current volume
 	updateVolumeIcon();
 });
 
+// Mute/Unmute functionality for multiple buttons
+mute.forEach((muteButton) => {
+    muteButton.addEventListener("click", () => {
+        if (muteButton.textContent.trim() === "Mute") {
+            muteButton.textContent = "Unmute"; // Update button text
+            previousVolume = gainNode.gain.value; // Store the current volume
+            gainNode.gain.value = 0; // Mute the volume
+            updateVolume(0); // Update volume display
+            volumeSlider.value = 0; // Set slider to 0
+        } else {
+            muteButton.textContent = "Mute"; // Update button text
+            gainNode.gain.value = previousVolume; // Restore the previous volume
+            updateVolume(previousVolume); // Update volume display
+            volumeSlider.value = previousVolume * 100; // Restore slider value
+        }
 
+        // Update the icon to reflect the new state
+        updateVolumeIcon();
+    });
+});
 
 // Zoom functionality (CTRL + Shift + Mouse Wheel)
 // Handle zoom separately
