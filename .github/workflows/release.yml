@@ -2,8 +2,13 @@ name: Build and Release Anime Player
 
 on:
   push:
-    tags:
-      - "v*" # Trigger on version tags (e.g., v1.0.0)
+    branches:
+      - main    # Trigger builds on pushes to the main branch
+      - release # You can add other branches here as needed
+
+  # Optional: Still trigger on version tags
+  tags:
+    - "v*"      # Trigger on version tags (e.g., v1.0.0)
 
 jobs:
   build:
@@ -64,6 +69,7 @@ jobs:
     name: Create Release
     needs: build
     runs-on: ubuntu-latest
+    if: github.ref_type == 'tag' # Only run this job if triggered by a tag
     steps:
     # Step 1: Checkout the code
     - name: Checkout Code
