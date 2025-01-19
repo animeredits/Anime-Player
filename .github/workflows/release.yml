@@ -3,7 +3,7 @@ name: Build and Release Anime Player
 on:
   push:
     branches:
-      - main    # Trigger on pushes to the main branch
+      - main
   release:
     types:
       - published
@@ -15,25 +15,22 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      # Step 1: Checkout Code
       - name: Checkout Code
         uses: actions/checkout@v3
 
-      # Step 2: Setup Node.js
       - name: Setup Node.js
         uses: actions/setup-node@v3
         with:
           node-version: 18
 
-      # Step 3: Install Dependencies
       - name: Install Dependencies
         run: npm ci
 
-      # Step 4: Build Linux Executable
       - name: Build for Linux
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }} 
         run: npm run dist -- --linux
 
-      # Step 5: Upload Linux Build Artifacts
       - name: Upload Linux Build Artifacts
         uses: actions/upload-artifact@v3
         with:
@@ -46,27 +43,22 @@ jobs:
     runs-on: windows-latest
 
     steps:
-      # Step 1: Checkout Code
       - name: Checkout Code
         uses: actions/checkout@v3
 
-      # Step 2: Setup Node.js
       - name: Setup Node.js
         uses: actions/setup-node@v3
         with:
           node-version: 18
 
-      # Step 3: Install Dependencies
       - name: Install Dependencies
         run: npm ci
 
-      # Step 4: Build Windows Executable
       - name: Build for Windows
         env:
-          CSC_IDENTITY_AUTO_DISCOVERY: false
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: npm run dist -- --win
 
-      # Step 5: Upload Windows Build Artifacts
       - name: Upload Windows Build Artifacts
         uses: actions/upload-artifact@v3
         with:
@@ -81,25 +73,21 @@ jobs:
     if: github.event_name == 'release' && github.event.action == 'published'
 
     steps:
-      # Step 1: Checkout Code
       - name: Checkout Code
         uses: actions/checkout@v3
 
-      # Step 2: Download Linux Build Artifacts
       - name: Download Linux Artifacts
         uses: actions/download-artifact@v3
         with:
           name: linux-build
           path: linux-dist/
 
-      # Step 3: Download Windows Build Artifacts
       - name: Download Windows Artifacts
         uses: actions/download-artifact@v3
         with:
           name: windows-build
           path: windows-dist/
 
-      # Step 4: Create a GitHub Release
       - name: Publish Release
         uses: softprops/action-gh-release@v1
         with:
