@@ -1,0 +1,85 @@
+name: Build and Release Anime Player
+
+on:
+  push:
+    tags:
+      - "v*" # Trigger on version tags (e.g., v1.0.0)
+
+jobs:
+  build:
+    name: Build and Release
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        platform: [win, linux]
+        node-version: [lts/*]
+
+    steps:
+    # Step 1: Checkout repository
+    - name: Checkout Code
+      uses: actions/checkout@v3
+
+    # Step 2: Setup Node.js and use the latest npm version
+    - name: Setup Node.js
+      uses: actions/setup-node@v3
+      with:
+        node-version: ${{ matrix.node-version }}
+
+    - name: Install Latest npm
+      run: npm install -g npm@latest
+
+    # Step 3: Install dependencies
+    - name: Install Dependencies
+      run: npm ci
+
+    # Step 4: Cache Electron build artifacts
+    - name: Cache Electron Modules
+      uses: actions/cache@v3
+      with:
+        path: |
+          ~/.npm
+          node_modules
+        key: ${{ runner.os }}-npm-cache-${{ hashFiles('package-lock.json') }}
+        restore-keys: |
+          ${{ runner.os }}-npm-cache-
+
+    # Step 5: Build the application
+    - name: Build Application
+      run: |
+        if [ "${{ matrix.platform }}" == "linux" ]; then
+          npm run dist -- --linux;
+        elif [ "${{ matrix.platform }}" == "win" ]; then
+          npm run dist -- --win;
+        fi
+
+    # Step 6: Upload Build Artifacts
+    - name: Upload Artifacts
+      uses: actions/upload-artifact@v3
+      with:
+        name: ${{ matrix.platform }}-build
+        path: dist/
+
+  release:
+    name: Create Release
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+    # Step 1: Checkout the code
+    - name: Checkout Code
+      uses: actions/checkout@v3
+
+    # Step 2: Download Artifacts from Build Job
+    - name: Download Artifacts
+      uses: actions/download-artifact@v3
+      with:
+        name: ${{ matrix.platform }}-build
+        path: dist/
+
+    # Step 3: Create a GitHub Release and Upload Artifacts
+    - name: Create GitHub Release
+      uses: softprops/action-gh-release@v1
+      with:
+        files: dist/*.AppImage dist/*.exe
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
