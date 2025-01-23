@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="description" content="Anime Player is an advanced media player for anime enthusiasts, offering features like customizable audio tracks, fixed navigation bar, and seamless video playback. Enjoy your favorite anime with enhanced controls and voice controls intuitive navigation." />
+    <meta name="description" content="Anime Player is an advanced player for anime enthusiasts. Enjoy your favorite anime with enhanced controls and Hands-free voice commands navigation." />
     <meta name="keywords" content="anime player, media player, anime streaming, video player, customizable audio tracks, fixed navigation bar, seamless playback, anime controls, intuitive navigation" />
     <meta name="author" content="animeredits" />
     <meta http-equiv="Content-Security-Policy" content="script-src 'self' 'unsafe-inline';" />
@@ -252,7 +252,10 @@
               </a>
               <div class="sub-dropdown-content">
                 <div class="sub-dropdown">
-                  <a href="javascript:void(0)" class="sub-dropbtn">Audio Track</a>
+                  <a href="javascript:void(0)" class="sub-dropbtn">
+                    <span class="icon">&#127925;</span> 
+                    <span class="text">Audio Track</span>
+                  </a>
                   <div class="sub-dropdown-content audio-track-list">
                     <!-- Tracks will be dynamically inserted here -->
                   </div>
@@ -367,6 +370,12 @@
           <button id="nextVideo" class="card arrow-button right-arrow ">
             <span class="">&#10093; </span>
           </button>
+        </div>
+        <!-- playlist-container -->
+        <div class="playlist-container">
+            <div class="play-list">
+                <!-- Playlist items will go here -->
+            </div>
         </div>
         <!-- Status Message -->
         <div id="statusMessage" class="status-message"></div>
@@ -509,6 +518,13 @@
                   </div>
                 </div>
                 <div class="shortcut">
+                  <div class="description">Playlist</div>
+                  <div class="keys">
+                    <span class="key">Ctrl</span>
+                    <span class="key">;</span>
+                  </div>
+                </div>
+                <div class="shortcut">
                   <div class="description">Toggle Fullscreen</div>
                   <div class="keys">
                     <span class="key">F</span>
@@ -554,6 +570,13 @@
                   <div class="description">Rotate 180°</div>
                   <div class="keys">
                     <span class="key">2</span>
+                  </div>
+                </div>
+                <div class="shortcut">
+                  <div class="description">Pop Up Screen</div>
+                  <div class="keys">
+                    <span class="key">Ctrl</span>
+                    <span class="key">P/span>
                   </div>
                 </div>
                 <div class="shortcut">
@@ -715,7 +738,7 @@
                 <div class="shortcut">
                   <div class="description">Resume Video</div>
                   <div class="keys">
-                    <span class="key">Continue</span>
+                    <span class="key">Continue / Resume</span>
                   </div>
                 </div>
                 <div class="shortcut">
@@ -745,13 +768,7 @@
                 <div class="shortcut">
                   <div class="description">Pop Up Screen</div>
                   <div class="keys">
-                    <span class="key">Mini Screen</span>
-                  </div>
-                </div>
-                <div class="shortcut">
-                  <div class="description">Refresh App</div>
-                  <div class="keys">
-                    <span class="key">Refresh</span>
+                    <span class="key">Mini Screen/Mini player</span>
                   </div>
                 </div>
                 <div class="shortcut">
@@ -764,6 +781,12 @@
                   <div class="description">Exit Full Screen</div>
                   <div class="keys">
                     <span class="key">Exit Full Screen</span>
+                  </div>
+                </div>
+                <div class="shortcut">
+                  <div class="description">Playlist</div>
+                  <div class="keys">
+                    <span class="key">list</span>
                   </div>
                 </div>
                 <div class="shortcut">

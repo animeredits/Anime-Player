@@ -1,6 +1,6 @@
 @font-face {
   font-family: "inter";
-  src: url(./assets/Font/inter_Inter-Bold.woff);
+  src: url(../assets/Font/inter_Inter-Bold.woff);
 }
 
 /* Global Styles */
@@ -57,7 +57,6 @@ nav {
   z-index: 99;
   background: transparent;
   font-size: 11px;
-  font-weight: bold;
   letter-spacing: 0.5px;
   font-weight: 450;
   -webkit-app-region: no-drag;
@@ -76,6 +75,7 @@ nav ul li {
 
 nav ul li a {
   color: #fff;
+  font-weight:300;
   text-decoration: none;
   -webkit-app-region: no-drag;
   transition: background-color 0.3s ease, border-radius 0.3s ease;
@@ -498,6 +498,7 @@ nav > * {
   max-height: 450px;
   overflow-y: auto;
   overflow-x: hidden;
+  font-weight: 300;
 }
 
 .play-list a {
@@ -525,8 +526,10 @@ nav > * {
 .play-list .highlight {
   background-color: rgba(255, 255, 255, 0.2);
   color: #fff;
+  font-weight: 400;
   padding: 5px;
   border-radius: 5px;
+  transition: background-color 0.2s;
 }
 
 .selected-track {
@@ -702,6 +705,46 @@ main {
   color: #bbb;
 }
 
+/* Main container for the playlist */
+.playlist-container {
+  display: none;
+  position: fixed;
+  top: 10%;
+  right: -100%;
+  max-height: 100vh; 
+  width: 31%; 
+  overflow-y: auto;
+  overflow-x: hidden;
+  backdrop-filter: blur(10px) saturate(180%);
+  background-color: #2f2f2f99;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.125);
+  box-shadow: -2px 0 5px rgba(0, 0, 0, 0.5); 
+  transition: right 0.3s ease-in-out; 
+  z-index: 998;
+  color: #fff; 
+  padding: 10px;
+}
+
+
+/* When the playlist is visible */
+.playlist-container.show {
+  display: block;
+  right: 30px; 
+}
+
+/* Playlist items styling */
+.play-list a{
+  display: block;
+  padding: 10px;
+  text-decoration: none;
+  color: #fff;
+  border-bottom: 1px solid #444; 
+  cursor: pointer;
+  transition: background-color 0.2s;
+  scroll-behavior: smooth;
+}
+
 /* Navigation Arrows */
 .nav-arrows {
   display: flex;
@@ -794,7 +837,7 @@ main {
 .modal {
   display: none; /* Hidden by default */
   position: fixed; /* Stay in place */
-  z-index: 1; /* Sit on top */
+  z-index: 99; 
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
@@ -1196,9 +1239,12 @@ span {
 /* Button Spacing */
 #volumeBtn,
 #switchAudioTrack,
-#repeatBtn,
-#randomButton {
+#repeatBtn{
   padding: 8px;
+}
+
+.fa-shuffle:before {
+  padding: 10px;
 }
 
 /* Additional Icon Sizing */
@@ -1333,7 +1379,6 @@ input[type="range"]::-webkit-slider-thumb {
   bottom: 11px;
   background-color: #1d1c25;
   cursor: -webkit-grab;
-
   -webkit-transition: border 1000ms ease;
   transition: border 1000ms ease;
 }
@@ -1562,6 +1607,7 @@ video:-ms-fullscreen {
     height: 20px; /* Adjust logo size */
     margin-top: 2px;
   }
+
 }
 
 @media (max-width: 480px) {
@@ -1585,3 +1631,4 @@ video:-ms-fullscreen {
     height: 18px;
   }
 }
+

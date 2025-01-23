@@ -1463,6 +1463,45 @@ playlistContainers.forEach((playlistContainer) => {
 	});
 });
 
+// playlist Container show
+function togglePlaylist() {
+    const playlistContainer = document.querySelector(".playlist-container");
+    const playlistItems = playlistContainer.querySelectorAll(".playlist-item");
+
+    // Check if there are any items in the playlist
+    if (playlistItems.length === 0) {
+        // Show message if playlist is empty
+        showStatusMessage("No videos in the playlist.") 
+        playlistContainer.classList.remove("show");
+    } else {
+        // Toggle playlist visibility only if it has items
+        playlistContainer.classList.toggle("show");
+    }
+}
+
+// Hide dropdown when clicking outside
+window.addEventListener("click", function (event) {
+    const playlistContainer = document.querySelector(".playlist-container");
+    // Check if the click was outside the playlist container
+    if (!playlistContainer.contains(event.target)) {
+        playlistContainer.classList.remove("show");
+    }
+});
+
+
+// Add drag-and-drop functionality
+document.addEventListener('dragover', (event) => {
+  event.preventDefault(); // Prevent default to allow drop
+});
+
+document.addEventListener('drop', (event) => {
+event.preventDefault();
+if (event.dataTransfer && event.dataTransfer.files.length > 0) {
+    const file = event.dataTransfer.files[0];
+    loadMediaFile(file); // Call your existing loadMediaFile function
+}
+});
+
 
 // Event listener for multiple file selection
 CSOInput.addEventListener("change", (event) => handleFileSelection(event.target.files));
@@ -2634,6 +2673,11 @@ document.addEventListener("keydown", (event) => {
 		togglePiPMode();
 		return;
 	}
+
+	if (event.ctrlKey && event.key === ";") {
+        event.preventDefault();
+        togglePlaylist();
+    }
 
 	if (event.ctrlKey && event.key.toLowerCase() === "`") {
 		event.preventDefault();
