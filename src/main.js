@@ -1,4 +1,4 @@
-const { app, BrowserWindow, Tray, Menu, screen, Notification, ipcMain, globalShortcut } = require("electron");
+const { app, BrowserWindow, Tray, Menu, screen, Notification,dialog, ipcMain, globalShortcut } = require("electron");
 const { autoUpdater } = require('electron-updater');
 const log = require('electron-log');
 const path = require('path');
@@ -70,7 +70,7 @@ function createWindow() {
     win.maximize();
     createTray();
     setThumbarButtons();
-    // win.webContents.openDevTools();
+    win.webContents.openDevTools();
   });
 
   win.on("show", setThumbarButtons);
@@ -323,26 +323,31 @@ ipcMain.on('toggle-fullscreen', (event) => {
   event.sender.send('fullscreen-state-changed', isFullscreen);
 });
 
-// Logging for auto-updater
-autoUpdater.logger = log;
-autoUpdater.logger.transports.file.level = 'info';
+  // Handle update events
+  autoUpdater.on('update-available', () => {
+    dialog.showMessageBox(mainWindow, {
+      type: 'info',
+      title: 'Update Available',
+      message: 'A new version of Anime Player is available. It will be downloaded in the background.',
+    });
+  });
 
-// Auto-updater events
-autoUpdater.on('update-available', () => {
-  new Notification({
-    title: 'Update Available',
-    body: 'A new update is available. Click to download and install.',
-  }).show();
-  win.webContents.send('update_available');
-});
+  autoUpdater.on('update-downloaded', () => {
+    dialog
+      .showMessageBox(mainWindow, {
+        type: 'info',
+        title: 'Update Ready',
+        message: 'A new version is ready. Restart the app to apply the update?',
+        buttons: ['Restart', 'Later'],
+      })
+      .then((result) => {
+        if (result.response === 0) autoUpdater.quitAndInstall();
+      });
+  });
 
-autoUpdater.on('update-downloaded', () => {
-  new Notification({
-    title: 'Update Ready',
-    body: 'Update downloaded. Click to install now.',
-  }).show();
-  win.webContents.send('update_downloaded');
-});
+  autoUpdater.on('error', (error) => {
+    dialog.showErrorBox('Update Error', error == null ? 'unknown' : (error.stack || error).toString());
+  });
 
 // Handle notification click to install the update
 ipcMain.on('restart_app', () => {
