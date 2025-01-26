@@ -94,7 +94,7 @@ jobs:
             linux-dist/*.AppImage
             windows-dist/*.exe
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.GH_TOKEN }}
 
       # Run update_and_notify.sh script
       - name: Run Update and Notify Script
