@@ -48,7 +48,7 @@ jobs:
        
       # Publish the release
       - name: Publish to GitHub Releases
-        uses: samuelmeuli/action-electron-builder@v2
+        uses: samuelmeuli/action-electron-builder@v1
         with:
           GH_TOKEN: ${{ secrets.GH_TOKEN }}
           args: --mac --win --linux
