@@ -21,6 +21,8 @@
     "electron-log": "^5.1.7",
     "electron-store": "^10.0.0",
     "electron-updater": "^6.3.4",
+    "glob": "^11.0.1",
+    "inflight": "^1.0.6",
     "latest-version": "^9.0.0",
     "nodemon": "^3.1.9",
     "trash": "^9.0.0"
@@ -66,9 +68,32 @@
     "fileAssociations": [
       {
         "ext": [
-          "3gp", "avi", "flv", "mkv", "mov", "mp4", "mpeg", "mpg", "webm", "wmv",
-          "vob", "ogg", "m4v", "iso", "aac", "ac3", "aiff", "alac", "amr", "ape",
-          "flac", "mka", "mp3", "opus", "wav", "wma"
+          "3gp",
+          "avi",
+          "flv",
+          "mkv",
+          "mov",
+          "mp4",
+          "mpeg",
+          "mpg",
+          "webm",
+          "wmv",
+          "vob",
+          "ogg",
+          "m4v",
+          "iso",
+          "aac",
+          "ac3",
+          "aiff",
+          "alac",
+          "amr",
+          "ape",
+          "flac",
+          "mka",
+          "mp3",
+          "opus",
+          "wav",
+          "wma"
         ],
         "name": "Anime Player",
         "description": "Anime Player Video File",
@@ -82,153 +107,176 @@
       "fileAssociations": [
         {
           "ext": [
-            "3gp", "avi", "flv", "mkv", "mov", "mp4", "mpeg", "mpg", "webm", "wmv",
-            "vob", "ogg", "m4v", "iso", "aac", "ac3", "aiff", "alac", "amr", "ape",
-            "flac", "mka", "mp3", "opus", "wav", "wma"
+            "3gp",
+            "avi",
+            "flv",
+            "mkv",
+            "mov",
+            "mp4",
+            "mpeg",
+            "mpg",
+            "webm",
+            "wmv",
+            "vob",
+            "ogg",
+            "m4v",
+            "iso",
+            "aac",
+            "ac3",
+            "aiff",
+            "alac",
+            "amr",
+            "ape",
+            "flac",
+            "mka",
+            "mp3",
+            "opus",
+            "wav",
+            "wma"
           ],
           "name": "Anime Player",
           "role": "Viewer"
         }
       ]
     },
-"linux": {
-  "icon": "assets/icons/icon.png",
-  "target": [
-    {
-      "target": "AppImage",
-      "arch": [
-        "x64"
+    "linux": {
+      "icon": "assets/icons/icon.png",
+      "target": [
+        {
+          "target": "AppImage",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "fileAssociations": [
+        {
+          "ext": "3gp",
+          "name": "Anime Player",
+          "role": "Viewer"
+        },
+        {
+          "ext": "avi",
+          "name": "Anime Player",
+          "role": "Viewer"
+        },
+        {
+          "ext": "flv",
+          "name": "Anime Player",
+          "role": "Viewer"
+        },
+        {
+          "ext": "mkv",
+          "name": "Anime Player",
+          "role": "Viewer"
+        },
+        {
+          "ext": "mp4",
+          "name": "Anime Player",
+          "role": "Viewer"
+        },
+        {
+          "ext": "mpeg",
+          "name": "Anime Player",
+          "role": "Viewer"
+        },
+        {
+          "ext": "mpg",
+          "name": "Anime Player",
+          "role": "Viewer"
+        },
+        {
+          "ext": "webm",
+          "name": "Anime Player",
+          "role": "Viewer"
+        },
+        {
+          "ext": "wmv",
+          "name": "Anime Player",
+          "role": "Viewer"
+        },
+        {
+          "ext": "vob",
+          "name": "Anime Player",
+          "role": "Viewer"
+        },
+        {
+          "ext": "ogg",
+          "name": "Anime Player",
+          "role": "Viewer"
+        },
+        {
+          "ext": "m4v",
+          "name": "Anime Player",
+          "role": "Viewer"
+        },
+        {
+          "ext": "iso",
+          "name": "Anime Player",
+          "role": "Viewer"
+        },
+        {
+          "ext": "aac",
+          "name": "Anime Player",
+          "role": "Viewer"
+        },
+        {
+          "ext": "ac3",
+          "name": "Anime Player",
+          "role": "Viewer"
+        },
+        {
+          "ext": "aiff",
+          "name": "Anime Player",
+          "role": "Viewer"
+        },
+        {
+          "ext": "alac",
+          "name": "Anime Player",
+          "role": "Viewer"
+        },
+        {
+          "ext": "amr",
+          "name": "Anime Player",
+          "role": "Viewer"
+        },
+        {
+          "ext": "ape",
+          "name": "Anime Player",
+          "role": "Viewer"
+        },
+        {
+          "ext": "flac",
+          "name": "Anime Player",
+          "role": "Viewer"
+        },
+        {
+          "ext": "mka",
+          "name": "Anime Player",
+          "role": "Viewer"
+        },
+        {
+          "ext": "mp3",
+          "name": "Anime Player",
+          "role": "Viewer"
+        },
+        {
+          "ext": "opus",
+          "name": "Anime Player",
+          "role": "Viewer"
+        },
+        {
+          "ext": "wav",
+          "name": "Anime Player",
+          "role": "Viewer"
+        },
+        {
+          "ext": "wma",
+          "name": "Anime Player",
+          "role": "Viewer"
+        }
       ]
-    }
-  ],
-  "fileAssociations": [
-    {
-      "ext": "3gp",
-      "name": "Anime Player",
-      "role": "Viewer"
     },
-    {
-      "ext": "avi",
-      "name": "Anime Player",
-      "role": "Viewer"
-    },
-    {
-      "ext": "flv",
-      "name": "Anime Player",
-      "role": "Viewer"
-    },
-    {
-      "ext": "mkv",
-      "name": "Anime Player",
-      "role": "Viewer"
-    },
-    {
-      "ext": "mp4",
-      "name": "Anime Player",
-      "role": "Viewer"
-    },
-    {
-      "ext": "mpeg",
-      "name": "Anime Player",
-      "role": "Viewer"
-    },
-    {
-      "ext": "mpg",
-      "name": "Anime Player",
-      "role": "Viewer"
-    },
-    {
-      "ext": "webm",
-      "name": "Anime Player",
-      "role": "Viewer"
-    },
-    {
-      "ext": "wmv",
-      "name": "Anime Player",
-      "role": "Viewer"
-    },
-    {
-      "ext": "vob",
-      "name": "Anime Player",
-      "role": "Viewer"
-    },
-    {
-      "ext": "ogg",
-      "name": "Anime Player",
-      "role": "Viewer"
-    },
-    {
-      "ext": "m4v",
-      "name": "Anime Player",
-      "role": "Viewer"
-    },
-    {
-      "ext": "iso",
-      "name": "Anime Player",
-      "role": "Viewer"
-    },
-    {
-      "ext": "aac",
-      "name": "Anime Player",
-      "role": "Viewer"
-    },
-    {
-      "ext": "ac3",
-      "name": "Anime Player",
-      "role": "Viewer"
-    },
-    {
-      "ext": "aiff",
-      "name": "Anime Player",
-      "role": "Viewer"
-    },
-    {
-      "ext": "alac",
-      "name": "Anime Player",
-      "role": "Viewer"
-    },
-    {
-      "ext": "amr",
-      "name": "Anime Player",
-      "role": "Viewer"
-    },
-    {
-      "ext": "ape",
-      "name": "Anime Player",
-      "role": "Viewer"
-    },
-    {
-      "ext": "flac",
-      "name": "Anime Player",
-      "role": "Viewer"
-    },
-    {
-      "ext": "mka",
-      "name": "Anime Player",
-      "role": "Viewer"
-    },
-    {
-      "ext": "mp3",
-      "name": "Anime Player",
-      "role": "Viewer"
-    },
-    {
-      "ext": "opus",
-      "name": "Anime Player",
-      "role": "Viewer"
-    },
-    {
-      "ext": "wav",
-      "name": "Anime Player",
-      "role": "Viewer"
-    },
-    {
-      "ext": "wma",
-      "name": "Anime Player",
-      "role": "Viewer"
-    }
-  ]
-},
     "files": [
       "**/*",
       "!**/*.map",

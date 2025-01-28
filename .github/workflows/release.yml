@@ -16,7 +16,7 @@ jobs:
 
     strategy:
       matrix:
-        os: [ubuntu-latest, macos-latest, windows-latest] # Build on Linux, macOS, and Windows
+        os: [ubuntu-latest, windows-latest] # Build on Linux and Windows
 
     steps:
       # Checkout the repository
@@ -45,10 +45,11 @@ jobs:
       # Build the Electron app
       - name: Build the app
         run: npm run dist
-       
+      
       # Publish the release
       - name: Publish to GitHub Releases
         uses: samuelmeuli/action-electron-builder@v1
-        with:
+        env:
           GH_TOKEN: ${{ secrets.GH_TOKEN }}
-          args: --mac --win --linux
+        with:
+          args:  --win --linux
