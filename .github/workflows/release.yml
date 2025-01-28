@@ -1,101 +1,49 @@
-name: Build and Release Anime Player
+name: Anime Player
 
 on:
   push:
-    branches:
-      - main
-  release:
-    types:
-      - published
+    tags:
+      - 'v*' # Trigger the workflow on tags like v1.0.0
 
 jobs:
-  # Build for Linux
-  build-linux:
-    name: Build for Linux
-    runs-on: ubuntu-latest
+  build:
+    runs-on: ${{ matrix.os }}
+
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest] # Build on Linux, macOS, and Windows
 
     steps:
-      - name: Checkout Code
-        uses: actions/checkout@v3
+      # Checkout the repository
+      - name: Checkout repository
+        uses: actions/checkout@v4
 
-      - name: Setup Node.js
+      # Set up Node.js
+      - name: Set up Node.js
         uses: actions/setup-node@v3
         with:
           node-version: 18
 
-      - name: Install Dependencies
+      # Cache Node.js dependencies
+      - name: Cache dependencies
+        uses: actions/cache@v3
+        with:
+          path: ~/.npm
+          key: ${{ runner.os }}-node-${{ hashFiles('**/package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-node-
+
+      # Install dependencies
+      - name: Install dependencies
         run: npm ci
 
-      - name: Build for Linux
-        env:
-          GH_TOKEN: ${{ secrets.GH_TOKEN }} 
-        run: npm run dist -- --linux
-
-      - name: Upload Linux Build Artifacts
-        uses: actions/upload-artifact@v4
+      # Build the Electron app
+      - name: Build the app
+        run: npm run dist
+       
+      # Publish the release
+      - name: Publish to GitHub Releases
+        uses: samuelmeuli/action-electron-builder@v2
         with:
-          name: linux-build
-          path: dist/*.AppImage 
-
-  # Build for Windows
-  build-windows:
-    name: Build for Windows
-    runs-on: windows-latest
-
-    steps:
-      - name: Checkout Code
-        uses: actions/checkout@v3
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v3
-        with:
-          node-version: 18
-
-      - name: Install Dependencies
-        run: npm ci
-
-      - name: Build for Windows
-        env:
-          GH_TOKEN: ${{ secrets.GH_TOKEN}} 
-        run: npm run dist -- --win
-
-      - name: Upload Windows Build Artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: windows-build
-          path: dist/*.exe 
-
-  # Release Job
-  release:
-    name: Publish Release
-    needs: [build-linux, build-windows]
-    runs-on: ubuntu-latest
-    if: github.event_name == 'release'
-    steps:
-      - name: Checkout Code
-        uses: actions/checkout@v3
-
-      - name: Download Linux Artifacts
-        uses: actions/download-artifact@v4
-        with:
-          name: linux-build
-          path: linux-dist/
-
-      - name: Download Windows Artifacts
-        uses: actions/download-artifact@v4
-        with:
-          name: windows-build
-          path: windows-dist/
-
-      - name: Publish Release
-        uses: softprops/action-gh-release@v1
-        with:
-          files: |
-            linux-dist/*.AppImage
-            windows-dist/*.exe
-        env:
           GH_TOKEN: ${{ secrets.GH_TOKEN }}
-
-      # Run update_and_notify.sh script
-      - name: Run Update and Notify Script
-        run: bash .github/scripts/update_and_notify.sh
+          args: --mac --win --linux
