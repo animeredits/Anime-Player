@@ -4,17 +4,10 @@ contextBridge.exposeInMainWorld('electron', {
   // Window Controls
   minimize: () => ipcRenderer.send('Minimize'),
   maximize: () => ipcRenderer.send("Maximize"),
-  onWindowStateChange: (callback) => {
-      ipcRenderer.on("window-state-changed", (_, isFullScreen) => {
-          callback(isFullScreen);
-      });
-  },  close: () => ipcRenderer.send('appClose'),
+  close: () => ipcRenderer.send('appClose'),
   toggleFullscreen: () => ipcRenderer.send('toggle-fullscreen'),
-  onFullscreenStateChanged: (callback) => {
-    ipcRenderer.on('fullscreen-state-changed', (_, isFullscreen) => {
-      callback(isFullscreen);
-    });
-  },
+  onWindowStateChange: (callback) => {ipcRenderer.on("window-state-changed", (_, isFullScreen) => {callback(isFullScreen);}); }, 
+  onFullscreenStateChanged: (callback) => {ipcRenderer.on('fullscreen-state-changed', (_, isFullscreen) => {callback(isFullscreen);});},
 
   // Media Controls
   onPlayPause: (callback) => ipcRenderer.on('play-pause', callback),
@@ -29,7 +22,6 @@ contextBridge.exposeInMainWorld('electron', {
   onRepeatState: (callback) => ipcRenderer.on('repeat', callback),
   sendRepeatState: (state) => ipcRenderer.send('repeat-state', state),
 
-
   // Update Controls
   onUpdateAvailable: (callback) => ipcRenderer.on('update_available', callback),
   onUpdateDownloaded: (callback) => ipcRenderer.on('update_downloaded', callback),
@@ -38,25 +30,23 @@ contextBridge.exposeInMainWorld('electron', {
 
   // Custom Logo Handling
   saveCustomLogo: (fileBuffer, fileName) => { return ipcRenderer.invoke('save-gif', fileBuffer, fileName);},
-  
-    deleteLogo: (fileName) => ipcRenderer.invoke('delete-logo', fileName), // New delete logo function
+  deleteLogo: (fileName) => ipcRenderer.invoke('delete-logo', fileName), 
 
   // Playback State Management
   savePlaybackTime: (playbackTime, videoId) => {
     return new Promise((resolve, reject) => {
-      ipcRenderer.send('save-playback-time', playbackTime, videoId); // Send playback time to main process
+      ipcRenderer.send('save-playback-time', playbackTime, videoId);
       ipcRenderer.once('playback-time-saved', (event, success) => {
         if (success) resolve();
         else reject(new Error('Failed to save playback time'));
       });
     });
   },
-  
   onAppClosing: (callback) => ipcRenderer.on('app-closing', callback),
 
-  loadPlaybackTime: (callback) => {
+loadPlaybackTime: (callback) => {
     ipcRenderer.on('load-playback-time', (event, playbackData) => {
-      callback(playbackData); // Load saved playback time
+      callback(playbackData);
     });
   },
 
@@ -65,5 +55,5 @@ contextBridge.exposeInMainWorld('electron', {
   },
   on: (channel, func) => {
     ipcRenderer.on(channel, (event, ...args) => func(...args));
-  }
+  },
 });

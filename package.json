@@ -18,13 +18,7 @@
   },
   "dependencies": {
     "depcheck": "^1.4.7",
-    "electron-log": "^5.1.7",
-    "electron-store": "^10.0.0",
     "electron-updater": "^6.3.4",
-    "glob": "^11.0.1",
-    "inflight": "^1.0.6",
-    "latest-version": "^9.0.0",
-    "nodemon": "^3.1.9",
     "trash": "^9.0.0"
   },
   "devDependencies": {
@@ -63,7 +57,8 @@
       "deleteAppDataOnUninstall": true,
       "shortcutName": "Anime Player",
       "uninstallDisplayName": "Anime Player",
-      "artifactName": "Anime-Player-Setup-${version}.exe"
+      "artifactName": "Anime-Player-Setup-${version}.exe",
+      "allowElevation": true
     },
     "fileAssociations": [
       {

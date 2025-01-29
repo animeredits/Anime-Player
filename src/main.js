@@ -1,15 +1,14 @@
 const { app, BrowserWindow, Tray, Menu, screen, Notification,dialog, ipcMain, globalShortcut } = require("electron");
 const { autoUpdater } = require('electron-updater');
-const log = require('electron-log');
 const path = require('path');
 const fs = require('fs');
 
 let win;
 let tray = null;
+let fileToOpen = null;
 let isPlaying = false;
 let isQuitting = false;
 const twoDaysInMillis = 2 * 24 * 60 * 60 * 1000; // 2 days in milliseconds
-
 
 // Set user data path to avoid permission issues and create the logos folder
 const animePlayerPath = path.join(app.getPath('appData'), 'Anime Player');
@@ -325,7 +324,7 @@ ipcMain.on('toggle-fullscreen', (event) => {
 
   // Handle update events
   autoUpdater.on('update-available', () => {
-    dialog.showMessageBox(mainWindow, {
+    dialog.showMessageBox(win, {
       type: 'info',
       title: 'Update Available',
       message: 'A new version of Anime Player is available. It will be downloaded in the background.',
@@ -334,7 +333,7 @@ ipcMain.on('toggle-fullscreen', (event) => {
 
   autoUpdater.on('update-downloaded', () => {
     dialog
-      .showMessageBox(mainWindow, {
+      .showMessageBox(win, {
         type: 'info',
         title: 'Update Ready',
         message: 'A new version is ready. Restart the app to apply the update?',
@@ -453,3 +452,37 @@ app.on('window-all-closed', () => {
     app.quit();
   }
 });
+
+if (process.platform === 'darwin') {
+  app.on('open-file', (event, filePath) => {
+      event.preventDefault();
+      fileToOpen = filePath;
+      if (mainWindow) {
+          mainWindow.webContents.send('open-file', filePath);
+      } else {
+          createWindow(filePath);
+      }
+  });
+} else {
+  fileToOpen = process.argv.length > 1 ? process.argv[1] : null;
+}
+
+app.whenReady().then(() => {
+  // Only create the window if it hasn't been created already
+  if (!win) {
+    createWindow(fileToOpen);
+  }
+});
+
+app.on('window-all-closed', () => {
+  if (process.platform !== 'darwin') {
+      app.quit();
+  }
+});
+
+ipcMain.on('request-open-file', (event) => {
+  if (fileToOpen) {
+      event.reply('open-file', fileToOpen);
+  }
+});
+

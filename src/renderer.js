@@ -1296,68 +1296,8 @@ function readAudioMetadata(file, callback) {
 	reader.readAsArrayBuffer(file.slice(0, 1024 * 10)); // Read the first 10KB
 }
 
-// Function to play a video by its index
-function playVideoByIndex(index) {
-	if (index < 0 || index >= videoFiles.length) return;
 
-	const videoFile = videoFiles[index];
-	loadMediaFile(videoFile);
-
-	playedVideos.push(index);
-	if (playedVideos.length === videoFiles.length) {
-		playedVideos = []; // Reset once all videos have been played
-	}
-
-	lastPlayedIndex = index;
-	currentVideoIndex = index;
-}
-
-
-
-// Function to play media based on file type
-function playMedia(file) {
-	const fileType = file.type.split("/")[0];
-	if (["video", "audio"].includes(fileType) || file.type === "image/gif") {
-		loadMediaFile(file);
-	} else {
-		// console.error("Unsupported file type");
-	}
-}
-
-// Event listener for file input changes
-fileInput.addEventListener("change", async (event) => {
-	const file = event.target.files[0];
-	if (file) {
-		playMedia(file);
-		updateVideoTitle(file.name);
-	}
-});
-
-// Handle file selection from input
-function handleFileSelection(files) {
-	videoFiles = Array.from(files).filter(
-		(file) =>
-		file.type.startsWith("video/") ||
-		file.type.startsWith("audio/") ||
-		file.type === "image/gif"
-	);
-
-	// Update the playlist dropdown
-	updatePlaylistDropdown();
-
-	// Check if there are valid video files and update navigation buttons
-	if (videoFiles.length > 0) {
-		currentVideoIndex = 0; // Default to the first file
-		playMedia(videoFiles[currentVideoIndex]);
-		audioLogo.style.display = videoFiles[0].type.startsWith("video/") ? "none" : "block";
-		updateNavigationButtons();
-	} else {
-		nextButton.classList.add("hidden");
-		prevButton.classList.add("hidden");
-	}
-}
-
-// Example: Efficiently Update Playlist Dropdown
+// Efficiently Update Playlist Dropdown
 function updatePlaylistDropdown() {
 	const playlistContainers = document.querySelectorAll(".play-list");
 
@@ -1502,9 +1442,64 @@ if (event.dataTransfer && event.dataTransfer.files.length > 0) {
 }
 });
 
+// Function to play a video by its index
+function playVideoByIndex(index) {
+	if (index < 0 || index >= videoFiles.length) return;
 
-// Event listener for multiple file selection
-CSOInput.addEventListener("change", (event) => handleFileSelection(event.target.files));
+	const videoFile = videoFiles[index];
+	loadMediaFile(videoFile);
+
+	playedVideos.push(index);
+	if (playedVideos.length === videoFiles.length) {
+		playedVideos = []; // Reset once all videos have been played
+	}
+
+	lastPlayedIndex = index;
+	currentVideoIndex = index;
+}
+
+// Function to play media based on file type
+function playMedia(file) {
+	const fileType = file.type.split("/")[0];
+	if (["video", "audio"].includes(fileType) || file.type === "image/gif") {
+		loadMediaFile(file);
+	} else {
+		// console.error("Unsupported file type");
+	}
+}
+
+// Event listener for file input changes
+fileInput.addEventListener("change", async (event) => {
+	const file = event.target.files[0];
+	if (file) {
+		playMedia(file);
+		updateVideoTitle(file.name);
+	}
+});
+
+// Handle file selection from input
+function handleFileSelection(files) {
+	videoFiles = Array.from(files).filter(
+		(file) =>
+		file.type.startsWith("video/") ||
+		file.type.startsWith("audio/") ||
+		file.type === "image/gif"
+	);
+
+	// Update the playlist dropdown
+	updatePlaylistDropdown();
+
+	// Check if there are valid video files and update navigation buttons
+	if (videoFiles.length > 0) {
+		currentVideoIndex = 0; // Default to the first file
+		playMedia(videoFiles[currentVideoIndex]);
+		audioLogo.style.display = videoFiles[0].type.startsWith("video/") ? "none" : "block";
+		updateNavigationButtons();
+	} else {
+		nextButton.classList.add("hidden");
+		prevButton.classList.add("hidden");
+	}
+}
 
 // Event listener for multiple file selection
 CSOInput.addEventListener("change", (event) => handleFileSelection(event.target.files));
@@ -3184,7 +3179,6 @@ document.querySelector("#windws-close").addEventListener("click", () => {
 
 
 // Handle actions from tray
-
 // Handle play/pause action from tray
 window.electron.onPlayPause(() => {
 	togglePlayPause();
