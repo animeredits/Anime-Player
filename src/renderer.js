@@ -3180,6 +3180,7 @@ document.querySelector("#windws-close").addEventListener("click", () => {
 document.addEventListener("DOMContentLoaded", () => {
 	// Listen for file open event from main process
 	window.electron.onFileOpen((filePath) => {
+		if (filePath) {
         fetchFileAsBlob(filePath)
 		.then((file) => {
 		playMedia(file);
@@ -3187,6 +3188,7 @@ document.addEventListener("DOMContentLoaded", () => {
 		.catch((error) => {
             console.error("Failed to load file:", error);
 		});
+	}
 	});
 
 	// Request the main process to check if a file was opened at startup

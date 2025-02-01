@@ -457,14 +457,22 @@ if (process.platform === 'darwin') {
   app.on('open-file', (event, filePath) => {
       event.preventDefault();
       fileToOpen = filePath;
-      if (mainWindow) {
-          mainWindow.webContents.send('open-file', filePath);
+      if (win) {
+          win.webContents.send('open-file', filePath);
       } else {
           createWindow(filePath);
       }
   });
 } else {
+  // Handle file path for Windows
   fileToOpen = process.argv.length > 1 ? process.argv[1] : null;
+  app.on('open-file', (event, filePath) => {
+      event.preventDefault();
+      fileToOpen = filePath;
+      if (win) {
+          win.webContents.send('open-file', filePath);
+      }
+  });
 }
 
 app.whenReady().then(() => {
