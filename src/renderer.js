@@ -3177,6 +3177,29 @@ document.querySelector("#windws-close").addEventListener("click", () => {
 	window.electron.close();
 });
 
+document.addEventListener("DOMContentLoaded", () => {
+	// Listen for file open event from main process
+	window.electron.onFileOpen((filePath) => {
+        fetchFileAsBlob(filePath)
+		.then((file) => {
+		playMedia(file);
+		})
+		.catch((error) => {
+            console.error("Failed to load file:", error);
+		});
+	});
+
+	// Request the main process to check if a file was opened at startup
+	window.electron.requestOpenFile();
+});
+
+  // Helper function to fetch a file as a Blob
+    async function fetchFileAsBlob(filePath) {
+	const response = await fetch(filePath);
+	const blob = await response.blob();
+	return new File([blob], filePath.split("/").pop(), { type: blob.type });
+}
+
 
 // Handle actions from tray
 // Handle play/pause action from tray

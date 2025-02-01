@@ -56,4 +56,13 @@ loadPlaybackTime: (callback) => {
   on: (channel, func) => {
     ipcRenderer.on(channel, (event, ...args) => func(...args));
   },
+   // File Open Handling
+  onFileOpen: (callback) => {
+    ipcRenderer.on('open-file', (event, filePath) => {
+      callback(filePath);
+    });
+  },
+  requestOpenFile: () => {
+    ipcRenderer.send('request-open-file');
+  },
 });
