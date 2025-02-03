@@ -447,12 +447,6 @@ app.on('activate', () => {
   }
 });
 
-app.on('window-all-closed', () => {
-  if (process.platform !== 'darwin') {
-    app.quit();
-  }
-});
-
 if (process.platform === 'darwin') {
   app.on('open-file', (event, filePath) => {
       event.preventDefault();
@@ -460,37 +454,59 @@ if (process.platform === 'darwin') {
       if (win) {
           win.webContents.send('open-file', filePath);
       } else {
-          createWindow(filePath);
+        win.show(filePath);
       }
   });
 } else {
   // Handle file path for Windows
   fileToOpen = process.argv.length > 1 ? process.argv[1] : null;
   app.on('open-file', (event, filePath) => {
-      event.preventDefault();
-      fileToOpen = filePath;
-      if (win) {
-          win.webContents.send('open-file', filePath);
-      }
+    event.preventDefault();
+    fileToOpen = filePath;
+  
+    if (win) {
+      if (win.isMinimized()) win.restore();
+      win.focus();
+      win.webContents.send('open-file', filePath); // Send file to existing window
+    } else {
+      createWindow();
+      win.once('ready-to-show', () => {
+        win.webContents.send('open-file', filePath);
+      });
+    }
   });
+  
+  app.on('second-instance', (event, commandLine, workingDirectory) => {
+    if (win) {
+      if (win.isMinimized()) win.restore();
+      win.focus();
+  
+      // Check if a file was passed when the app was opened again
+      const newFile = commandLine.find(arg => arg.endsWith('.mp4') || arg.endsWith('.mkv') || arg.endsWith('.avi'));
+      if (newFile) {
+        win.webContents.send('open-file', newFile);
+      }
+    }
+  });
+  
 }
-
-app.whenReady().then(() => {
-  // Only create the window if it hasn't been created already
-  if (!win) {
-    createWindow(fileToOpen);
-  }
-});
-
-app.on('window-all-closed', () => {
-  if (process.platform !== 'darwin') {
-      app.quit();
-  }
-});
+  // Ensure Windows handles files correctly when launched
+  app.whenReady().then(() => {
+    if (fileToOpen && win) {
+      win.webContents.send('open-file', fileToOpen);
+    }
+  });
+  
 
 ipcMain.on('request-open-file', (event) => {
   if (fileToOpen) {
       event.reply('open-file', fileToOpen);
   }
 });
+
+app.on('window-all-closed', () => {
+  if (process.platform !== 'darwin') {
+      app.quit();
+  }    
+});  
 

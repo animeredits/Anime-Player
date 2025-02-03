@@ -1,7 +1,7 @@
 {
   "name": "anime-player",
   "version": "1.0.0",
-  "description": "Anime Player offering seamless playback of audio and video files across windows and mac platforms. Features include custom controls, support for various media formats, and a user-friendly interface designed for both casual and advanced users.",
+  "description": "Anime Player is an advanced player for anime enthusiasts. Enjoy your favorite anime with enhanced controls and Hands-free voice commands navigation.",
   "main": "./src/main.js",
   "author": "Anime Player",
   "license": "MIT",

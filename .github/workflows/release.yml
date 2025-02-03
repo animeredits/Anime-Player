@@ -72,30 +72,36 @@ jobs:
     runs-on: ubuntu-latest
     if: github.event_name == 'release'
     steps:
-      - name: Checkout Code
-        uses: actions/checkout@v3
+    - name: Checkout Code
+      uses: actions/checkout@v3
 
-      - name: Download Linux Artifacts
-        uses: actions/download-artifact@v4
-        with:
-          name: linux-build
-          path: linux-dist/
+    - name: Download Linux Artifacts
+      uses: actions/download-artifact@v4
+      with:
+        name: linux-build
+        path: linux-dist/
 
-      - name: Download Windows Artifacts
-        uses: actions/download-artifact@v4
-        with:
-          name: windows-build
-          path: windows-dist/
+    - name: Download Windows Artifacts
+      uses: actions/download-artifact@v4
+      with:
+        name: windows-build
+        path: windows-dist/
 
-      - name: Publish Release
-        uses: softprops/action-gh-release@v1
-        with:
-          files: |
-            linux-dist/*.AppImage
-            windows-dist/*.exe
-        env:
+    - name: Generate and Upload latest.yml
+      run: |
+        npm run generate-latest-yml  # Assuming you have a script to generate the yml
+        gh release upload ${{ github.ref }} linux-dist/*.AppImage windows-dist/*.exe latest.yml
+      env:
+        GH_TOKEN: ${{ secrets.GH_TOKEN }}
+
+    - name: Publish Release
+      uses: softprops/action-gh-release@v1
+      with:
+        files: |
+          linux-dist/*.AppImage
+          windows-dist/*.exe
+      env:
           GH_TOKEN: ${{ secrets.GH_TOKEN }}
 
-      # Run update_and_notify.sh script
-      - name: Run Update and Notify Script
-        run: bash .github/scripts/update_and_notify.sh
+    - name: Run Update and Notify Script
+      run: bash .github/scripts/update_and_notify.sh
