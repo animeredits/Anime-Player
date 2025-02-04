@@ -59,8 +59,4 @@ contextBridge.exposeInMainWorld('electron', {
     ipcRenderer.send('request-open-file');
   },
   getFileData: (filePath) => ipcRenderer.invoke("get-file-data", filePath),
-
-  // App update handling
-  onDownloadProgress: (callback) => ipcRenderer.on('download-progress', (event, percent) => callback(percent)),
-
 });
