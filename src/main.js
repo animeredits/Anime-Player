@@ -340,9 +340,25 @@ ipcMain.on('toggle-fullscreen', (event) => {
         buttons: ['Restart', 'Later'],
       })
       .then((result) => {
-        if (result.response === 0) autoUpdater.quitAndInstall();
+        if (result.response === 0) {
+          // Ensure all windows are closed before updating
+          if (tray) {
+            tray.destroy(); // Remove tray icon
+          }
+  
+          if (win) {
+            win.removeAllListeners('close'); // Prevent any other close event logic
+            win.close();
+          }
+  
+          app.quit(); // Quit the application completely
+  
+          // Restart with the update
+          autoUpdater.quitAndInstall();
+        }
       });
   });
+  
 
   autoUpdater.on('error', (error) => {
     dialog.showErrorBox('Update Error', error == null ? 'unknown' : (error.stack || error).toString());
