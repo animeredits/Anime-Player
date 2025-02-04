@@ -316,7 +316,6 @@ if (isOnline()) {
   });
 }
 
-// Check for updates when online
 autoUpdater.on('update-available', () => {
   dialog
     .showMessageBox(win, {
@@ -358,6 +357,19 @@ autoUpdater.on('update-downloaded', () => {
         autoUpdater.quitAndInstall();
       }
     });
+});
+
+// Show download progress
+autoUpdater.on('download-progress', (progressObj) => {
+  const { percent, transferred, total } = progressObj;
+  
+  // Optionally, show a progress bar or log the download progress
+  console.log(`Download Progress: ${percent.toFixed(2)}% (${transferred}/${total})`);
+  
+  // Example: You can update the UI with a custom progress bar or dialog (if needed)
+  if (win) {
+    win.webContents.send('download-progress', percent);
+  }
 });
 
   // autoUpdater.on('error', (error) => {

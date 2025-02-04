@@ -3249,6 +3249,13 @@ function createFileObject({ buffer, mimeType, fileName }) {
     return new File([blob], fileName, { type: mimeType });
 }
 
+ // Handle download progress
+window.electron.onDownloadProgress((percent) => {
+	const progressBar = document.getElementById('progress-bar');
+	progressBar.style.width = `${percent}%`;
+	progressBar.textContent = `${percent.toFixed(2)}%`;
+});
+
 // Handle actions from tray
 // Handle play/pause action from tray
 window.electron.onPlayPause(() => {
