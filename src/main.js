@@ -359,15 +359,9 @@ ipcMain.on('toggle-fullscreen', (event) => {
       });
   });
   
-
   autoUpdater.on('error', (error) => {
     dialog.showErrorBox('Update Error', error == null ? 'unknown' : (error.stack || error).toString());
   });
-
-// Handle notification click to install the update
-ipcMain.on('restart_app', () => {
-  autoUpdater.quitAndInstall();
-});
 
 // Update thumbnail buttons when state changes
 ipcMain.on('play-pause-state', (event, state) => {
@@ -424,8 +418,23 @@ ipcMain.on("appClose", (event, playbackTime, videoId) => {
   // Write the playback data to a JSON file
   fs.writeFileSync(savePath, JSON.stringify(playbackData));
 
-  app.quit(); // Close the app
-});
+  // Destroy Tray
+  if (tray) {
+    tray.destroy();
+  }
+
+  // Close the window
+  if (win) {
+    win.destroy();
+  }
+
+  // Ensure all processes are killed
+  setTimeout(() => {
+    app.quit();  // Quit Electron app
+    app.exit(0); // Force exit
+    process.exit(0); // Ensure all background processes are killed
+    process.kill(process.pid); // Kill remaining processes if any
+  }, 1000);});
 
 
 ipcMain.on('save-playback-time', (event, playbackTime, videoId) => {
@@ -498,7 +507,7 @@ if (process.platform === 'darwin') {
       win.focus();
   
       // Check if a file was passed when the app was opened again
-      const newFile = commandLine.find(arg => arg.endsWith('.mp4') || arg.endsWith('.mkv') || arg.endsWith('.avi'));
+      const newFile = commandLine.find(arg => arg.endsWith('.mp4') || arg.endsWith('.mkv') || arg.endsWith('.mp3'));
       if (newFile) {
         win.webContents.send('open-file', newFile);
       }

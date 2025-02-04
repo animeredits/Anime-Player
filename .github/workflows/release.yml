@@ -105,7 +105,3 @@ jobs:
       env:
           GH_TOKEN: ${{ secrets.GH_TOKEN }}
           if: startsWith(github.ref, 'refs/tags/v')
-
-
-    - name: Run Update and Notify Script
-      run: bash .github/scripts/update_and_notify.sh

@@ -2344,6 +2344,7 @@ document.addEventListener("DOMContentLoaded", function() {
 	// Event listener for the left mouse button to hide/show controls
 	video.addEventListener("click", function(event) {
 		if (event.button === 0) {
+			togglePlayPause();
 			// 0 is the left mouse button
 			if (navbar.classList.contains("hidden")) {
 				showControls();
@@ -3184,6 +3185,7 @@ document.addEventListener("DOMContentLoaded", () => {
         fetchFileAsBlob(filePath)
 		.then((file) => {
 		playMedia(file);
+		updateVideoTitle(filePath);
 		})
 		.catch((error) => {
             console.error("Failed to load file:", error);
