@@ -286,33 +286,6 @@ ipcMain.on("Maximize", () => {
   win.webContents.send("window-state-changed", isFullScreen);
 });
 
-ipcMain.on("appClose", (event, playbackTime, videoId) => {
-  const animePlayerPath = app.getPath('userData');
-  const savePath = path.join(animePlayerPath, 'playback-time.json');
-
-  // Read existing playback data
-  let playbackData = {};
-  if (fs.existsSync(savePath)) {
-    playbackData = JSON.parse(fs.readFileSync(savePath));
-  }
-
-  // Save playback time for the video
-  playbackData[videoId] = {
-    time: playbackTime,
-    timestamp: Date.now(), // Save the current time for expiration
-  };
-
-  // Write updated playback data to file
-  fs.writeFileSync(savePath, JSON.stringify(playbackData));
-
-  // Close the window, which will trigger the 'closed' event and cleanup
-  if (win) {
-    win.close();
-  } else {
-    app.quit(); 
-  }
-});
-
 // Handle toggle full-screen event
 ipcMain.on('toggle-fullscreen', (event) => {
   const isFullscreen = !win.isFullScreen();
@@ -359,9 +332,9 @@ ipcMain.on('toggle-fullscreen', (event) => {
       });
   });
   
-  autoUpdater.on('error', (error) => {
-    dialog.showErrorBox('Update Error', error == null ? 'unknown' : (error.stack || error).toString());
-  });
+  // autoUpdater.on('error', (error) => {
+  //   dialog.showErrorBox('Update Error', error == null ? 'unknown' : (error.stack || error).toString());
+  // });
 
 // Update thumbnail buttons when state changes
 ipcMain.on('play-pause-state', (event, state) => {

@@ -42,20 +42,13 @@ contextBridge.exposeInMainWorld('electron', {
       });
     });
   },
+
   onAppClosing: (callback) => ipcRenderer.on('app-closing', callback),
+  loadPlaybackTime: (callback) => {ipcRenderer.on('load-playback-time', (event, playbackData) => {callback(playbackData);});},
 
-loadPlaybackTime: (callback) => {
-    ipcRenderer.on('load-playback-time', (event, playbackData) => {
-      callback(playbackData);
-    });
-  },
+  send: (channel, data) => {ipcRenderer.send(channel, data);},
+  on: (channel, func) => {ipcRenderer.on(channel, (event, ...args) => func(...args));},
 
-  send: (channel, data) => {
-    ipcRenderer.send(channel, data);
-  },
-  on: (channel, func) => {
-    ipcRenderer.on(channel, (event, ...args) => func(...args));
-  },
    // File Open Handling
   onFileOpen: (callback) => {
     ipcRenderer.on('open-file', (event, filePath) => {

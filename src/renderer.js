@@ -12,6 +12,7 @@ const rewind = document.getElementById("rewind");
 const forward = document.getElementById("forward");
 const nextButton = document.getElementById("nextVideo");
 const prevButton = document.getElementById("prevVideo");
+const continueButton = document.getElementById("continueOverlay");
 const playbackSpeedLinks = document.querySelectorAll("#Playback-Speed a");
 const speedOptions = {
 	increase: [1.25, 1.5, 1.75, 2],
@@ -1128,7 +1129,6 @@ function clearCache(videoId) {
 
 // Update visibility of the continue button
 function handleContinueButtonVisibility() {
-	const continueButton = document.getElementById("continueButton");
 	if (lastPlaybackTime > 0) {
 		continueButton.style.display = "block"; // Show the button if playback time exists
 		startAutoHideContinueButton(); // Start the 5-second timeout for auto-hiding the button
@@ -1141,7 +1141,6 @@ function handleContinueButtonVisibility() {
 function startAutoHideContinueButton() {
 	clearTimeout(hideContinueButtonTimeout); // Clear any previous timeout
 	hideContinueButtonTimeout = setTimeout(() => {
-		const continueButton = document.getElementById("continueButton");
 		continueButton.style.display = "none"; // Hide the button after 5 seconds
 
 		// Clear the playback cache if the button is not clicked
@@ -1163,7 +1162,6 @@ video.addEventListener("pause", () => {
 	}
 
 	handleContinueButtonVisibility(); // Update the button visibility on pause
-	const continueButton = document.getElementById("continueButton");
 	continueButton.style.display = "none"; // Hide when video is paused
 });
 
@@ -1206,7 +1204,6 @@ window.addEventListener('load', () => {
 		if (playbackData && playbackData.videoId === videoId) {
 			lastPlaybackTime = playbackData.time;
 			// Show the "Continue" button only if the playback time is greater than 0
-			const continueButton = document.getElementById("continueButton");
 			if (lastPlaybackTime > 0) {
 				continueButton.style.display = "block";
 			}
@@ -1218,8 +1215,7 @@ window.addEventListener('load', () => {
 document.getElementById("continueButton").addEventListener("click", () => {
 	video.currentTime = lastPlaybackTime; // Resume from last saved playback time
 	video.play(); // Play the video
-	document.getElementById("continueButton").style.display = "none"; // Hide the button after clicking
-
+	document.getElementById("continueOverlay").style.display = "none";
 	// Clear the playback cache after continuing
 	clearCache(videoId);
 });
@@ -2188,16 +2184,15 @@ function toggleShuffleMode() {
 	if (isShuffle) {
 shuffleButton.classList.add("active");
 showStatusMessage("Shuffle: On");
-	  window.electron.sendShuffleState("on");
+	window.electron.sendShuffleState("on");
 	} else {
 shuffleButton.classList.remove("active");
 showStatusMessage("Shuffle: Off");
 playedVideos = [];
 lastPlayedStack = [];
-	  window.electron.sendShuffleState("off");
+	window.electron.sendShuffleState("off");
 	}
 }
-
 
 // Toggle repeat mode and show status
 function toggleRepeat() {
@@ -2670,6 +2665,42 @@ document.addEventListener("keydown", (event) => {
 		return;
 	}
 
+	if (event.ctrlKey && event.key === "ArrowRight") {
+		event.preventDefault();
+		currentMedia.currentTime = Math.min(currentMedia.duration, currentMedia.currentTime + 60);
+		showStatusMessage(
+			`${formatTime(currentMedia.currentTime)} / ${formatTime(currentMedia.duration)}`
+		);
+		return;
+	}
+
+	if (event.ctrlKey && event.key === "ArrowLeft") {
+		event.preventDefault();
+		currentMedia.currentTime = Math.max(0, currentMedia.currentTime - 60);
+		showStatusMessage(
+			`${formatTime(currentMedia.currentTime)} / ${formatTime(currentMedia.duration)}`
+		);
+		return;
+	}
+
+	if (event.shiftKey && event.key === "ArrowRight") {
+		event.preventDefault();
+		currentMedia.currentTime = Math.min(currentMedia.duration, currentMedia.currentTime + 5);
+			showStatusMessage(
+				`${formatTime(currentMedia.currentTime)} / ${formatTime(currentMedia.duration)}`
+			); 
+			return;
+	}
+
+	if (event.shiftKey && event.key === "ArrowLeft") {
+		event.preventDefault();
+		currentMedia.currentTime = Math.min(currentMedia.duration, currentMedia.currentTime - 5);
+			showStatusMessage(
+				`${formatTime(currentMedia.currentTime)} / ${formatTime(currentMedia.duration)}`
+			); 		
+			return;
+	}
+
 	if (event.ctrlKey && event.key === ";") {
         event.preventDefault();
         togglePlaylist();
@@ -2704,13 +2735,13 @@ document.addEventListener("keydown", (event) => {
 			updateVolume(gainNode.gain.value - 0.1) // Decrease volume
 		},
 		ArrowLeft: () => {
-			currentMedia.currentTime = Math.max(0, currentMedia.currentTime - 5);
+			currentMedia.currentTime = Math.max(0, currentMedia.currentTime - 10);
 			showStatusMessage(
 				`${formatTime(currentMedia.currentTime)} / ${formatTime(currentMedia.duration)}`
 			); // Show current time and total duration
 		},
 		ArrowRight: () => {
-			currentMedia.currentTime = Math.min(currentMedia.duration, currentMedia.currentTime + 5);
+			currentMedia.currentTime = Math.min(currentMedia.duration, currentMedia.currentTime + 10);
 			showStatusMessage(
 				`${formatTime(currentMedia.currentTime)} / ${formatTime(currentMedia.duration)}`
 			); // Show current time and total duration
