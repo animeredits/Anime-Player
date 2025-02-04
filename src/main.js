@@ -2,6 +2,7 @@ const { app, BrowserWindow, Tray, Menu, screen, Notification,dialog, ipcMain, gl
 const { autoUpdater } = require('electron-updater');
 const path = require('path');
 const fs = require('fs');
+const { net } = require('electron');
 
 let win;
 let tray = null;
@@ -295,43 +296,65 @@ ipcMain.on('toggle-fullscreen', (event) => {
   event.sender.send('fullscreen-state-changed', isFullscreen);
 });
 
-  // Handle update events
-  autoUpdater.on('update-available', () => {
-    dialog.showMessageBox(win, {
+function isOnline() {
+  return net.isOnline();
+}
+
+// Handle update events
+if (isOnline()) {
+  autoUpdater.checkForUpdates();
+} else {
+  dialog.showMessageBox(win, {
+    type: 'warning',
+    title: 'No Internet Connection',
+    message: 'Could not check for updates. Please check your internet connection and try again later.',
+  });
+}
+
+// Check for updates when online
+autoUpdater.on('update-available', () => {
+  dialog
+    .showMessageBox(win, {
       type: 'info',
       title: 'Update Available',
-      message: 'A new version of Anime Player is available. It will be downloaded in the background.',
+      message: 'A new version of Anime Player is available. Would you like to update now?',
+      buttons: ['Update Now', 'Later'],
+    })
+    .then((result) => {
+      if (result.response === 0) {
+        // User chose 'Update Now', start downloading the update
+        autoUpdater.downloadUpdate();
+      }
     });
-  });
+});
 
-  autoUpdater.on('update-downloaded', () => {
-    dialog
-      .showMessageBox(win, {
-        type: 'info',
-        title: 'Update Ready',
-        message: 'A new version is ready. Restart the app to apply the update?',
-        buttons: ['Restart', 'Later'],
-      })
-      .then((result) => {
-        if (result.response === 0) {
-          // Ensure all windows are closed before updating
-          if (tray) {
-            tray.destroy(); // Remove tray icon
-          }
-  
-          if (win) {
-            win.removeAllListeners('close'); // Prevent any other close event logic
-            win.close();
-          }
-  
-          app.quit(); // Quit the application completely
-  
-          // Restart with the update
-          autoUpdater.quitAndInstall();
+autoUpdater.on('update-downloaded', () => {
+  dialog
+    .showMessageBox(win, {
+      type: 'info',
+      title: 'Update Ready',
+      message: 'The update has been downloaded. Restart the app to apply it now?',
+      buttons: ['Restart', 'Later'],
+    })
+    .then((result) => {
+      if (result.response === 0) {
+        // Ensure all windows are closed before updating
+        if (tray) {
+          tray.destroy(); // Remove tray icon
         }
-      });
-  });
-  
+        if (win) {
+          win.removeAllListeners('close'); // Prevent any other close event logic
+          win.close();
+        }
+
+        app.quit(); // Quit the application completely
+
+        // Restart with the update
+        autoUpdater.quitAndInstall();
+      }
+    });
+});
+
   // autoUpdater.on('error', (error) => {
   //   dialog.showErrorBox('Update Error', error == null ? 'unknown' : (error.stack || error).toString());
   // });
@@ -383,32 +406,49 @@ ipcMain.handle('delete-logo', async (event, fileName) => {
 });
 
 ipcMain.on("appClose", (event, playbackTime, videoId) => {
-  // Save the playback time before quitting, specific to the videoId (file)
-  const playbackData = { videoId, time: playbackTime };
-  const animePlayerPath = app.getPath('userData');
-  const savePath = path.join(animePlayerPath, 'playback-time.json');
+  const animePlayerPath = app.getPath("userData");
+  const savePath = path.join(animePlayerPath, "playback-time.json");
 
-  // Write the playback data to a JSON file
-  fs.writeFileSync(savePath, JSON.stringify(playbackData));
-
-  // Destroy Tray
-  if (tray) {
-    tray.destroy();
+  // Read existing playback data if available
+  let playbackData = {};
+  if (fs.existsSync(savePath)) {
+    try {
+      playbackData = JSON.parse(fs.readFileSync(savePath, "utf-8"));
+    } catch (error) {
+      console.error("Error reading playback data:", error);
+      playbackData = {};
+    }
   }
 
-  // Close the window
-  if (win) {
-    win.destroy();
+  // Save playback time for the video
+  playbackData[videoId] = {
+    time: playbackTime,
+    timestamp: Date.now(),
+  };
+
+  // Write updated playback data to file
+  try {
+    fs.writeFileSync(savePath, JSON.stringify(playbackData, null, 2)); // Pretty print for readability
+  } catch (error) {
+    console.error("Error writing playback data:", error);
   }
 
-  // Ensure all processes are killed
+  // Destroy tray if exists
+  if (global.tray) {
+    global.tray.destroy();
+  }
+
+  // Close the window safely
+  if (global.win) {
+    global.win.destroy();
+  }
+
+  // Ensure app exits cleanly
   setTimeout(() => {
-    app.quit();  // Quit Electron app
-    app.exit(0); // Force exit
-    process.exit(0); // Ensure all background processes are killed
-    process.kill(process.pid); // Kill remaining processes if any
-  }, 1000);});
-
+    app.quit();
+    process.exit(0);
+  }, 100);
+});
 
 ipcMain.on('save-playback-time', (event, playbackTime, videoId) => {
   const animePlayerPath = app.getPath('userData');
