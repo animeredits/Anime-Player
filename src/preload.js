@@ -58,4 +58,6 @@ contextBridge.exposeInMainWorld('electron', {
   requestOpenFile: () => {
     ipcRenderer.send('request-open-file');
   },
+  getFileData: (filePath) => ipcRenderer.invoke("get-file-data", filePath),
+
 });

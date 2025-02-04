@@ -362,6 +362,9 @@
         <input type="file" id="CSOInput" multiple accept="video/*,video/x-matroska,video/x-hevc,video/x-h264,audio/*" style="display: none;" />
         <!-- Folder input to select a directory containing media files -->
         <input type="file" id="folderInput" webkitdirectory style="display: none;" />
+        <div id="loader" style="display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: rgba(0,0,0,0.7); color: white; padding: 10px; border-radius: 5px;">
+          Loading...
+        </div>
         <!-- Navigation Arrows -->
         <div class="nav-arrows">
           <button id="prevVideo" class="card arrow-button left-arrow ">

@@ -2,11 +2,13 @@ const { app, BrowserWindow, Tray, Menu, screen, Notification,dialog, ipcMain, gl
 const { autoUpdater } = require('electron-updater');
 const path = require('path');
 const fs = require('fs');
+const mime = require("mime-types");
+const { readFileSync } = require("fs");
 const { net } = require('electron');
 
 let win;
 let tray = null;
-let fileToOpen = null;
+let fileToOpen = process.argv.find(arg => /\.(mp4|mkv|mp3)$/i.test(arg)) || null;
 let isPlaying = false;
 let isQuitting = false;
 const twoDaysInMillis = 2 * 24 * 60 * 60 * 1000; // 2 days in milliseconds
@@ -67,6 +69,9 @@ function createWindow() {
   });
 
   win.once("ready-to-show", () => {
+    if (fileToOpen) {
+      win.webContents.send('open-file', fileToOpen);
+    }
     win.maximize();
     createTray();
     setThumbarButtons();
@@ -514,31 +519,44 @@ if (process.platform === 'darwin') {
     }
   });
   
-  app.on('second-instance', (event, commandLine, workingDirectory) => {
+  app.on('second-instance', (event, commandLine) => {
     if (win) {
       if (win.isMinimized()) win.restore();
       win.focus();
   
       // Check if a file was passed when the app was opened again
-      const newFile = commandLine.find(arg => arg.endsWith('.mp4') || arg.endsWith('.mkv') || arg.endsWith('.mp3'));
+      const newFile = commandLine.find(arg => /\.(mp4|mkv|mp3)$/i.test(arg));
       if (newFile) {
         win.webContents.send('open-file', newFile);
       }
     }
   });
   
-}
+
   // Ensure Windows handles files correctly when launched
   app.whenReady().then(() => {
-    if (fileToOpen && win) {
-      win.webContents.send('open-file', fileToOpen);
-    }
+    const newFile = process.argv.find(arg => /\.(mp4|mkv|mp3)$/i.test(arg));
+    if (newFile) fileToOpen = newFile;
+    win.show();
   });
-  
+}
 
 ipcMain.on('request-open-file', (event) => {
   if (fileToOpen) {
       event.reply('open-file', fileToOpen);
+  }
+});
+
+// Handle file open event from renderer
+ipcMain.handle("get-file-data", (event, filePath) => {
+  try {
+      const buffer = readFileSync(filePath);
+      const mimeType = mime.lookup(filePath) || "application/octet-stream";
+      const fileName = path.basename(filePath);
+      return { buffer, mimeType, fileName };
+  } catch (error) {
+      console.error("Error reading file:", error);
+      return null;
   }
 });
 

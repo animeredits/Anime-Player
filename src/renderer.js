@@ -1082,6 +1082,7 @@ function loadMediaFile(file) {
 	console.error("Unsupported file type:", file.type);
 }
 
+
 function getVideoId(fileName) {
 	// Generate or extract video ID from file name
 	return fileName.replace(/\.[^/.]+$/, "");
@@ -3209,32 +3210,44 @@ document.querySelector("#windws-close").addEventListener("click", () => {
 	window.electron.close();
 });
 
-document.addEventListener("DOMContentLoaded", () => {
-	// Listen for file open event from main process
-	window.electron.onFileOpen((filePath) => {
-		if (filePath) {
-        fetchFileAsBlob(filePath)
-		.then((file) => {
-		playMedia(file);
-		updateVideoTitle(filePath);
-		})
-		.catch((error) => {
-            console.error("Failed to load file:", error);
-		});
-	}
-	});
 
-	// Request the main process to check if a file was opened at startup
-	window.electron.requestOpenFile();
-});
-
-  // Helper function to fetch a file as a Blob
-    async function fetchFileAsBlob(filePath) {
-	const response = await fetch(filePath);
-	const blob = await response.blob();
-	return new File([blob], filePath.split("/").pop(), { type: blob.type });
+// Show loader
+function showLoader() {
+    const loader = document.getElementById("loader");
+    if (loader) loader.style.display = "block";
 }
 
+// Hide loader
+function hideLoader() {
+    const loader = document.getElementById("loader");
+    if (loader) loader.style.display = "none";
+}
+
+document.addEventListener("DOMContentLoaded", () => {
+    window.electron.onFileOpen((filePath) => {
+        if (filePath) {
+            showLoader();
+            window.electron.getFileData(filePath)
+                .then((fileData) => {
+                    if (fileData) {
+                        const file = createFileObject(fileData);
+                        playMedia(file);
+                        updateVideoTitle(fileData.fileName);
+                    }
+                })
+                .catch((error) => console.error("Failed to load file:", error))
+                .finally(() => hideLoader());
+        }
+    });
+
+    window.electron.requestOpenFile();
+});
+
+// Create File object from received data
+function createFileObject({ buffer, mimeType, fileName }) {
+    const blob = new Blob([buffer], { type: mimeType });
+    return new File([blob], fileName, { type: mimeType });
+}
 
 // Handle actions from tray
 // Handle play/pause action from tray
