@@ -72,7 +72,7 @@ jobs:
     name: Publish Release
     needs: [build-linux, build-windows]
     runs-on: ubuntu-latest
-    if: github.event_name == 'release'
+    if: startsWith(github.ref, 'refs/tags/v')
     steps:
     - name: Checkout Code
       uses: actions/checkout@v3
@@ -108,22 +108,29 @@ jobs:
 
   # Auto-tagging job
   tag-release:
-        name: Auto Tag Release
-        runs-on: ubuntu-latest
-        steps:
-        - name: Checkout Code
-          uses: actions/checkout@v3
+    name: Auto Tag Release
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v3
 
-        - name: Set Git User
-          run: |
-            git config --global user.email "actions@github.com"
-            git config --global user.name "GitHub Actions"
+      - name: Set Git User
+        run: |
+          git config --global user.email "actions@github.com"
+          git config --global user.name "GitHub Actions"
 
-        - name: Create Tag
-          run: |
-            VERSION=$(node -p "require('./package.json').version")
-            git tag -a "v$VERSION" -m "Release v$VERSION"
-            git push origin "v$VERSION"
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Check if Tag Exists
+        id: check_tag
+        run: |
+          VERSION=$(node -p "require('./package.json').version")
+          TAG_EXISTS=$(git ls-remote --tags origin "v$VERSION" | wc -l)
+          echo "VERSION=v$VERSION" >> $GITHUB_ENV
+          echo "TAG_EXISTS=$TAG_EXISTS" >> $GITHUB_ENV
+
+      - name: Create and Push Tag
+        if: env.TAG_EXISTS == '0'
+        run: |
+          git tag -a "$VERSION" -m "Release $VERSION"
+          git push origin "$VERSION"
+
   
