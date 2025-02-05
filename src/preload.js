@@ -1,13 +1,21 @@
 const { contextBridge, ipcRenderer } = require('electron');
 
 contextBridge.exposeInMainWorld('electron', {
-  // Window Controls
+  // App Controls
   minimize: () => ipcRenderer.send('Minimize'),
   maximize: () => ipcRenderer.send("Maximize"),
   close: () => ipcRenderer.send('appClose'),
   toggleFullscreen: () => ipcRenderer.send('toggle-fullscreen'),
   onWindowStateChange: (callback) => {ipcRenderer.on("window-state-changed", (_, isFullScreen) => {callback(isFullScreen);}); }, 
   onFullscreenStateChanged: (callback) => {ipcRenderer.on('fullscreen-state-changed', (_, isFullscreen) => {callback(isFullscreen);});},
+
+  // Update Control
+  onUpdateAvailable: (callback) => ipcRenderer.on('update_available', callback),
+  onUpdateDownloaded: (callback) => ipcRenderer.on('update_downloaded', callback),
+  onDownloadProgress: (callback) => ipcRenderer.on('download-progress', (event, percent) => callback(percent)),
+  showProgressBar: () => ipcRenderer.send('show-progress-bar'),
+  hideProgressBar: () => ipcRenderer.send('hide-progress-bar'),
+  restartApp: () => ipcRenderer.send('restart_app'),
 
   // Media Controls
   onPlayPause: (callback) => ipcRenderer.on('play-pause', callback),
@@ -21,12 +29,6 @@ contextBridge.exposeInMainWorld('electron', {
   sendShuffleState: (state) => ipcRenderer.send('shuffle-state', state),
   onRepeatState: (callback) => ipcRenderer.on('repeat', callback),
   sendRepeatState: (state) => ipcRenderer.send('repeat-state', state),
-
-  // Update Controls
-  onUpdateAvailable: (callback) => ipcRenderer.on('update_available', callback),
-  onUpdateDownloaded: (callback) => ipcRenderer.on('update_downloaded', callback),
-  restartApp: () => ipcRenderer.send('restart_app'),
-
 
   // Custom Logo Handling
   saveCustomLogo: (fileBuffer, fileName) => { return ipcRenderer.invoke('save-gif', fileBuffer, fileName);},
@@ -50,13 +52,7 @@ contextBridge.exposeInMainWorld('electron', {
   on: (channel, func) => {ipcRenderer.on(channel, (event, ...args) => func(...args));},
 
    // File Open Handling
-  onFileOpen: (callback) => {
-    ipcRenderer.on('open-file', (event, filePath) => {
-      callback(filePath);
-    });
-  },
-  requestOpenFile: () => {
-    ipcRenderer.send('request-open-file');
-  },
+  onFileOpen: (callback) => {ipcRenderer.on('open-file', (event, filePath) => {callback(filePath); });},
+  requestOpenFile: () => {ipcRenderer.send('request-open-file');},
   getFileData: (filePath) => ipcRenderer.invoke("get-file-data", filePath),
 });

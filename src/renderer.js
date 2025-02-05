@@ -2279,6 +2279,7 @@ document.addEventListener("DOMContentLoaded", function() {
 	const video = document.querySelector("video");
 	const navArrows = document.querySelector(".nav-arrows");
 	const winButton = document.querySelector(".win-buttons");
+	const progress = document.querySelector(".progress");
 	let hideTimeout;
 
 	// Function to hide navbar, Mediacontrols, nav arrows, and cursor
@@ -2295,6 +2296,9 @@ document.addEventListener("DOMContentLoaded", function() {
 			navArrows.classList.add("hidden");
 			winButton.classList.remove("visible");
 			winButton.classList.add("hidden");
+
+			progress.classList.remove("visible");
+			progress.classList.add("hidden");
 		}
 	}
 
@@ -2311,6 +2315,9 @@ document.addEventListener("DOMContentLoaded", function() {
 		navArrows.classList.remove("hidden");
 		winButton.classList.remove("hidden");
 		winButton.classList.add("visible")
+
+		progress.classList.remove("hidden");
+		progress.classList.add("visible");
 
 		// Clear the previous timeout and start a new one to hide controls after 1000ms
 		clearTimeout(hideTimeout);
@@ -3248,6 +3255,23 @@ function createFileObject({ buffer, mimeType, fileName }) {
     const blob = new Blob([buffer], { type: mimeType });
     return new File([blob], fileName, { type: mimeType });
 }
+
+// Show the progress bar when the update starts downloading
+window.electron.onDownloadProgress((percent) => {
+	const progressBar = document.querySelector('.progress::after');
+	document.querySelector('.progress').style.display = 'block'; // Show progress bar
+
+	progressBar.style.width = `${percent}%`;
+});
+
+  // Hide the progress bar when the download is complete
+window.electron.showProgressBar = () => {
+	document.querySelector('.progress').style.display = 'block';
+};
+
+window.electron.hideProgressBar = () => {
+	document.querySelector('.progress').style.display = 'none';
+};
 
 // Handle actions from tray
 // Handle play/pause action from tray

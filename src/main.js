@@ -39,6 +39,7 @@ function createWindow() {
     fullscreen: true,
     resizable: true,
     icon: path.join(__dirname, '../assets/icons/icon.ico'),
+    backgroundColor: '#000000',
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       contextIsolation: true,
@@ -229,11 +230,7 @@ function createTray() {
 app.on('ready', () => {
   const animePlayerPath = app.getPath('userData');
   const savePath = path.join(animePlayerPath, 'playback-time.json');
-  app.commandLine.appendSwitch('enable-gpu-rasterization');
-  app.commandLine.appendSwitch('enable-oop-rasterization');
-  app.commandLine.appendSwitch('enable-zero-copy');
-  app.commandLine.appendSwitch('enable-media-playback-hinting');
-  app.commandLine.appendSwitch('enable-hardware-media-decode')
+  app.commandLine.appendSwitch('disable-gpu');
   
   createWindow();
 
@@ -301,6 +298,15 @@ ipcMain.on('toggle-fullscreen', (event) => {
   event.sender.send('fullscreen-state-changed', isFullscreen);
 });
 
+autoUpdater.on('download-progress', (progressObj) => {
+  const { percent } = progressObj;
+
+  // Send progress to renderer through preload.js
+  if (win) {
+    win.webContents.send('download-progress', percent);
+  }
+});
+
 function isOnline() {
   return net.isOnline();
 }
@@ -328,6 +334,11 @@ autoUpdater.on('update-available', () => {
       if (result.response === 0) {
         // User chose 'Update Now', start downloading the update
         autoUpdater.downloadUpdate();
+        
+        // Show the progress bar
+        if (win) {
+          win.webContents.send('show-progress-bar');
+        }
       }
     });
 });
@@ -342,21 +353,15 @@ autoUpdater.on('update-downloaded', () => {
     })
     .then((result) => {
       if (result.response === 0) {
-        // Ensure all windows are closed before updating
-        if (tray) {
-          tray.destroy(); // Remove tray icon
-        }
-        if (win) {
-          win.removeAllListeners('close'); // Prevent any other close event logic
-          win.close();
-        }
-
         app.quit(); // Quit the application completely
-
-        // Restart with the update
         autoUpdater.quitAndInstall();
       }
     });
+
+  // Hide the progress bar after the download completes
+  if (win) {
+    win.webContents.send('hide-progress-bar');
+  }
 });
 
   // autoUpdater.on('error', (error) => {
