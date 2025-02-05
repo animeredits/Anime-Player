@@ -1521,7 +1521,7 @@ input[type="range"]::-moz-range-thumb:active {
 
 /* Progress bar */
 .progress {
-  display: block;
+  display: none;
   width: 25%;
   height: 4px;
   position: absolute;
