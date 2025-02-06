@@ -67,7 +67,7 @@ jobs:
           name: windows-build
           path: dist/*.exe 
 
-  # Build for macOS
+# Build for macOS
   build-macos:
     name: Build for macOS
     runs-on: macos-13
@@ -84,11 +84,13 @@ jobs:
       - name: Install Dependencies
         run: npm ci
 
-      - name: Clean dist folder
-        run: rm -rf dist/*
+      - name: Clean dist folder and icon files
+        run: |
+          rm -rf dist/*                   
+          rm -f assets/icons/icon.icns     
 
       - name: Enable Debug Logs
-        run: export DEBUG=electron-builder
+        run: export DEBUG=electron-builder:*  
 
       - name: Build for macOS
         env:

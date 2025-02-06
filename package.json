@@ -13,11 +13,8 @@
   ],
   "scripts": {
     "start": "electron .",
-    "prebuild": "rm -f dist/mac/Anime Player.app/Contents/Resources/icon.icns",
     "pack": "@electron/packager . --platform=win64 --arch=x64 --out=dist/ --overwrite --icon=icon.ico",
-    "dist-mac": "electron-builder --publish=always --mac",
-    "dist-win": "electron-builder --publish=always --win",
-    "dist-linux": "electron-builder --publish=always --linux"
+    "dist": "electron-builder --publish=always"
   },
   "dependencies": {
     "depcheck": "^1.4.7",
