@@ -132,7 +132,7 @@
               </div>
               <a class="increase-volume">Increase Volume</a>
               <a class="decrease-volume">Decrease Volume</a>
-              <a id="mic-access-button">Start Voice Recognition</a>
+              <!-- <a id="mic-access-button">Start Voice Recognition</a> -->
               <a class="mute-btn">Mute</a>
             </div>
           </li>
@@ -207,11 +207,15 @@
         <!-- Window Controls -->
         <div class="win-buttons">
           <button id="minimize">
-            <i class="fa-light fa-window-minimize"></i>
+            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="none" viewBox="0 0 24 24" class="icon-md">
+              <path fill="currentColor" d="M5 12h14v2H5z"/>
+            </svg>
           </button>
           <button id="maximize">
-            <i class="fa-light fa-square"></i>
-          </button>
+            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="none" viewBox="0 0 24 24" class="icon-md">
+              <path fill="currentColor" d="M7 7h10v10H7V7zm2 2v6h6V9H9z"/>
+            </svg>
+            </button>
           <button class="close" id="windws-close" aria-label="Close">
             <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="none" viewBox="0 0 24 24" class="icon-md">
               <path fill="currentColor" fill-rule="evenodd" d="M5.636 5.636a1 1 0 0 1 1.414 0l4.95 4.95 4.95-4.95a1 1 0 0 1 1.414 1.414L13.414 12l4.95 4.95a1 1 0 0 1-1.414 1.414L12 13.414l-4.95 4.95a1 1 0 0 1-1.414-1.414l4.95-4.95-4.95-4.95a1 1 0 0 1 0-1.414" clip-rule="evenodd"></path>
@@ -270,10 +274,10 @@
                   <span class="text">Decrease Volume</span>
                 </a>
                 
-                <a id="mic-access-button">
-                  <span class="icon">&#127908;</span> <!-- Microphone icon -->
+                <!-- <a id="mic-access-button">
+                  <span class="icon">&#127908;</span>
                   <span class="text">Start Voice Recognition</span>
-                </a>
+                </a> -->
                 
                 <a class="mute">
                   <span class="icon">&#128263;</span> <!-- Mute icon -->
@@ -364,8 +368,23 @@
         <input type="file" id="folderInput" webkitdirectory style="display: none;" />
         <!-- Loader -->
         <div id="loader">
-          <img src="../assets/icons/loader.gif" alt="Loading..." >
-        </div>
+          <div class="overlay">
+            <div class="spinner center">
+              <div class="spinner-blade"></div>
+              <div class="spinner-blade"></div>
+              <div class="spinner-blade"></div>
+              <div class="spinner-blade"></div>
+              <div class="spinner-blade"></div>
+              <div class="spinner-blade"></div>
+              <div class="spinner-blade"></div>
+              <div class="spinner-blade"></div>
+              <div class="spinner-blade"></div>
+              <div class="spinner-blade"></div>
+              <div class="spinner-blade"></div>
+              <div class="spinner-blade"></div>
+            </div>
+          </div>
+                  </div>
         <!-- Navigation Arrows -->
         <div class="nav-arrows">
           <button id="prevVideo" class="card arrow-button left-arrow ">
@@ -444,7 +463,7 @@
           <div class="modal-content">
             <div class="modal-header">
               <h2 id="keyboardTab" class="active-tab">Keyboard Shortcuts</h2>
-              <h2 id="voiceTab">Voice Shortcuts</h2>
+              <!-- <h2 id="voiceTab">Voice Shortcuts</h2> -->
               <input type="text" id="shortcutSearch" placeholder="Search Shortcuts...">
               <button class="modalClose" aria-label="Close">
                 <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24" class="icon-md">
@@ -622,7 +641,7 @@
                   </div>
                 </div>
               </div>
-              <div id="voiceShortcuts" class="shortcut-list" style="display: none;">
+              <!-- <div id="voiceShortcuts" class="shortcut-list" style="display: none;">
                 <div class="shortcut">
                   <div class="description">Open File</div>
                   <div class="keys">
@@ -807,7 +826,7 @@
                     <span class="key">Close</span>
                   </div>
                 </div>
-              </div>
+              </div> -->
             </div>
           </div>
         </div>

@@ -1093,7 +1093,7 @@ main {
 
 #progressBarWrapper {
   flex-grow: 1;
-  height: 4px;
+  height: 3px;
   background: rgba(255, 255, 255, 0.5);
   border-radius: 4px;
   position: relative;
@@ -1113,9 +1113,9 @@ main {
 }
 
 #progressBar {
-  height: 4px;
+  height: 3px;
+  width: 0%;
   background: white;
-  width: 0%; /* Start with no progress */
   border-radius: 5px 0 0 5px;
   position: relative;
   transition: width 0.2s ease;
@@ -1451,16 +1451,17 @@ input[type="range"]::-moz-range-thumb:active {
 }
 
 .media-controls .card {
+  display: flex;
+  justify-content: center;
+  align-items: center;
   position: relative;
   width: 2.4%;
   height: 50px;
   left: 15px;
-  background: transparent;
-  overflow: hidden;
-  transition: background-color 0.3s ease, border 0.3s ease;
-  display: flex;
-  justify-content: center;
-  align-items: center;
+  border: 1px solid transparent;
+  background-origin: content-box;
+  background: center transparent no-repeat;
+  transition: border, border-image 10s ease-in-out;
 }
 
 .media-controls .card i {
@@ -1477,17 +1478,124 @@ input[type="range"]::-moz-range-thumb:active {
   background-color: rgba(255, 255, 255, 0.1);
 }
 
+/* Loader */
 #loader {
   display: none;
   position: fixed;
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
-  background: rgba(0, 0, 0, 0.7);
-  color: white;
   padding: 10px;
-  border-radius: 5px;
 }
+
+.overlay {
+  background: rgba(0, 0, 0, 0.9);
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  bottom: 0;
+  margin: auto;
+}
+
+.spinner {
+  font-size: 30px;
+  position: relative;
+  display: inline-block;
+  width: 1em;
+  height: 1em;
+}
+
+.spinner.center {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  bottom: 0;
+  margin: auto;
+}
+
+.spinner-blade {
+  position: absolute;
+  left: 0.4629em;
+  bottom: 0;
+  width: 0.074em;
+  height: 0.2777em;
+  border-radius: 0.5em;
+  background-color: transparent;
+  transform-origin: center -0.2222em;
+  animation: spinner-fade 1s infinite linear;
+}
+
+.spinner-blade:nth-child(1) {
+  animation-delay: 0s;
+  transform: rotate(0deg);
+}
+
+.spinner-blade:nth-child(2) {
+  animation-delay: 0.083s;
+  transform: rotate(30deg);
+}
+
+.spinner-blade:nth-child(3) {
+  animation-delay: 0.166s;
+  transform: rotate(60deg);
+}
+
+.spinner-blade:nth-child(4) {
+  animation-delay: 0.249s;
+  transform: rotate(90deg);
+}
+
+.spinner-blade:nth-child(5) {
+  animation-delay: 0.332s;
+  transform: rotate(120deg);
+}
+
+.spinner-blade:nth-child(6) {
+  animation-delay: 0.415s;
+  transform: rotate(150deg);
+}
+
+.spinner-blade:nth-child(7) {
+  animation-delay: 0.498s;
+  transform: rotate(180deg);
+}
+
+.spinner-blade:nth-child(8) {
+  animation-delay: 0.581s;
+  transform: rotate(210deg);
+}
+
+.spinner-blade:nth-child(9) {
+  animation-delay: 0.664s;
+  transform: rotate(240deg);
+}
+
+.spinner-blade:nth-child(10) {
+  animation-delay: 0.747s;
+  transform: rotate(270deg);
+}
+
+.spinner-blade:nth-child(11) {
+  animation-delay: 0.83s;
+  transform: rotate(300deg);
+}
+
+.spinner-blade:nth-child(12) {
+  animation-delay: 0.913s;
+  transform: rotate(330deg);
+}
+
+@keyframes spinner-fade {
+  0% {
+    background-color: #69717d;
+  }
+  100% {
+    background-color: transparent;
+  }
+}
+
 
 /* Continue Button */
 #continueOverlay {

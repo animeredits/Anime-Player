@@ -1769,7 +1769,7 @@ mediaPlayer.appendChild(tooltip);
 // Audio Context and Gain Node setup (existing)
 const videoElement = document.querySelector("video");
 const volumeSlider = document.getElementById("volume-slider");
-volumeSlider.max = 150; // Set the maximum slider value to 150% volume (changed from 200%)
+volumeSlider.max = 200; // Set the maximum slider value to 200% volume
 
 let audioContext = new AudioContext();
 const gainNode = audioContext.createGain();
@@ -1857,21 +1857,21 @@ function loadVolumeSetting() {
 
 // Set initial volume (existing)
 gainNode.gain.value = 1.0; // Set default volume to 100%
-volumeSlider.value = gainNode.gain.value * 100; // Sync slider with volume (0-150 range)
+volumeSlider.value = gainNode.gain.value * 100; // Sync slider with volume (0-200 range)
 
 // Call the loadVolumeSetting to apply saved or default volume
 loadVolumeSetting(); // Load saved volume or apply default volume (100%)
 
 // Function to update volume, slider, and tooltip (existing)
 function updateVolume(newVolume) {
-	// Ensure the volume value is within the range [0, 1.5]
-	newVolume = Math.max(0, Math.min(1.5, newVolume));
+	// Ensure the volume value is within the range [0, 2]
+	newVolume = Math.max(0, Math.min(2, newVolume));
 
 	// Smoothly transition to the new volume level
 	gainNode.gain.linearRampToValueAtTime(newVolume, audioContext.currentTime + 0.1);
 
 	// Update slider value and show tooltip
-	volumeSlider.value = newVolume * 100; // Sync slider with volume (0-150 range)
+	volumeSlider.value = newVolume * 100; // Sync slider with volume (0-200 range)
 	showTooltip(newVolume);
 
 	// Save the new volume setting to localStorage
@@ -1886,7 +1886,7 @@ function updateVolume(newVolume) {
 function showTooltip(volume) {
 	tooltip.textContent = `Volume: ${(volume * 100).toFixed(0)}%`;
 	const sliderRect = volumeSlider.getBoundingClientRect();
-	const sliderX = sliderRect.left + volumeSlider.offsetWidth * (volumeSlider.value / 150);
+	const sliderX = sliderRect.left + volumeSlider.offsetWidth * (volumeSlider.value / 200);
 	tooltip.style.left = `${sliderX}px`;
 	tooltip.style.top = `${sliderRect.top - 30}px`;
 	tooltip.style.display = "block";
@@ -2893,12 +2893,12 @@ keyboardTab.addEventListener('click', () => {
 	voiceShortcuts.style.display = 'none';
 });
 
-voiceTab.addEventListener('click', () => {
-	voiceTab.classList.add('active-tab');
-	keyboardTab.classList.remove('active-tab');
-	keyboardShortcuts.style.display = 'none';
-	voiceShortcuts.style.display = 'grid';
-});
+// voiceTab.addEventListener('click', () => {
+// 	voiceTab.classList.add('active-tab');
+// 	keyboardTab.classList.remove('active-tab');
+// 	keyboardShortcuts.style.display = 'none';
+// 	voiceShortcuts.style.display = 'grid';
+// });
 
 // Add search functionality for active tab
 searchInput.addEventListener('input', (e) => {
@@ -3258,10 +3258,10 @@ function createFileObject({ buffer, mimeType, fileName }) {
 
 // Show the progress bar when the update starts downloading
 window.electron.onDownloadProgress((percent) => {
-	const progressBar = document.querySelector('.progress::after');
+	const UpdateprogressBar = document.querySelector('.progress::after');
 	document.querySelector('.progress').style.display = 'block'; // Show progress bar
 
-	progressBar.style.width = `${percent}%`;
+	UpdateprogressBar.style.width = `${percent}%`;
 });
 
   // Hide the progress bar when the download is complete
