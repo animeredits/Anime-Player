@@ -104,37 +104,21 @@
       "fileAssociations": [
         {
           "ext": [
-            "3gp",
-            "avi",
-            "flv",
-            "mkv",
-            "mp4",
-            "mpeg",
-            "mpg",
-            "webm",
-            "wmv",
-            "vob",
-            "ogg",
-            "m4v",
-            "iso",
-            "aac",
-            "ac3",
-            "aiff",
-            "alac",
-            "amr",
-            "ape",
-            "flac",
-            "mka",
-            "mp3",
-            "opus",
-            "wav",
-            "wma"
+            "3gp", "avi", "flv", "mkv", "mp4", "mpeg", "mpg", "webm", "wmv", "vob",
+            "ogg", "m4v", "iso", "aac", "ac3", "aiff", "alac", "amr", "ape", "flac", "mka",
+            "mp3", "opus", "wav", "wma"
           ],
           "name": "Anime Player",
           "role": "Viewer"
         }
       ]
     },
+    "extraResources": [
+      {
+        "from": "assets/icons/icon.icns",
+        "to": "Resources/icon.icns"
+      }
+    ],
     "linux": {
       "icon": "assets/icons/icon.png",
       "target": [

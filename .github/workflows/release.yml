@@ -70,7 +70,7 @@ jobs:
 # Build for macOS
   build-macos:
     name: Build for macOS
-    runs-on: macos-13
+    runs-on: macos-latest
 
     steps:
       - name: Checkout Code
