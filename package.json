@@ -113,12 +113,6 @@
         }
       ]
     },
-    "extraResources": [
-      {
-        "from": "assets/icons/icon.icns",
-        "to": "Resources/icon.icns"
-      }
-    ],
     "linux": {
       "icon": "assets/icons/icon.png",
       "target": [
