@@ -273,12 +273,13 @@
         }
       ]
     },
-    "files": [
-      "**/*",
-      "!**/*.map",
-      "!**/tests/**",
-      "!node_modules/.bin/**"
-    ],
+"files": [
+  "!dist/**/*",
+  "**/*",
+  "!**/*.map",
+  "!**/tests/**",
+  "!node_modules/.bin/**"
+],
     "asar": true,
     "compression": "maximum",
     "win": {
