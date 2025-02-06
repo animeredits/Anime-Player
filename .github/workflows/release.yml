@@ -93,7 +93,7 @@ jobs:
       - name: Build for macOS
         env:
           GH_TOKEN: ${{ secrets.GH_TOKEN }} 
-        run: npm run dist -- --mac --clean
+        run: npm run dist -- --mac
 
       - name: Upload macOS Build Artifacts
         uses: actions/upload-artifact@v4
