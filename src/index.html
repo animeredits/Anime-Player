@@ -212,9 +212,8 @@
             </svg>
           </button>
           <button id="maximize">
-            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="none" viewBox="0 0 24 24" class="icon-md">
-              <path fill="currentColor" d="M7 7h10v10H7V7zm2 2v6h6V9H9z"/>
-            </svg>
+            <i class="fa-light fa-square"></i>
+          </button>
             </button>
           <button class="close" id="windws-close" aria-label="Close">
             <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="none" viewBox="0 0 24 24" class="icon-md">
@@ -431,7 +430,7 @@
               <span id="switchAudioTrack" class="material-symbols-outlined">subtitles</span>
             </div>
             <div class="card">
-              <span id="repeatBtn" class="material-symbols-outlined">repeat</span>
+              <span id="LoopBtn" class="material-symbols-outlined">repeat</span>
             </div>
             <div class="card">
               <i id="shuffleButton" class="fa-light fa-shuffle"></i>
@@ -462,9 +461,9 @@
         <div id="shortcutsModal" class="modal">
           <div class="modal-content">
             <div class="modal-header">
-              <h2 id="keyboardTab" class="active-tab">Keyboard Shortcuts</h2>
+              <h2 id="keyboardTab" >Keyboard Shortcuts</h2>
               <!-- <h2 id="voiceTab">Voice Shortcuts</h2> -->
-              <input type="text" id="shortcutSearch" placeholder="Search Shortcuts...">
+              <!-- <input type="text" id="shortcutSearch" placeholder="Search Shortcuts..."> -->
               <button class="modalClose" aria-label="Close">
                 <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24" class="icon-md">
                   <path fill="currentColor" fill-rule="evenodd" d="M5.636 5.636a1 1 0 0 1 1.414 0l4.95 4.95 4.95-4.95a1 1 0 0 1 1.414 1.414L13.414 12l4.95 4.95a1 1 0 0 1-1.414 1.414L12 13.414l-4.95 4.95a1 1 0 0 1-1.414-1.414l4.95-4.95-4.95-4.95a1 1 0 0 1 0-1.414" clip-rule="evenodd"></path>
@@ -477,6 +476,18 @@
                   <div class="description">Rewind</div>
                   <div class="keys">
                     <span class="key">Left Arrow</span>
+                  </div>
+                </div>
+                <div class="shortcut">
+                  <div class="description">Forward</div>
+                  <div class="keys">
+                    <span class="key"> Right Arrow </span>
+                  </div>
+                </div>
+                <div class="shortcut">
+                  <div class="description">Forward</div>
+                  <div class="keys">
+                    <span class="key"> Right Arrow </span>
                   </div>
                 </div>
                 <div class="shortcut">

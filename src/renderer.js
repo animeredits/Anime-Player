@@ -1060,12 +1060,12 @@ function loadMediaFile(file) {
 		currentMedia.addEventListener("loadedmetadata", () => {
 			updateProgressBar();
 			updateDurationDisplay();
+			resetZoom();
 
 			currentMedia
 				.play()
 				.then(() => {
 					populateAudioTracks(); // Populate audio tracks if any
-					showStatusMessage(""); // Reset any status message
 					highlightCurrentVideoInPlaylist(fileName); // Highlight the current video in the playlist
 				})
 				.catch((error) => {
@@ -1695,7 +1695,7 @@ playbackSpeedLinks.forEach(link => {
 				speed = 0.75;
 				showStatusMessage("Slow 0.75x");
 				break;
-			case "Normal":
+			case "Normal Speed":
 				speed = 1;
 				break;
 			case "1.25":
@@ -2184,11 +2184,11 @@ function toggleShuffleMode() {
 
 	if (isShuffle) {
 shuffleButton.classList.add("active");
-showStatusMessage("Shuffle: On");
+showStatusMessage("Rendom: On");
 	window.electron.sendShuffleState("on");
 	} else {
 shuffleButton.classList.remove("active");
-showStatusMessage("Shuffle: Off");
+showStatusMessage("Rendom: Off");
 playedVideos = [];
 lastPlayedStack = [];
 	window.electron.sendShuffleState("off");
@@ -2201,18 +2201,18 @@ function toggleRepeat() {
 	currentMedia.loop = isRepeat;
 
 	if (isRepeat) {
-		showStatusMessage("Repeat: On");
+		showStatusMessage("Loop: On");
 		window.electron.sendRepeatState("on");
 		video.play();
 	} else {
-		showStatusMessage("Repeat: Off");
+		showStatusMessage("Loop: Off");
 		window.electron.sendRepeatState("off");
 	}
 }
 
 // Event listener for shuffle mode button loopbutton, switchtrack button and Full screen 
 document.getElementById("shuffleButton").addEventListener("click", toggleShuffleMode);
-document.getElementById("repeatBtn").addEventListener("click", toggleRepeat);
+document.getElementById("LoopBtn").addEventListener("click", toggleRepeat);
 switchAudio.addEventListener("click", populateAudioTracks);
 
 // Select the full-screen button elements
@@ -2768,7 +2768,7 @@ document.addEventListener("keydown", (event) => {
 		m: () => volumeBtn.click(),
 		t: () => {
 			showStatusMessage(
-				`- ${formatTime(currentMedia.currentTime)} /${formatTime(currentMedia.duration)}`
+				`${formatTime(currentMedia.currentTime)} /${formatTime(currentMedia.duration)}`
 			); // Show current time and total duration
 		},
 		8: () => {
@@ -2801,16 +2801,20 @@ document.addEventListener("keydown", (event) => {
 		if (video.playbackRate < 2) { // Limit max speed to 2
 			const newSpeed = video.playbackRate + 0.25;
 			setPlaybackSpeed(newSpeed);
-			showStatusMessage(newSpeed === 1 ? "Normal" : `Speed: ${newSpeed}x`);
+			showStatusMessage(newSpeed === 1 ? "Normal Speed" : `Speed: ${newSpeed}x`);
 		}
 	} else if (event.key === "-") {
 		// Decrease speed
 		if (video.playbackRate > 0.25) { // Limit min speed to 0.25
 			const newSpeed = video.playbackRate - 0.25;
 			setPlaybackSpeed(newSpeed);
-			showStatusMessage(newSpeed === 1 ? "Normal" : `Speed: ${newSpeed}x`);
+			showStatusMessage(newSpeed === 1 ? "Normal Speed" : `Speed: ${newSpeed}x`);
 		}
-	}
+	} else if (event.key === "=") {
+		// Reset speed to normal
+		setPlaybackSpeed(1);
+		showStatusMessage("Normal Speed");
+	}	
 });
 
 // Function to handle zoom menu clicks
@@ -2901,19 +2905,19 @@ keyboardTab.addEventListener('click', () => {
 // });
 
 // Add search functionality for active tab
-searchInput.addEventListener('input', (e) => {
-	const query = e.target.value.toLowerCase();
-	const activeShortcuts = keyboardShortcuts.style.display === 'grid' ? keyboardShortcuts : voiceShortcuts;
-	const shortcuts = activeShortcuts.querySelectorAll('.shortcut');
+// searchInput.addEventListener('input', (e) => {
+// 	const query = e.target.value.toLowerCase();
+// 	const activeShortcuts = keyboardShortcuts.style.display === 'grid' ? keyboardShortcuts : voiceShortcuts;
+// 	const shortcuts = activeShortcuts.querySelectorAll('.shortcut');
 
-	shortcuts.forEach((shortcut) => {
-		const descriptionElement = shortcut.querySelector('.description');
-		if (descriptionElement) {
-			const description = descriptionElement.textContent.toLowerCase();
-			shortcut.style.display = description.includes(query) ? 'flex' : 'none';
-		}
-	});
-});
+// 	shortcuts.forEach((shortcut) => {
+// 		const descriptionElement = shortcut.querySelector('.description');
+// 		if (descriptionElement) {
+// 			const description = descriptionElement.textContent.toLowerCase();
+// 			shortcut.style.display = description.includes(query) ? 'flex' : 'none';
+// 		}
+// 	});
+// });
 
 // Function to apply rotation
 function applyRotation() {
