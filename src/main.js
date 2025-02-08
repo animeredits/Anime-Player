@@ -9,7 +9,8 @@ const { net } = require('electron');
 let win;
 let tray = null;
 let fileToOpen = process.argv.find(arg => /\.(mp4|mkv|mp3)$/i.test(arg)) || null;
-let isPlaying = false;
+let isPlayingForTray = false;   
+let isPlayingForThumbar = false; 
 let isQuitting = false;
 const twoDaysInMillis = 2 * 24 * 60 * 60 * 1000; // 2 days in milliseconds
 
@@ -106,12 +107,10 @@ function updateThumbarButtons() {
       },
     },
     {
-      tooltip: isPlaying ? 'Pause' : 'Play',
-      icon: path.join(__dirname, isPlaying ? '../assets/icons/pause.png' : '../assets/icons/play.png'), // Update icon based on isPlaying
+      tooltip: isPlayingForThumbar ? 'Pause' : 'Play',
+      icon: path.join(__dirname, isPlayingForThumbar ? '../assets/icons/pause.png' : '../assets/icons/play.png'),
       click() {
-        isPlaying = !isPlaying;
         win.webContents.send('play-pause');
-        updateThumbarButtons(); 
       },
     },
     {
@@ -129,7 +128,7 @@ function createTray() {
   tray.setToolTip('Anime Player');
 
   const updateContextMenu = (playbackState = 'paused', shuffleState = 'off', repeatState = 'off') => {
-    const playPauseLabel = (playbackState === 'playing') ? 'Pause' : 'Play';
+    const playPauseLabel = playbackState ? 'Pause' : 'Play';
     const shuffleLabel = (shuffleState === 'off') ? 'Shuffle Off' : 'Shuffle On';
     const repeatLabel = (repeatState === 'off') ? 'Repeat Off' : 'Repeat On';
 
@@ -209,11 +208,17 @@ function createTray() {
   win.on('hide', updateContextMenu);
   win.on('show', updateContextMenu);
 
-  // Listen for play/pause state from the renderer process
-  ipcMain.on('play-pause-state', (event, state) => {
-    updateContextMenu(state);
-  });
+// Handle play-pause state updates separately
+ipcMain.on('play-pause-state-tray', (event, state) => {
+  isPlayingForTray = state === 'playing';
+  updateContextMenu();
+});
 
+ipcMain.on('play-pause-state-thumbar', (event, state) => {
+  isPlayingForThumbar = state === 'playing'; 
+  updateThumbarButtons();
+});
+  
   ipcMain.on('shuffle-state', (event, state) => {
     const playbackState = 'paused'; 
     updateContextMenu(playbackState, state);
@@ -256,6 +261,10 @@ app.on('ready', () => {
     // Send the updated data to the renderer if the same video file is opened again
     win.webContents.once('did-finish-load', () => {
       win.webContents.send('load-playback-time', playbackData);
+      win.webContents.send("fullscreen-state-changed", win.isFullScreen());
+      win.webContents.send("initial-window-state", win.isFullScreen());
+      win.webContents.send("request-initial-play-state");
+
     });
   }
 
@@ -288,18 +297,14 @@ ipcMain.on("Minimize", () => {
 ipcMain.on("Maximize", () => {
   const isFullScreen = !win.isFullScreen();
   win.setFullScreen(isFullScreen);
-
-  // Notify the renderer process about the window state change
   win.webContents.send("window-state-changed", isFullScreen);
 });
 
 // Handle toggle full-screen event
-ipcMain.on('toggle-fullscreen', (event) => {
+ipcMain.on("toggle-fullscreen", (event) => {
   const isFullscreen = !win.isFullScreen();
   win.setFullScreen(isFullscreen);
-
-  // Notify renderer about the updated fullscreen state
-  event.sender.send('fullscreen-state-changed', isFullscreen);
+  event.sender.send("fullscreen-state-changed", isFullscreen);
 });
 
 autoUpdater.on('download-progress', (progressObj) => {

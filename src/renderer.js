@@ -1056,6 +1056,7 @@ function loadMediaFile(file) {
 		autoSwitchDone = false;
 		currentTimeDisplay.textContent = "00:00";
 		durationDisplay.textContent = "00:00";
+		progressHandle.style.display = "none";
 
 		currentMedia.addEventListener("loadedmetadata", () => {
 			updateProgressBar();
@@ -1511,25 +1512,27 @@ folder.addEventListener("click", () => folderInput.click());
 
 // Functions to toggle play/pause icon
 function updatePlayPauseIcon(isPlaying) {
-	playPauseBtn.classList.toggle("fa-play", !isPlaying);
-	playPauseBtn.setAttribute("title", isPlaying ? "pause" : "play");
-	playPauseBtn.classList.toggle("fa-pause", isPlaying);
+    playPauseBtn.src = isPlaying ? "../assets/icons/pause.png" : "../assets/icons/play.png";
+    playPauseBtn.setAttribute("alt", isPlaying ? "Pause" : "Play");
+    playPauseBtn.setAttribute("title", isPlaying ? "Pause" : "Play");
 }
 
 function togglePlayPause() {
 	if (video.readyState < 3) {
-		return;
-	}
-	if (video.paused) {
-		video.play();
-		hideVideoTitle();
-		window.electron.sendPlayPauseState("playing");
-	} else {
-		video.pause();
-		stopGifPlayback();
-		showVideoTitle();
-		window.electron.sendPlayPauseState("paused");
-	}
+return;
+}
+if (video.paused) {
+video.play();
+hideVideoTitle();
+window.electron.sendPlayPauseStateForTray("playing");
+window.electron.sendPlayPauseStateForThumbar("playing");
+} else {
+video.pause();
+stopGifPlayback();
+showVideoTitle();
+window.electron.sendPlayPauseStateForTray("paused");
+window.electron.sendPlayPauseStateForThumbar("paused");
+}
 }
 
 // Event listeners for play/pause button
@@ -1650,6 +1653,8 @@ document.querySelectorAll(".nextbtn").forEach(button => {
 video.addEventListener("ended", () => {
 	playNext();
 	updateNavigationButtons();
+	updateProgressBar();
+	updateDurationDisplay();
 });
 
 // Rewind and Forward video 10 sec
@@ -2213,32 +2218,26 @@ function toggleRepeat() {
 // Event listener for shuffle mode button loopbutton, switchtrack button and Full screen 
 document.getElementById("shuffleButton").addEventListener("click", toggleShuffleMode);
 document.getElementById("LoopBtn").addEventListener("click", toggleRepeat);
-switchAudio.addEventListener("click", populateAudioTracks);
 
 // Select the full-screen button elements
 const fullscreenButtons = document.querySelectorAll(".fullscreenBtn");
 
 // Function to update the fullscreen button UI
 function updateFullScreenUI(isFullscreen) {
-	const fullscreenButtons = document.querySelectorAll('.fullscreenBtn');
-	fullscreenButtons.forEach((button) => {
-const icon = button.querySelector(".material-symbols-outlined");
-if (icon) {
-	icon.textContent = isFullscreen ? "fullscreen_exit" : "fullscreen";
-}
-});
+    fullscreenButtons.forEach((button) => {
+        const img = button.querySelector("img");
+        if (img) {
+            img.src = isFullscreen 
+                ? "../assets/icons/exit-full-screen.png" 
+                : "../assets/icons/full-screen.png"; 
+        }
+    });
 }
 
  // Fullscreen toggle function
 function toggleFullScreen() {
 window.electron.toggleFullscreen(); // Notify the main process to toggle fullscreen
 }
-
- // Listen for fullscreen state changes (from main process or DOM events)
-window.electron.onFullscreenStateChanged((isFullscreen) => {
-updateFullScreenUI(isFullscreen);
-});
-
 
 // Add event listeners for full-screen buttons
 fullscreenButtons.forEach((element) => {
@@ -2439,6 +2438,10 @@ document.addEventListener("DOMContentLoaded", function() {
 			hideContextMenu(); // Hide context menu after clicking an item
 		});
 	});
+
+	window.electron.onFullscreenStateChanged((isFullscreen) => {
+        updateFullScreenUI(isFullscreen);
+    });
 });
 
 // Format time to HH:MM:SS
@@ -2462,7 +2465,11 @@ function updateProgressBar() {
 		progressBar.style.width = `${progress}%`;
 		progressHandle.style.left = `100%`; // Keep the handle at the end of the progress bar
 		currentTimeDisplay.textContent = formatTime(video.currentTime);
+		progressHandle.style.display = "block"; 
+
 	} else {
+		progressHandle.style.display = "none";
+
 		currentTimeDisplay.textContent = "0:00:00";
 	}
 }
@@ -2478,6 +2485,7 @@ function updateDurationDisplay() {
 		}
 	} else {
 		durationDisplay.textContent = "0:00:00";
+
 	}
 }
 
@@ -2523,10 +2531,10 @@ function updateDragging(e) {
 		progressBar.style.width = `${percentage * 100}%`;
 		progressHandle.style.left = `${percentage * 100}%`;
 
-        // Update temporary time for display
-        temporaryTime = percentage * video.duration;
-        currentTimeDisplay.textContent = formatTime(temporaryTime);
-
+		// Update temporary time for display
+		temporaryTime = percentage * video.duration;
+		currentTimeDisplay.textContent = formatTime(temporaryTime);
+		
 		// Calculate the new time based on drag position
 		const newTime = percentage * video.duration;
 		currentTimeDisplay.textContent = formatTime(newTime);
@@ -3207,15 +3215,21 @@ document.querySelector("#maximize").addEventListener("click", () => {
 	window.electron.maximize();
 });
 
-// Listen for updates from the main process to change the icon dynamically
-window.electron.onWindowStateChange((isFullScreen) => {
-    const maximizeIcon = document.querySelector("#maximize i");
-    if (isFullScreen) {
-        maximizeIcon.className = "fa-light fa-down-left-and-up-right-to-center"; // Icon for "Restore" or "Normal Screen"
-    } else {
-        maximizeIcon.className = "fa-light fa-square"; // Icon for "Maximize"
-    }
-});
+// Function to update the maximize button icon
+function updateMaximizeIcon(isFullScreen) {
+	const maximizeIcon = document.querySelector("#maximize i");
+	if (maximizeIcon) {
+ maximizeIcon.className = isFullScreen
+		? "fa-light fa-down-left-and-up-right-to-center" // Restore icon
+		: "fa-light fa-square"; // Maximize icon
+	}
+}
+
+  // Listen for fullscreen state changes
+window.electron.onWindowStateChange(updateMaximizeIcon);
+
+  // Set the correct icon when the app starts
+window.electron.onInitialWindowState(updateMaximizeIcon);
 
 document.querySelector("#windws-close").addEventListener("click", () => {
 	window.electron.close();
@@ -3283,6 +3297,12 @@ window.electron.onPlayPause(() => {
 	togglePlayPause();
 });
 
+// Send the initial playback state when requested
+window.electron.requestInitialPlayState();
+window.electron.onInitialPlayState((state) => {
+window.electron.sendPlayPauseStateForTray(state || "playing");  
+window.electron.sendPlayPauseStateForThumbar(state || "paused"); 
+});
 // Handle playNext action from tray
 window.electron.onNext(() => {
 	playNext();

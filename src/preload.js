@@ -8,6 +8,8 @@ contextBridge.exposeInMainWorld('electron', {
   toggleFullscreen: () => ipcRenderer.send('toggle-fullscreen'),
   onWindowStateChange: (callback) => {ipcRenderer.on("window-state-changed", (_, isFullScreen) => {callback(isFullScreen);}); }, 
   onFullscreenStateChanged: (callback) => {ipcRenderer.on('fullscreen-state-changed', (_, isFullscreen) => {callback(isFullscreen);});},
+  onInitialWindowState: (callback) => {ipcRenderer.on("initial-window-state", (_, isFullScreen) => {callback(isFullScreen);});
+  },
 
   // Update Control
   onUpdateAvailable: (callback) => ipcRenderer.on('update_available', callback),
@@ -19,7 +21,9 @@ contextBridge.exposeInMainWorld('electron', {
 
   // Media Controls
   onPlayPause: (callback) => ipcRenderer.on('play-pause', callback),
-  sendPlayPauseState: (state) => ipcRenderer.send('play-pause-state', state),
+  sendPlayPauseStateForTray: (state) => ipcRenderer.send('play-pause-state-tray', state),
+  sendPlayPauseStateForThumbar: (state) => ipcRenderer.send('play-pause-state-thumbar', state),  requestInitialPlayState: () => ipcRenderer.send('request-initial-play-state'),
+  onInitialPlayState: (callback) => ipcRenderer.on('initial-play-state', (_, state) => callback(state)),  
   onNext: (callback) => ipcRenderer.on('next', callback),
   onPrevious: (callback) => ipcRenderer.on('previous', callback),
   onMute: (callback) => ipcRenderer.on('mute', callback),

@@ -1115,7 +1115,7 @@ main {
 #progressBar {
   height: 3px;
   width: 0%;
-  background: white;
+  background: #ededed;
   border-radius: 5px 0 0 5px;
   position: relative;
   transition: width 0.2s ease;
@@ -1128,9 +1128,9 @@ main {
   height: 20px;
   width: 20px;
   background: transparent;
-  border: 2px solid #ffffff;
+  border: 2px solid #ededed;
   border-radius: 80%;
-  z-index: 3;
+  z-index: 3; 
   transform: translateX(-9%);
   transition: opacity 0.3s ease;
   opacity: 0;
@@ -1140,7 +1140,7 @@ main {
 
 #progressHandle:active,
 #progressHandle:hover {
-  background-color: #ffffff;
+  background-color: #ededed;
   transform: translateX(-9%) scale(1.2);
 }
 
