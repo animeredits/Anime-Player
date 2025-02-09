@@ -177,7 +177,7 @@
           <div id="gifSearchContainer">
             <div class="search-box">
               <button class="btn-search" id="gifSearchButton">
-                <i class="fas fa-search"></i>
+                <img src="../assets//icons//search.png" alt="Search Icon"/>
               </button>
               <input type="text" class="input-search" id="gifSearchInput" placeholder="Search GIFs...">
             </div>
@@ -207,14 +207,11 @@
         <!-- Window Controls -->
         <div class="win-buttons">
           <button id="minimize">
-            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="none" viewBox="0 0 24 24" class="icon-md">
-              <path fill="currentColor" d="M5 12h14v2H5z"/>
-            </svg>
+            <img src="../assets/icons/win/minimize.png" alt="Minimize Icon" aria-label="Minimize Window" >
           </button>
           <button id="maximize">
-            <i class="fa-light fa-square"></i>
+            <img src="../assets/icons/win/maximize.png" alt="Maximize Icon" aria-label="Maximize Window" role="button">
           </button>
-            </button>
           <button class="close" id="windws-close" aria-label="Close">
             <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="none" viewBox="0 0 24 24" class="icon-md">
               <path fill="currentColor" fill-rule="evenodd" d="M5.636 5.636a1 1 0 0 1 1.414 0l4.95 4.95 4.95-4.95a1 1 0 0 1 1.414 1.414L13.414 12l4.95 4.95a1 1 0 0 1-1.414 1.414L12 13.414l-4.95 4.95a1 1 0 0 1-1.414-1.414l4.95-4.95-4.95-4.95a1 1 0 0 1 0-1.414" clip-rule="evenodd"></path>
@@ -250,13 +247,13 @@
             </li>
             <li id="context-menu-audio-track" class="sub-dropdown">
               <a href="javascript:void(0)" class="sub-dropbtn">
-                <span class="icon">&#128266;</span>
+                <span class="icon">🎧</span>
                 <span class="text">Audio</span>
               </a>
               <div class="sub-dropdown-content">
                 <div class="sub-dropdown">
                   <a href="javascript:void(0)" class="sub-dropbtn">
-                    <span class="icon">&#127925;</span> 
+                    <span class="icon">🎧</span> 
                     <span class="text">Audio Track</span>
                   </a>
                   <div class="sub-dropdown-content audio-track-list">
@@ -390,7 +387,7 @@
             <span class="left-arrow">&#10092;</span>
           </button>
           <button id="nextVideo" class="card arrow-button right-arrow ">
-            <span class="">&#10093; </span>
+            <span class="right-arrow">&#10093; </span>
           </button>
         </div>
         <!-- Continue Button-->
@@ -424,25 +421,25 @@
           </div>
           <div class="volume-rendom">
             <div class="card">
-              <i id="volumeBtn" class="fa-light fa-volume-high"></i>
+              <img id="volumeBtn" src="../assets/icons/volume.png" alt="Volume Control" />
             </div>
             <div class="card">
-              <span id="LoopBtn" class="material-symbols-outlined">repeat</span>
+              <img id="LoopBtn" src="../assets/icons/repeat-on.png" alt="Repeat" />
             </div>
             <div class="card">
-              <img id="shuffleButton"  src="../assets/icons/shuffle.png" alt="Shuffle"></img>
+              <img id="shuffleButton"  src="../assets/icons/no-shuffle.png" alt="Shuffle"/>
             </div>
             <input type="range" class="range blue" id="volume-slider" min="0" max="200" value="100" step="1">
           </div>
           <div class="media-controls">
             <div id="rewind" class="card">
-              <img src="../assets/icons/skip-15-seconds-back.png" alt="Rewind 10seconds">
+              <img src="../assets/icons/skip-15-seconds-back.png" alt="Rewind 10 seconds">
             </div>
             <div class="play-pause card">
-              <img id="playPauseBtn" src="../assets/icons/play.png" alt="Play/Pause">
+              <img id="playPauseBtn" src="../assets/icons/play-.png" alt="Play/Pause">
             </div>
             <div id="forward" class="card">
-              <img src="../assets/icons/skip-15-seconds-next.png" alt="Forward 10seconds">
+              <img src="../assets/icons/skip-15-seconds-next.png" alt="Forward 10 seconds">
             </div>
           </div>
           <div class="video-settings">

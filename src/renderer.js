@@ -1512,7 +1512,7 @@ folder.addEventListener("click", () => folderInput.click());
 
 // Functions to toggle play/pause icon
 function updatePlayPauseIcon(isPlaying) {
-    playPauseBtn.src = isPlaying ? "../assets/icons/pause.png" : "../assets/icons/play.png";
+    playPauseBtn.src = isPlaying ? "../assets/icons/pause-.png" : "../assets/icons/play.png";
     playPauseBtn.setAttribute("alt", isPlaying ? "Pause" : "Play");
     playPauseBtn.setAttribute("title", isPlaying ? "Pause" : "Play");
 }
@@ -2030,19 +2030,19 @@ volumeSlider.addEventListener("mouseleave", () => {
 
 // Update the volume button icon and tooltip
 function updateVolumeIcon() {
-	if (gainNode.gain.value === 0) {
-		volumeBtn.classList.remove("fa-volume-high", "fa-volume-low");
-		volumeBtn.classList.add("fa-volume-mute");
-		volumeBtn.setAttribute("title", "Unmute"); // Update tooltip
-	} else if (gainNode.gain.value < 0.35) {
-		volumeBtn.classList.remove("fa-volume-high", "fa-volume-mute");
-		volumeBtn.classList.add("fa-volume-low");
-		volumeBtn.setAttribute("title", "Volume Low"); // Update tooltip
-	} else {
-		volumeBtn.classList.remove("fa-volume-low", "fa-volume-mute");
-		volumeBtn.classList.add("fa-volume-high");
-		volumeBtn.setAttribute("title", "Mute"); // Update tooltip
-	}
+    if (gainNode.gain.value === 0) {
+        volumeBtn.src = "../assets/icons/volume-mute.png";
+        volumeBtn.setAttribute("title", "Unmute"); // Update tooltip
+    } else if (gainNode.gain.value < 0.70) {
+        volumeBtn.src = "../assets/icons/volume-low.png";
+        volumeBtn.setAttribute("title", "Volume Low"); // Update tooltip
+    } else if (gainNode.gain.value < 1.2) {
+        volumeBtn.src = "../assets/icons/volume.png";
+        volumeBtn.setAttribute("title", "Normal Volume"); // Update tooltip
+    } else {
+        volumeBtn.src = "../assets/icons/volume-high.png";
+        volumeBtn.setAttribute("title", "Mute"); // Update tooltip
+    }
 }
 
 // Mute/Unmute functionality for volume button
@@ -2188,15 +2188,17 @@ function toggleShuffleMode() {
 	isShuffle = !isShuffle;
 
 	if (isShuffle) {
-shuffleButton.classList.add("active");
-showStatusMessage("Rendom: On");
-	window.electron.sendShuffleState("on");
+		shuffleButton.classList.add("active");
+		shuffleButton.src = "../assets/icons/shuffle.png"; 
+		showStatusMessage("Random: On");
+		window.electron.sendShuffleState("on");
 	} else {
-shuffleButton.classList.remove("active");
-showStatusMessage("Rendom: Off");
-playedVideos = [];
-lastPlayedStack = [];
-	window.electron.sendShuffleState("off");
+		shuffleButton.classList.remove("active");
+		shuffleButton.src = "../assets/icons/no-shuffle.png"; 
+		showStatusMessage("Random: Off");
+		playedVideos = [];
+		lastPlayedStack = [];
+		window.electron.sendShuffleState("off");
 	}
 }
 
@@ -2746,9 +2748,11 @@ document.addEventListener("keydown", (event) => {
 	const keyActions = {
 		ArrowUp: () => {
 			updateVolume(gainNode.gain.value + 0.1) // Increase volume
+			showStatusMessage(`Volume: ${(gainNode.gain.value * 100).toFixed(0)}%`);
 		},
 		ArrowDown: () => {
 			updateVolume(gainNode.gain.value - 0.1) // Decrease volume
+			showStatusMessage(`Volume: ${(gainNode.gain.value * 100).toFixed(0)}%`);
 		},
 		ArrowLeft: () => {
 			currentMedia.currentTime = Math.max(0, currentMedia.currentTime - 10);
@@ -3217,13 +3221,14 @@ document.querySelector("#maximize").addEventListener("click", () => {
 
 // Function to update the maximize button icon
 function updateMaximizeIcon(isFullScreen) {
-	const maximizeIcon = document.querySelector("#maximize i");
-	if (maximizeIcon) {
- maximizeIcon.className = isFullScreen
-		? "fa-light fa-down-left-and-up-right-to-center" // Restore icon
-		: "fa-light fa-square"; // Maximize icon
-	}
+    const maximizeIcon = document.querySelector("#maximize img");
+    if (maximizeIcon) {
+        maximizeIcon.src = isFullScreen
+            ? "../assets/icons/win/restore-maximize.png"
+            : "../assets/icons/win/maximize.png";
+    }
 }
+
 
   // Listen for fullscreen state changes
 window.electron.onWindowStateChange(updateMaximizeIcon);
@@ -3300,9 +3305,10 @@ window.electron.onPlayPause(() => {
 // Send the initial playback state when requested
 window.electron.requestInitialPlayState();
 window.electron.onInitialPlayState((state) => {
-window.electron.sendPlayPauseStateForTray(state || "playing");  
-window.electron.sendPlayPauseStateForThumbar(state || "paused"); 
+	window.electron.sendPlayPauseStateForTray(state || "paused");  
+	window.electron.sendPlayPauseStateForThumbar(state || "playing"); 
 });
+
 // Handle playNext action from tray
 window.electron.onNext(() => {
 	playNext();

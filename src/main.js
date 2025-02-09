@@ -9,6 +9,7 @@ const { net } = require('electron');
 let win;
 let tray = null;
 let fileToOpen = process.argv.find(arg => /\.(mp4|mkv|mp3)$/i.test(arg)) || null;
+let playbackState = 'paused'; 
 let isPlayingForTray = false;   
 let isPlayingForThumbar = false; 
 let isQuitting = false;
@@ -126,9 +127,8 @@ function updateThumbarButtons() {
 function createTray() {
   tray = new Tray(path.join(__dirname, "../assets/icons/icon.ico"));
   tray.setToolTip('Anime Player');
-
-  const updateContextMenu = (playbackState = 'paused', shuffleState = 'off', repeatState = 'off') => {
-    const playPauseLabel = playbackState ? 'Pause' : 'Play';
+  const updateContextMenu = (shuffleState = 'off', repeatState = 'off') => {
+    const playPauseLabel = playbackState === 'playing' ? 'Pause' : 'Play';
     const shuffleLabel = (shuffleState === 'off') ? 'Shuffle Off' : 'Shuffle On';
     const repeatLabel = (repeatState === 'off') ? 'Repeat Off' : 'Repeat On';
 
@@ -210,7 +210,7 @@ function createTray() {
 
 // Handle play-pause state updates separately
 ipcMain.on('play-pause-state-tray', (event, state) => {
-  isPlayingForTray = state === 'playing';
+  playbackState  = state;
   updateContextMenu();
 });
 
@@ -263,8 +263,7 @@ app.on('ready', () => {
       win.webContents.send('load-playback-time', playbackData);
       win.webContents.send("fullscreen-state-changed", win.isFullScreen());
       win.webContents.send("initial-window-state", win.isFullScreen());
-      win.webContents.send("request-initial-play-state");
-
+      win.webContents.send("request-initial-play-state", playbackState); 
     });
   }
 

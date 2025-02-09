@@ -424,20 +424,18 @@ nav > * {
 }
 
 .btn-search {
-  width: 20px;
-  height: 20px;
+  width: 10px;
+  height: 10px;
   border-style: none;
-  font-size: 15px;
   font-weight: bold;
   outline: none;
   cursor: pointer;
   border-radius: 50%;
   position: absolute;
-  right: 0px;
   margin-top: 6px;
   color: #ffffff;
   background-color: transparent;
-  pointer-events: painted;
+  pointer-events: painted;  
 }
 
 .btn-search:focus ~ .input-search {
@@ -1224,11 +1222,6 @@ span {
 }
 
 /* Icon Styles */
-.volume-rendom #switchAudioTrack span.material-symbols-outlined {
-  font-size: 25px;
-  display: inline-block;
-}
-
 .volume-rendom .card:hover {
   border-color: rgba(255, 255, 255, 0.364);
   background-color: rgba(255, 255, 255, 0.1);
@@ -1241,14 +1234,10 @@ span {
   padding: 8px;
 }
 
-.fa-shuffle:before {
-  padding: 10px;
-}
-
 /* Additional Icon Sizing */
-#repeatBtn,
-#randomButton {
-  font-size: 22px;
+#LoopBtn,
+#shuffleBtn {
+  padding: 18px;
 }
 
 /* Volume range */
@@ -1476,6 +1465,11 @@ input[type="range"]::-moz-range-thumb:active {
 .media-controls .card:hover {
   border-color: rgba(255, 255, 255, 0.364);
   background-color: rgba(255, 255, 255, 0.1);
+}
+
+#playPauseBtn {
+  width: 20px;
+  height: 20px;
 }
 
 /* Loader */
