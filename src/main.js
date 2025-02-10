@@ -339,16 +339,19 @@ autoUpdater.on('update-available', () => {
     })
     .then((result) => {
       if (result.response === 0) {
-        // User chose 'Update Now', start downloading the update
         autoUpdater.downloadUpdate();
-        
-        // Show the progress bar
-        if (win) {
-          win.webContents.send('show-progress-bar');
-        }
+        win.webContents.send('show-progress-bar'); // Show progress bar
       }
     });
 });
+
+
+autoUpdater.on('download-progress', (progress) => {
+  if (win) {
+    win.webContents.send('download-progress', progress.percent);
+  }
+});
+
 
 autoUpdater.on('update-downloaded', () => {
   dialog
@@ -360,15 +363,12 @@ autoUpdater.on('update-downloaded', () => {
     })
     .then((result) => {
       if (result.response === 0) {
-        app.quit(); // Quit the application completely
+        app.quit();
         autoUpdater.quitAndInstall();
       }
     });
 
-  // Hide the progress bar after the download completes
-  if (win) {
-    win.webContents.send('hide-progress-bar');
-  }
+  win.webContents.send('hide-progress-bar'); // Hide progress bar after completion
 });
 
   // autoUpdater.on('error', (error) => {

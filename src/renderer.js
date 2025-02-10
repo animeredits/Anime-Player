@@ -2880,23 +2880,26 @@ function createFileObject({ buffer, mimeType, fileName }) {
     return new File([blob], fileName, { type: mimeType });
 }
 
-// Show the progress bar when the update starts downloading
 window.electron.onDownloadProgress((percent) => {
-	const UpdateprogressBar = document.querySelector('.progress::after');
-	document.querySelector('.progress').style.display = 'block'; // Show progress bar
+const progressBar = document.getElementById('progress-bar');
+const progressContainer = document.querySelector('.progress');
 
-	UpdateprogressBar.style.display = 'block';
-	UpdateprogressBar.style.width = `${percent}%`;
+if (progressContainer) {
+  progressContainer.style.display = 'block'; // Show progress bar
+}
+
+if (progressBar) {
+progressBar.style.width = `${percent}%`;
+}
 });
 
-  // Hide the progress bar when the download is complete
 window.electron.showProgressBar = () => {
-	document.querySelector('.progress').style.display = 'block';
+document.querySelector('.progress').style.display = 'block';
 };
 
 window.electron.hideProgressBar = () => {
-	document.querySelector('.progress').style.display = 'none';
-};
+document.querySelector('.progress').style.display = 'none';
+}
 
 // Handle actions from tray
 // Handle play/pause action from tray
