@@ -20,6 +20,7 @@ const speedOptions = {
 };
 const zoomTrackList = document.getElementById("zoom-track-list");
 const zoomOptions = zoomTrackList.querySelectorAll("a");
+const loopBtn = document.getElementById("LoopBtn");
 const playPauseBtn = document.getElementById("playPauseBtn");
 const progressBarContainer = document.getElementById("progressBarContainer");
 const progressBarWrapper = document.getElementById("progressBarWrapper");
@@ -47,401 +48,10 @@ const gifResultsContainer = document.getElementById("gifResultsContainer");
 const gifSearchContainer = document.getElementById("gifSearchContainer");
 const statusMessage = document.getElementById("statusMessage");
 
-// // Web Speech API initialization
-// const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-// const recognition = new SpeechRecognition();
-// recognition.lang = "en-IN" || "en-US"; // Set language to English (IN)
-// recognition.interimResults = true; // Enable interim results for faster feedback
-// recognition.maxAlternatives = 1; // Limit to one alternative result
-// recognition.continuous = true; // Single recognition to reduce latency
-
-// // Web Audio API for volume detection
-// const webaudioContext = new(window.AudioContext)();
-// let microphone;
-// let analyser;
-// let dataArray;
-// let volumeWarningIssued = false;
-// let isMicrophoneEnabled = false; // Initialize microphone status
-
-// // Function to setup the microphone and analyser
-// async function setupMicrophone() {
-// 	try {
-// 		const stream = await navigator.mediaDevices.getUserMedia({
-// 			audio: true
-// 		});
-// 		microphone = webaudioContext.createMediaStreamSource(stream);
-// 		analyser = webaudioContext.createAnalyser();
-// 		microphone.connect(analyser);
-// 		analyser.fftSize = 2048;
-// 		dataArray = new Uint8Array(analyser.frequencyBinCount);
-
-// 		// Start checking the voice volume after setup
-// 		checkVoiceVolume();
-// 		isMicrophoneEnabled = true; // Set the microphone status to enabled
-// 		updateMicButtonText(); // Update button text
-// 		startRecognition(); // Start recognition after microphone setup
-// 	} catch (error) {
-// 		// console.error("Error accessing microphone:", error);
-// 		alert("Microphone access is required for voice commands. Please allow access in your browser settings.");
-// 	}
-// }
-
-// // Function to request or stop microphone access
-// async function toggleMicrophoneAccess() {
-// 	if (isMicrophoneEnabled) {
-// 		// Stop microphone access
-// 		stopRecognition(); // Stop recognition if it’s running
-// 		if (microphone) {
-// 			microphone.disconnect(); // Disconnect the microphone
-// 			microphone = null;
-// 		}
-// 		if (analyser) {
-// 			analyser = null;
-// 		}
-// 		isMicrophoneEnabled = false; // Update the status
-// 	} else {
-// 		// Request microphone access
-// 		await setupMicrophone(); // Call the setup function
-// 	}
-
-// 	// Update the button text after toggling
-// 	updateMicButtonText(); // Update the button text
-// }
-
-// // Function to update the button text based on microphone status
-// function updateMicButtonText() {
-// 	const permissionButton = document.getElementById("mic-access-button");
-// 	permissionButton.textContent = isMicrophoneEnabled ? "Disable Microphone" : "Enable Microphone";
-// }
-
-// // Function to monitor voice volume and provide feedback if too low
-// function checkVoiceVolume() {
-// 	if (!analyser) return; // Skip if analyser is not set up
-
-// 	analyser.getByteFrequencyData(dataArray);
-// 	const averageVolume =
-// 		dataArray.reduce((sum, value) => sum + value) / dataArray.length;
-
-// 	// Example threshold for low volume; adjust based on testing
-// 	if (averageVolume < 10 && !volumeWarningIssued) {
-// 		displayVolumeWarning(); // Function to visually notify the user
-// 		volumeWarningIssued = true; // Prevent repeated warnings
-// 	} else if (averageVolume >= 20) {
-// 		hideVolumeWarning(); // Hide warning if volume is adequate
-// 		volumeWarningIssued = false;
-// 	}
-
-// 	requestAnimationFrame(checkVoiceVolume); // Continuously check volume
-// }
-
-// // Function to display a warning to the user
-// function displayVolumeWarning() {
-// 	const warningElement = document.getElementById("volume-warning");
-// 	if (warningElement) {
-// 		warningElement.style.display = "block";
-// 	}
-// }
-
-// // Function to hide the volume warning
-// function hideVolumeWarning() {
-// 	const warningElement = document.getElementById("volume-warning");
-// 	if (warningElement) {
-// 		warningElement.style.display = "none";
-// 	}
-// }
-
-// // Start listening for voice commands
-// function startRecognition() {
-// 	if (recognition && !recognition.recognizing) {
-// 		recognition.start();
-// 	}
-// }
-
-// // Stop listening for voice commands
-// function stopRecognition() {
-// 	if (recognition && recognition.recognizing) {
-// 		recognition.stop();
-// 	}
-// }
-
-// // Add a flag to track recognition state
-// recognition.recognizing = false;
-
-// // Update recognition state on start and end events
-// recognition.addEventListener("start", () => {
-// 	// console.log("Speech recognition service has started.");
-// 	recognition.recognizing = true; // Set the flag to true
-// });
-
-// recognition.addEventListener("end", () => {
-// 	// console.log("Speech recognition service has stopped.");
-// 	recognition.recognizing = false; // Set the flag to false
-// 	// Automatically restart recognition if the microphone is enabled
-// 	if (isMicrophoneEnabled) {
-// 		startRecognition();
-// 	}
-// });
-
-// const commandMap = {
-// 	"play": () => {
-// 		if (video.paused) {
-// 			video.play();
-// 			hideVideoTitle();
-// 			updatePlayPauseIcon(true);
-// 		}
-// 	},
-// 	"start": () => {
-// 		if (video.paused) {
-// 			video.play();
-// 			hideVideoTitle();
-// 			updatePlayPauseIcon(true);
-// 		}
-// 	},
-// 	"stop": () => {
-// 		if (!video.paused) {
-// 			video.pause();
-// 			showVideoTitle();
-// 			updatePlayPauseIcon(false);
-// 		}
-// 	},
-// 	"pause": () => {
-// 		if (!video.paused) {
-// 			video.pause();
-// 			showVideoTitle();
-// 			updatePlayPauseIcon(false);
-// 		}
-// 	},
-// 	"next":playNext,
-// 	"back":playPrevious,
-// 	"previous": playPrevious,
-// 	"repeat": toggleRepeat,
-// 	"loop": toggleRepeat,
-// 	"repeat off": toggleRepeat,
-// 	"loop off": toggleRepeat,
-// 	"shuffle": toggleShuffleMode,
-// 	"shuffle off": toggleShuffleMode,
-// 	"shortcuts": toggleShortcutsInfoBox,
-// 	"shortcuts close": toggleShortcutsInfoBox,
-// 	"shortcut": toggleShortcutsInfoBox,
-// 	"shortcut close": toggleShortcutsInfoBox,
-// 	"full screen": toggleFullScreen,
-// 	"exit full screen": toggleFullScreen,
-// 	"mini screen": togglePiPMode,
-// 	"exit": togglePiPMode,
-// 	"exit mini screen": togglePiPMode,
-// 	"refresh": () => {
-// 		location.reload();
-// 	},
-// 	"open file": () => {
-// 		CSOInput.click();
-// 	},
-// 	"loud": () => {
-// 		updateVolume(gainNode.gain.value + 0.1);
-// 		updateVolumeIcon();
-// 	},
-// 	"volume up": () => {
-// 		updateVolume(gainNode.gain.value + 0.1);
-// 		updateVolumeIcon();
-// 	},
-// 	"volume down": () => {
-// 		updateVolume(gainNode.gain.value - 0.1);
-// 		updateVolumeIcon();
-// 	},
-// 	"volume low": () => {
-// 		updateVolume(gainNode.gain.value = 0.2);
-// 		updateVolumeIcon();
-// 	},
-// 	"low volume": () => {
-// 		updateVolume(gainNode.gain.value = 0.2);
-// 		updateVolumeIcon();
-// 	},
-// 	"mute": () => {
-// 		updateVolume(gainNode.gain.value = 0);
-// 		updateVolumeIcon();		
-// 		volumeSlider.value = 0; 
-// 	},
-// 	"default volume": () => {
-// 		updateVolume(gainNode.gain.value = 1.0);
-// 		updateVolumeIcon();
-// 	},
-// 	"medium volume": () => {
-// 		updateVolume(gainNode.gain.value = 0.7);
-// 		updateVolumeIcon();
-// 	},
-// 	"max volume": () => {
-// 		updateVolume(gainNode.gain.value = 1.5);
-// 	},
-// 	'rewind': () => {
-// 		video.currentTime = Math.max(0, video.currentTime - 10);
-// 	},
-// 	"forward": () => {
-// 		video.currentTime = Math.min(video.duration, video.currentTime + 10);
-// 	},
-// 	"speed up": () => {
-// 		if (video.playbackRate < 2) {
-// 			const newSpeed = video.playbackRate + 0.25;
-// 			setPlaybackSpeed(newSpeed);
-// 			showStatusMessage(newSpeed === 1 ? "Normal" : `Speed: ${newSpeed}x`);
-// 		}
-// 	},
-// 	"double speed": () => {
-// 		if (video.playbackRate < 2) {
-// 			const newSpeed = video.playbackRate + 1.0;
-// 			setPlaybackSpeed(newSpeed);
-// 			showStatusMessage(newSpeed === 1 ? "Normal" : `Speed: ${newSpeed}x`);
-// 		}
-// 	},
-// 	"slow down": () => {
-// 		if (video.playbackRate > 0.25) {
-// 			const newSpeed = video.playbackRate - 0.25;
-// 			setPlaybackSpeed(newSpeed);
-// 			showStatusMessage(newSpeed === 1 ? "Normal" : `Speed: ${newSpeed}x`);
-// 		}
-// 	},
-// 	"normal speed": () => {
-// 		setPlaybackSpeed(1);
-// 		showStatusMessage("Normal");
-// 	},
-// 	"landscape": () => {
-// 		rotateVideo(-90);
-// 		showStatusMessage("Landscape mode");
-// 	},
-// 	"portrait": () => {
-// 		rotateVideo(0);
-// 		showStatusMessage("Portrait mode");
-// 	},
-// 	"magnify": () => {
-// 		currentZoomIndex = (currentZoomIndex + 1) % zoomLevels.length;
-// 		scale = zoomLevels[currentZoomIndex];
-// 		video.style.transform = `scale(${scale})`;
-// 		video.style.transformOrigin = "center center";
-// 		const zoomPercentage = Math.round(scale * 100);
-// 		showStatusMessage(`Zoom: ${zoomPercentage}%`);
-// 	},
-// 	"continue": () => {
-// 		let lastPlaybackTime = getPlaybackTimeFromCache(videoId); // Load from local storage
-// 		if (lastPlaybackTime > 0) {
-// 			video.currentTime = lastPlaybackTime; // Resume from last saved playback time
-// 			video.play(); // Start playing the video
-// 			document.getElementById("continueButton").style.display = "none"; // Hide the "Continue" button
-// 			clearCache(videoId); // Clear the playback cache after continuing
-// 		}
-// 	},
-
-// 	"restart": () => {
-// 		currentMedia.currentTime = 0;
-// 		currentMedia.play();
-// 	},
-// 	"close": () => {
-// 		window.close();
-// 	}
-// };
-
-// // Modified recognition result event handler to limit multiple command processing
-// recognition.addEventListener("result", (event) => {
-// 	if (commandProcessed) return; // Exit if a command has recently been processed
-
-// 	for (let i = event.resultIndex; i < event.results.length; ++i) {
-// 		const transcript = event.results[i][0].transcript.trim().toLowerCase();
-// 		// console.log("Recognized command:", transcript);
-
-// 		// Execute the command if it exists in the command map
-// 		for (const command in commandMap) {
-// 			if (transcript.includes(command)) {
-// 				commandMap[command]();
-// 				commandProcessed = true; // Set flag to prevent multiple processing
-
-// 				// Stop recognition to prevent further triggers
-// 				stopRecognition();
-
-// 				// Reset the commandProcessed flag and restart recognition after a short delay
-// 				setTimeout(() => {
-// 					commandProcessed = false;
-// 					if (isMicrophoneEnabled) startRecognition();
-// 				}, 500); // Adjust delay as needed to prevent multiple triggers
-
-// 				break; // Break after the first match
-// 			}
-// 		}
-// 	}
-// });
-
-// // Error handling
-// recognition.addEventListener("error", (event) => {
-// 	//// console.error("Speech recognition error:", event.error);
-// 	if (event.error === "not-allowed" || event.error === "service-not-allowed") {
-// 		alert("Please allow microphone access to use voice commands.");
-// 	}
-// });
-
-// // Request microphone access and initialize the Web Speech API
-// async function requestMicrophoneAccess() {
-// 	const permissionButton = document.getElementById("mic-access-button");
-
-// 	if (permissionButton) {
-// 		permissionButton.style.display = "block"; // Show the button to request access
-
-// 		permissionButton.addEventListener("click", toggleMicrophoneAccess);
-// 	}
-
-// 	await setupMicrophone(); // Call setup after button is clicked
-// }
-
-// // Start the microphone access request
-// requestMicrophoneAccess();
-
-// // Initialize Web Speech API
-// const synth = window.speechSynthesis;
-
-// document.addEventListener("DOMContentLoaded", () => {
-// 	// Select all descriptions
-// 	const descriptions = document.querySelectorAll(".shortcut .description");
-
-// 	descriptions.forEach(description => {
-// 		description.addEventListener("mouseover", () => {
-// 			// Get the parent shortcut container
-// 			const shortcut = description.closest(".shortcut");
-
-// 			// Find all keys > span elements within this shortcut
-// 			const keySpans = shortcut.querySelectorAll(".keys > span");
-
-// 			// Concatenate the text content of all key spans
-// 			let textToSpeak = Array.from(keySpans)
-// 				.map(span => span.textContent.trim())
-// 				.join(", ");
-
-// 			// Speak the text
-// 			speakText(textToSpeak);
-// 		});
-// 	});
-// });
-
-// // Function to handle speech synthesis
-// function speakText(text) {
-// 	if (synth.speaking) {
-// 		synth.cancel(); // Stop ongoing speech if any
-// 	}
-
-// 	const utterance = new SpeechSynthesisUtterance(text);
-// 	utterance.rate = 1; // Speech rate (normal speed)
-// 	utterance.pitch = 1; // Speech pitch (normal tone)
-// 	utterance.lang = "en-US"; // Language
-// 	synth.speak(utterance);
-// }
-
-
-// const keys = document.querySelectorAll('.key');
-// keys.forEach((key) => {
-// 	key.addEventListener('mouseenter', () => {
-// 		const text = key.textContent.trim(); // Get text content
-// 		speakText(text);
-// 	});
-// });
-
 let commandProcessed = false;
 let currentMedia = video;
 let isFullScreen = false;
-let isRepeat = false;
+let isRepeatMode  = false;
 let videoFiles = [];
 let playedVideos = [];
 let currentVideoIndex = 0;
@@ -490,7 +100,6 @@ function showStatusMessage(text) {
 		statusMessage.style.opacity = '0';
 	}, 1800);
 }
-
 
 // disabling the dragging behavior
 document.querySelectorAll("a ,img").forEach((link) => {
@@ -851,25 +460,25 @@ defaultLogoLinks.forEach((link) => {
 });
 
 
-// Function to search GIFs
 function searchGifs() {
-	const searchTerm = gifSearchInput.value.trim();
-	if (!searchTerm) return;
+    const searchTerm = gifSearchInput.value.trim();
+    if (!searchTerm) return;
 
-	clearGifResults(); // Remove previous GIFs before starting a new search
-	gifResultsContainer.innerHTML = `<div class="loading">Loading...</div>`;
-	gifResultsContainer.style.display = "block";
+    clearGifResults();
+    gifResultsContainer.innerHTML = `<div class="loading">Loading...</div>`;
+    gifResultsContainer.style.display = "block";
 
-	fetch(`https://api.giphy.com/v1/gifs/search?api_key=KlO42gtgg2Q48imB0bV7Xraa73usqtLT&q=${encodeURIComponent(searchTerm)}&limit=100`)
-		.then((response) => response.json())
-		.then((data) => {
-			displayGifResults(data.data);
-		})
-		.catch((error) => {
-			console.error("Error fetching GIFs:", error);
-			gifResultsContainer.innerHTML = `<div class="no-results">Error fetching results. Please try again later.</div>`;
-		});
+    fetch(`https://api.giphy.com/v1/gifs/search?api_key=${API_KEY}&q=${encodeURIComponent(searchTerm)}&limit=100`)
+        .then((response) => response.json())
+        .then((data) => {
+            displayGifResults(data.data);
+        })
+        .catch((error) => {
+            console.error("Error fetching GIFs:", error);
+            gifResultsContainer.innerHTML = `<div class="no-results">Error fetching results. Please try again later.</div>`;
+        });
 }
+
 
 // Display GIF results
 function displayGifResults(gifs) {
@@ -1512,7 +1121,7 @@ folder.addEventListener("click", () => folderInput.click());
 
 // Functions to toggle play/pause icon
 function updatePlayPauseIcon(isPlaying) {
-    playPauseBtn.src = isPlaying ? "../assets/icons/pause-.png" : "../assets/icons/play.png";
+    playPauseBtn.src = isPlaying ? "../assets/icons/pause-.png" : "../assets/icons/play-.png";
     playPauseBtn.setAttribute("alt", isPlaying ? "Pause" : "Play");
     playPauseBtn.setAttribute("title", isPlaying ? "Pause" : "Play");
 }
@@ -1582,17 +1191,23 @@ function updateNavigationButtons() {
 // Function to play the next video
 function playNext() {
 	const nextIndex = getNextIndex();
-	if (nextIndex === null && !isLooping) {
-		stopPlayback();
+	if (nextIndex === null) {
+		if (isRepeatMode === 2) {
+			// Loop All: Restart from first video
+			playVideoByIndex(0);
+			highlightCurrentVideoInPlaylist(videoFiles[0].name);
+		} else {
+			stopPlayback();
+		}
 		return;
 	}
 
-	lastPlayedStack.push(currentVideoIndex); // Store the last played index before playing next
+	lastPlayedStack.push(currentVideoIndex);
 	lastPlayedIndex = nextIndex;
 	playVideoByIndex(nextIndex);
 	highlightCurrentVideoInPlaylist(videoFiles[nextIndex].name);
 	updateNavigationButtons();
-	showStatusMessage("Next")
+	showStatusMessage("Next");
 }
 
 // Function to play the previous video
@@ -2204,22 +1819,30 @@ function toggleShuffleMode() {
 
 // Toggle repeat mode and show status
 function toggleRepeat() {
-	isRepeat = !isRepeat;
-	currentMedia.loop = isRepeat;
+	// 0 = Off, 1 = Loop One, 2 = Loop All
+	isRepeatMode = (isRepeatMode + 1) % 3;
 
-	if (isRepeat) {
-		showStatusMessage("Loop: On");
-		window.electron.sendRepeatState("on");
-		video.play();
-	} else {
+	if (isRepeatMode === 0) {
+		currentMedia.loop = false;
 		showStatusMessage("Loop: Off");
 		window.electron.sendRepeatState("off");
+		loopBtn.src = "../assets/icons/repeat-on.png";
+	} else if (isRepeatMode === 1) {
+		currentMedia.loop = true; // Loop only one video
+		showStatusMessage("Loop: One");
+		window.electron.sendRepeatState("one");
+		loopBtn.src = "../assets/icons/repeat-one.png";
+	} else if (isRepeatMode === 2) {
+		currentMedia.loop = false; // Handled manually in playNext
+		showStatusMessage("Loop: All");
+		window.electron.sendRepeatState("all");
+		loopBtn.src = "../assets/icons/repeat-on.png";
 	}
 }
 
 // Event listener for shuffle mode button loopbutton, switchtrack button and Full screen 
 document.getElementById("shuffleButton").addEventListener("click", toggleShuffleMode);
-document.getElementById("LoopBtn").addEventListener("click", toggleRepeat);
+loopBtn.addEventListener("click", toggleRepeat);
 
 // Select the full-screen button elements
 const fullscreenButtons = document.querySelectorAll(".fullscreenBtn");
@@ -2908,28 +2531,6 @@ keyboardTab.addEventListener('click', () => {
 	keyboardShortcuts.style.display = 'grid';
 	voiceShortcuts.style.display = 'none';
 });
-
-// voiceTab.addEventListener('click', () => {
-// 	voiceTab.classList.add('active-tab');
-// 	keyboardTab.classList.remove('active-tab');
-// 	keyboardShortcuts.style.display = 'none';
-// 	voiceShortcuts.style.display = 'grid';
-// });
-
-// Add search functionality for active tab
-// searchInput.addEventListener('input', (e) => {
-// 	const query = e.target.value.toLowerCase();
-// 	const activeShortcuts = keyboardShortcuts.style.display === 'grid' ? keyboardShortcuts : voiceShortcuts;
-// 	const shortcuts = activeShortcuts.querySelectorAll('.shortcut');
-
-// 	shortcuts.forEach((shortcut) => {
-// 		const descriptionElement = shortcut.querySelector('.description');
-// 		if (descriptionElement) {
-// 			const description = descriptionElement.textContent.toLowerCase();
-// 			shortcut.style.display = description.includes(query) ? 'flex' : 'none';
-// 		}
-// 	});
-// });
 
 // Function to apply rotation
 function applyRotation() {

@@ -1,3 +1,10 @@
+/* @import url('https://fonts.googleapis.com/css2?family=Fira+Sans:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&display=swap'); */
+
+@font-face {
+  font-family: "Fira Sans";
+  src: url(../assets/Font/FiraSans-Regular.ttf);
+}
+
 /* Global Styles */
 * {
   box-sizing: border-box;
@@ -12,7 +19,8 @@ body {
   width: 100%;
   height: 100%;
   background-color: #000;
-  font-family: "Helvetica Neue", Arial, sans-serif;
+  font-family: "Fira Sans", serif;
+  font-weight: 200;
   color: #fff;
   overflow: hidden;
   -webkit-app-region: no-drag;
@@ -55,9 +63,8 @@ nav {
   width: 100%;
   z-index: 99;
   background: transparent;
-  font-size: 11px;
+  font-size: 12px;
   letter-spacing: 0.5px;
-  font-weight: 450;
   -webkit-app-region: no-drag;
 }
 
@@ -74,7 +81,6 @@ nav ul li {
 
 nav ul li a {
   color: #fff;
-  font-weight: 300;
   text-decoration: none;
   -webkit-app-region: no-drag;
   transition: background-color 0.3s ease, border-radius 0.3s ease;
@@ -86,7 +92,7 @@ nav ul li a:hover {
 }
 
 nav ul li.nav-image img {
-  height: 35px;
+  height: 38px;
   margin-top: 5px;
   margin-left: 10px;
   animation: rotateImage 5s linear infinite;
@@ -417,17 +423,16 @@ nav > * {
 
 .input-search::placeholder {
   color: rgba(42, 42, 42, 0.5);
-  font-size: 11px;
+  font-size: 12px;
   letter-spacing: 1px;
-  font-weight: 100;
   color: #fff;
 }
 
 .btn-search {
   width: 10px;
   height: 10px;
+  right: 0;
   border-style: none;
-  font-weight: bold;
   outline: none;
   cursor: pointer;
   border-radius: 50%;
@@ -495,7 +500,6 @@ nav > * {
   max-height: 450px;
   overflow-y: auto;
   overflow-x: hidden;
-  font-weight: 300;
 }
 
 .play-list a {

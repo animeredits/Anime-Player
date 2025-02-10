@@ -201,8 +201,7 @@ function createTray() {
   updateContextMenu(); // Initialize with 'paused' state and 'off' for shuffle and repeat
 
   tray.on("click", () => {
-    win.isVisible() ? win.hide() : (win.show(), win.maximize());
-    updateContextMenu(); // Update context menu based on visibility
+    tray.popUpContextMenu();
   });
 
   win.on('hide', updateContextMenu);
@@ -485,7 +484,7 @@ ipcMain.on('save-playback-time', (event, playbackTime, videoId) => {
 
 // Ensure playback time is saved before the app quits
 app.on('before-quit', (event) => {
-  if (!isQuitting) {
+  if (isQuitting) {
     event.preventDefault(); // Prevent immediate quitting
     isQuitting = true; // Mark that the quit has been requested
 
