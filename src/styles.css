@@ -1637,15 +1637,18 @@ input[type="range"]::-moz-range-thumb:active {
   background: rgba(255, 255, 255, 0.5);
   transform: translate(-50%, -50%);
   overflow: hidden;
+  z-index: 999;
 }
 
-.progress::after {
+.progress-bar {
   content: "";
   width: 100%;
   height: 4px;
   background: white;
   transition: width 0.2s ease;
 }
+
+
 
 /* Video Settings */
 .video-settings {
