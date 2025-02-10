@@ -484,14 +484,11 @@ ipcMain.on('save-playback-time', (event, playbackTime, videoId) => {
 
 // Ensure playback time is saved before the app quits
 app.on('before-quit', (event) => {
-  if (isQuitting) {
-    event.preventDefault(); // Prevent immediate quitting
-    isQuitting = true; // Mark that the quit has been requested
-
-    // Send a signal to the renderer to save the playback time before quitting
-    if (win && win.webContents) {
-      win.webContents.send('app-closing');
-    }
+  if (!isQuitting) {
+    event.preventDefault();
+    isQuitting = true;
+    win?.webContents.send('app-closing');
+    setTimeout(app.quit, 500); 
   }
 });
 
