@@ -2885,6 +2885,7 @@ window.electron.onDownloadProgress((percent) => {
 	const UpdateprogressBar = document.querySelector('.progress::after');
 	document.querySelector('.progress').style.display = 'block'; // Show progress bar
 
+	UpdateprogressBar.style.display = 'block';
 	UpdateprogressBar.style.width = `${percent}%`;
 });
 
