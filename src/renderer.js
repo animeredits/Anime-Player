@@ -1188,38 +1188,41 @@ function updateNavigationButtons() {
 	}
 }
 
-// Function to play the next video
 function playNext() {
-	const nextIndex = getNextIndex();
-	if (nextIndex === null) {
-		if (isRepeatMode === 2) {
-			// Loop All: Restart from first video
-			playVideoByIndex(0);
-			highlightCurrentVideoInPlaylist(videoFiles[0].name);
-		} else {
-			stopPlayback();
-		}
-		return;
-	}
-
-	lastPlayedStack.push(currentVideoIndex);
-	lastPlayedIndex = nextIndex;
-	playVideoByIndex(nextIndex);
-	highlightCurrentVideoInPlaylist(videoFiles[nextIndex].name);
-	updateNavigationButtons();
-	showStatusMessage("Next");
+    if (video.duration >= 60 && video.currentTime < video.duration) {
+        savePlaybackTimeToCache(videoId, video.currentTime);
+    }
+    const nextIndex = getNextIndex();
+    if (nextIndex === null) {
+        if (isRepeatMode === 2) {
+            playVideoByIndex(0);
+            highlightCurrentVideoInPlaylist(videoFiles[0].name);
+        } else {
+            stopPlayback();
+        }
+        return;
+    }
+    lastPlayedStack.push(currentVideoIndex);
+    lastPlayedIndex = nextIndex;
+    playVideoByIndex(nextIndex);
+    highlightCurrentVideoInPlaylist(videoFiles[nextIndex].name);
+    updateNavigationButtons();
+    showStatusMessage("Next");
 }
 
-// Function to play the previous video
 function playPrevious() {
-	if (lastPlayedStack.length > 0) {
-		const prevIndex = lastPlayedStack.pop(); // Get the last played video index from the stack
-		playVideoByIndex(prevIndex);
-		highlightCurrentVideoInPlaylist(videoFiles[prevIndex].name);
-		updateNavigationButtons();
-		showStatusMessage("Back")
-	}
+    if (video.duration >= 60 && video.currentTime < video.duration) {
+        savePlaybackTimeToCache(videoId, video.currentTime);
+    }
+    if (lastPlayedStack.length > 0) {
+        const prevIndex = lastPlayedStack.pop();
+        playVideoByIndex(prevIndex);
+        highlightCurrentVideoInPlaylist(videoFiles[prevIndex].name);
+        updateNavigationButtons();
+        showStatusMessage("Back");
+    }
 }
+
 
 // Function to stop playback and reset the media player
 function stopPlayback() {

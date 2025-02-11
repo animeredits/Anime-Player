@@ -58,7 +58,7 @@ jobs:
 
       - name: Build for Windows
         env:
-          GH_TOKEN: ${{ secrets.GH_TOKEN}} 
+          GH_TOKEN: ${{ secrets.GH_TOKEN }} 
         run: npm run dist -- --win
 
       - name: Upload Windows Build Artifacts
@@ -67,10 +67,38 @@ jobs:
           name: windows-build
           path: dist/*.exe 
 
+  # Build for macOS
+  build-macos:
+    name: Build for macOS
+    runs-on: macos-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v3
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: 18
+
+      - name: Install Dependencies
+        run: npm ci
+
+      - name: Build for macOS
+        env:
+          GH_TOKEN: ${{ secrets.GH_TOKEN }} 
+        run: npm run dist -- --mac
+
+      - name: Upload macOS Build Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: macos-build
+          path: dist/*.dmg 
+
 # Release Job
   release:
     name: Publish Release
-    needs: [build-linux, build-windows]
+    needs: [build-linux, build-windows, build-macos]
     runs-on: ubuntu-latest
     if: startsWith(github.ref, 'refs/tags/v')
 
@@ -90,6 +118,12 @@ jobs:
           name: windows-build
           path: windows-dist/
 
+      - name: Download macOS Artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: macos-build
+          path: macos-dist/
+
       - name: Upload Release Assets using `gh release`
         env:
           GH_TOKEN: ${{ secrets.GH_TOKEN }}
@@ -99,8 +133,9 @@ jobs:
             --notes "New release of Anime Player" \
             linux-dist/*.AppImage \
             windows-dist/*.exe \
+            macos-dist/*.dmg \
             -p
-            
+
   # Auto-tagging job
   tag-release:
     name: Auto Tag Release
@@ -126,4 +161,4 @@ jobs:
         if: env.TAG_EXISTS == '0'
         run: |
           git tag -a "$VERSION" -m "Release $VERSION"
-          git push origin "$VERSION"
+          git push origin "$VERSION"  
