@@ -84,6 +84,9 @@ jobs:
       - name: Install Dependencies
         run: npm ci
 
+      - name: Clean dist directory
+        run: rm -rf dist
+
       - name: Build for macOS
         env:
           GH_TOKEN: ${{ secrets.GH_TOKEN }} 
