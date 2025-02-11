@@ -201,7 +201,8 @@ function createTray() {
   updateContextMenu(); // Initialize with 'paused' state and 'off' for shuffle and repeat
 
   tray.on("click", () => {
-    tray.popUpContextMenu();
+    win.isVisible() ? win.hide() : (win.show(), win.maximize());
+    updateContextMenu();
   });
 
   win.on('hide', updateContextMenu);
