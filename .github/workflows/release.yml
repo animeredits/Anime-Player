@@ -87,16 +87,22 @@ jobs:
       - name: Clean dist directory
         run: rm -rf dist
 
+      - name: Debug dist directory before build
+        run: ls -R dist
+
       - name: Build for macOS
         env:
           GH_TOKEN: ${{ secrets.GH_TOKEN }} 
-        run: npm run dist -- --mac
+        run: npm run dist -- --mac --out=dist-mac
+
+      - name: Debug dist directory after build
+        run: ls -R dist-mac
 
       - name: Upload macOS Build Artifacts
         uses: actions/upload-artifact@v4
         with:
           name: macos-build
-          path: dist/*.dmg 
+          path: dist-mac/*.dmg
 
 # Release Job
   release:
