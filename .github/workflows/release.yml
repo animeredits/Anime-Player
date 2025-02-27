@@ -90,40 +90,31 @@ jobs:
           name: windows-build
           path: windows-dist/
 
-      - name: Upload Draft Release Assets using `gh release`
+      - name: Extract Tag Name
+        id: get_tag
+        run: echo "TAG_NAME=${GITHUB_REF#refs/tags/}" >> $GITHUB_ENV
+
+      - name: Authenticate GitHub CLI
+        run: gh auth status
+        env:
+          GH_TOKEN: ${{ secrets.GH_TOKEN }}
+
+      - name: Check if Release Exists
+        id: check_release
+        continue-on-error: true
+        run: |
+          gh release view $TAG_NAME && echo "EXISTS=true" >> $GITHUB_ENV || echo "EXISTS=false" >> $GITHUB_ENV
+        env:
+          GH_TOKEN: ${{ secrets.GH_TOKEN }}
+
+      - name: Create Draft Release
+        if: env.EXISTS == 'false'
         env:
           GH_TOKEN: ${{ secrets.GH_TOKEN }}
         run: |
-          gh release create ${{ github.ref }} \
-            --title "Anime Player ${{ github.ref }}" \
+          gh release create "$TAG_NAME" \
+            --title "Anime Player $TAG_NAME" \
             --notes "New release of Anime Player" \
+            --draft \
             linux-dist/*.AppImage \
-            windows-dist/*.exe \
-            --draft
-
-  # Auto-tagging job
-  tag-release:
-    name: Auto Tag Release
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout Code
-        uses: actions/checkout@v3
-
-      - name: Set Git User
-        run: |
-          git config --global user.email "actions@github.com"
-          git config --global user.name "GitHub Actions"
-
-      - name: Check if Tag Exists
-        id: check_tag
-        run: |
-          VERSION=$(node -p "require('./package.json').version")
-          TAG_EXISTS=$(git ls-remote --tags origin "v$VERSION" | wc -l)
-          echo "VERSION=v$VERSION" >> $GITHUB_ENV
-          echo "TAG_EXISTS=$TAG_EXISTS" >> $GITHUB_ENV
-
-      - name: Create and Push Tag
-        if: env.TAG_EXISTS == '0'
-        run: |
-          git tag -a "$VERSION" -m "Release $VERSION"
-          git push origin "$VERSION"  
+            windows-dist/*.exe 
