@@ -47,11 +47,9 @@
           <li class="dropdown">
             <a href="javascript:void(0)" class="dropbtn">Media</a>
             <div class="dropdown-content">
-              <a id="Ofile">Open File... <span class="shortcut">Ctrl + O</span>
+              <a id="openFileButton">Open Files... <span class="shortcut">Ctrl + O</span>
               </a>
-              <a id="CSO">Open Multiple Files... <span class="shortcut">Shift + O</span>
-              </a>
-              <a id="folder">Open Folder... <span class="shortcut">Ctrl + F</span>
+              <a id="openFolderButton">Open Folder... <span class="shortcut">Ctrl + F</span>
               </a>
               <a class="quit">Quit... <span class="shortcut">Ctrl + Q</span>
               </a>
@@ -154,18 +152,18 @@
               <!-- <div class="sub-dropdown"><a href="javascript:void(0)" class="sub-dropbtn">Aspect Ratio / Crop</a><div class="sub-dropdown-content" id="aspect-ratio-list"><a data-aspect="default">Default</a><a data-aspect="16:10">16:10</a><a data-aspect="16:9">16:9</a><a data-aspect="4:3">4:3</a><a data-aspect="1.85:1">1.85:1</a><a data-aspect="2.21:1">2.21:1</a><a data-aspect="2.35:1">2.35:1</a><a data-aspect="2.39:1">2.39:1</a><a data-aspect="5:4">5:4</a><a data-aspect="5:1">5:1</a></div></div> -->
             </div>
           </li>
-          <li class="dropdown">
+          <!-- <li class="dropdown">
             <a href="javascript:void(0)" class="dropbtn">Subtitle</a>
             <div class="dropdown-content">
               <a class="">Add Subtitle file...</a>
               <div class="sub-dropdown">
                 <a href="javascript:void(0)" class="sub-dropbtn">Subtitle Track</a>
                 <div class="sub-dropdown-content" id="subtitle-track-list">
-                  <!-- Subtitle tracks will be dynamically inserted here -->
+                  Subtitle tracks will be dynamically inserted here
                 </div>
               </div>
             </div>
-          </li>
+          </li> -->
           <li class="dropdown">
             <a href="javascript:void(0)" class="dropbtn">Help</a>
             <div class="dropdown-content">
@@ -304,14 +302,13 @@
                   <a class="fullscreenBtn">Full Screen</a>
                 </div>
               </div>
-            </li>
-            
-            <li>
+            </li>     
+            <!-- <li>
               <a>
                 <span class="icon">&#128250;</span>
                 <span class="text">Subtitle Track</span>
               </a>
-            </li>
+            </li> -->
             <li id="context-menu-playlist" class="sub-dropdown">
               <a href="javascript:void(0)" class="sub-dropbtn">
                 <span class="icon">&#127925;</span>
@@ -356,12 +353,6 @@
         <div id="audioLogo">
           <img id="audioImage" src="../assets/icons/icon.ico" alt="Visualization" style="display: none;" />
         </div>
-        <!-- File input for selecting a single video or audio file -->
-        <input type="file" id="fileInput" accept="video/*,video/x-matroska,video/x-hevc,video/x-h264,audio/*" style="display: none;" />
-        <!-- Input to select multiple video and audio files -->
-        <input type="file" id="CSOInput" multiple accept="video/*,video/x-matroska,video/x-hevc,video/x-h264,audio/*" style="display: none;" />
-        <!-- Folder input to select a directory containing media files -->
-        <input type="file" id="folderInput" webkitdirectory style="display: none;" />
         <!-- Loader -->
         <div id="loader">
           <div class="overlay">
@@ -500,16 +491,9 @@
                   </div>
                 </div>
                 <div class="shortcut">
-                  <div class="description">Open File</div>
+                  <div class="description">Open Files</div>
                   <div class="keys">
                     <span class="key">Ctrl</span>
-                    <span class="key">O</span>
-                  </div>
-                </div>
-                <div class="shortcut">
-                  <div class="description">Open Multiple Files</div>
-                  <div class="keys">
-                    <span class="key">Shift</span>
                     <span class="key">O</span>
                   </div>
                 </div>
@@ -566,7 +550,7 @@
                 <div class="shortcut">
                   <div class="description">Toggle Shuffle Mode</div>
                   <div class="keys">
-                    <span class="key">R</span>
+                    <span class="key">S/span>
                   </div>
                 </div>
                 <div class="shortcut">

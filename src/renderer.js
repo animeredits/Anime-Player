@@ -1,12 +1,8 @@
-const mediaPlayer = document.getElementById("mediaPlayer");
-const fileInput = document.getElementById("fileInput");
-const folderInput = document.getElementById("folderInput");
-const CSOInput = document.getElementById("CSOInput");
-const shuffleButton = document.getElementById("shuffleButton");
-const Ofile = document.getElementById("Ofile");
-const folder = document.getElementById("folder");
-const CSO = document.getElementById("CSO");
 const video = document.getElementById("media");
+const mediaPlayer = document.getElementById("mediaPlayer");
+const openFileButton = document.getElementById("openFileButton");
+const openFolderButton = document.getElementById("openFolderButton");
+const shuffleButton = document.getElementById("shuffleButton");
 const gifImageElement = document.getElementById("gifImage");
 const rewind = document.getElementById("rewind");
 const forward = document.getElementById("forward");
@@ -48,22 +44,23 @@ const gifResultsContainer = document.getElementById("gifResultsContainer");
 const gifSearchContainer = document.getElementById("gifSearchContainer");
 const statusMessage = document.getElementById("statusMessage");
 
-let commandProcessed = false;
 let currentMedia = video;
 let isFullScreen = false;
 let isRepeatMode  = false;
-let videoFiles = [];
+let mediaFiles = [];
 let playedVideos = [];
 let currentVideoIndex = 0;
 let currentAudioIndex = 0;
+let lastPlayedIndex = -1;
+let lastPlayedStack = [];
 let autoSwitchDone = false;
 let isGifPlaying = false;
 let debounceTimeout;
-let lastPlayedIndex = -1;
 let showRemainingTime = false;
 let lastPlaybackTime = 0;
-let lastPlayedStack = [];
 let isUserScrolling = false;
+const tooltip = createTooltip();
+let tooltipTimeout;
 let scrollTimeout;
 let currentSpeedIndex = 3;
 let videoId;
@@ -89,6 +86,11 @@ const minZoom = 0.25;
 const maxZoom = 3;
 let recognitionActive = false;
 let isMouseOver = false;
+
+
+// Set tooltips for buttons
+shuffleButton.title = "Shuffle";
+loopBtn.title = "Repeat";
 
 // Function to show the temporary status message
 function showStatusMessage(text) {
@@ -557,6 +559,10 @@ gifResultsContainer.addEventListener("mouseleave", () => {
 	isMouseOver = false;
 });
 
+gifSearchButton.addEventListener("mouseover",()=>{
+	
+})
+
 // Download and save the GIF
 async function downloadAndSaveGif(gifUrl, gifName) {
 	try {
@@ -579,258 +585,448 @@ async function downloadAndSaveGif(gifUrl, gifName) {
 	}
 }
 
-function loadMediaFile(file) {
-	if (!file) {
-		return;
-	}
-
-	const fileType = file.type.split("/")[0]; // Determine if it's audio, video, or image
-	const fileURL = URL.createObjectURL(file);
-	const fileName = file.name;
-
-	videoId = getVideoId(fileName); // Get unique video ID from file name
-
-	// Reset styles
-	gifImageElement.style.display = "none";
-	videoElement.style.display = "none";
-	document.getElementById("audioLogo").style.display = "none";
-	audioImage.style.display = "none";
-	audioLogoDropdown.style.pointerEvents = "none";
-	audioLogoDropdown.style.opacity = "0.5";
-
-	// Store last playback time from cache
-	(async () => {
-		lastPlaybackTime = await getPlaybackTimeFromCache(videoId);
-		handleContinueButtonVisibility(); // Update button visibility based on the playback time
-	})();
-
-	// Reset rotation angle before loading new media
-	video.dataset.rotation = "0"; // Reset rotation angle to 0 degrees
-	applyRotation(); // Apply the reset rotation
-
-	if (file.type === "image/gif") {
-		// Handle GIF files
-		gifImageElement.src = fileURL;
-		gifImageElement.style.display = "block";
+// ✅ Funtion to load media file
+async function loadMediaFile(filePath, fileName) {
+	if (!filePath) return;
+	try {
+		// Normalize path and extract filename
+		let fixedPath = filePath.replace(/\\/g, "/");
+		const filename = fixedPath.substring(fixedPath.lastIndexOf("/") + 1);
+		video.dataset.videoId = filename;
+		// Encode only the filename, not the full path
+		const encodedFilename = encodeURIComponent(filename);
+		const directory = fixedPath.substring(0, fixedPath.lastIndexOf("/") + 1);
+		const fileURL = `file://${directory}${encodedFilename}`;
+		video.src = fileURL;
+		// Update UI
 		updateVideoTitle(fileName);
-
-		gifImageElement.onload = () => {
-			URL.revokeObjectURL(fileURL);
-		};
-		return; // Exit early
-	}
-
-	if (fileType === "video" || fileType === "audio") {
-		currentMedia.src = fileURL;
-		updateVideoTitle(fileName);
-
-		if (fileType === "audio") {
-			// Show the audio logo when an audio file is played
-			document.getElementById("audioLogo").style.display = "block";
-			audioImage.style.display = "block";
-			loadCustomLogos(); // Load any custom logos from localStorage
-
-			readAudioMetadata(file, function(hasArtwork) {
-				if (hasArtwork) {
-					audioImage.style.display = "none";
-				} else {
-					// Enable the logo dropdown for selection
-					audioLogoDropdown.style.pointerEvents = "auto";
-					audioLogoDropdown.style.opacity = "1";
-
-					// Check if a logo has already been set, if not, select the first logo
-					const savedLogo = localStorage.getItem("selectedLogo");
-					if (savedLogo) {
-						setSelectedLogo(savedLogo); // Apply the saved logo
-					} else {
-						// Use the first logo as default
-						const defaultLogoLinks = document.querySelectorAll(
-							"#logoOptions .sub-dropdown-content a[data-src]"
-						);
-						if (defaultLogoLinks.length > 0) {
-							const firstLogoSrc = defaultLogoLinks[0].getAttribute("data-src");
-							setSelectedLogo(firstLogoSrc);
-						}
-					}
-				}
-			});
-		} else {
-			// Hide the audio logo when a video file is played
-			document.getElementById("audioLogo").style.display = "none";
-			audioImage.style.display = "none";
-		}
-
 		gifImageElement.style.display = "none";
-		videoElement.style.display = "block";
-		autoSwitchDone = false;
-		currentTimeDisplay.textContent = "00:00";
-		durationDisplay.textContent = "00:00";
-		progressHandle.style.display = "none";
-
-		currentMedia.addEventListener("loadedmetadata", () => {
-			updateProgressBar();
-			updateDurationDisplay();
-			resetZoom();
-
-			currentMedia
-				.play()
-				.then(() => {
-					populateAudioTracks(); // Populate audio tracks if any
-					highlightCurrentVideoInPlaylist(fileName); // Highlight the current video in the playlist
-				})
-				.catch((error) => {
-					console.error("Error playing media:", error);
-				});
-		});
-
-		// Reset zoom when video ends
-		currentMedia.addEventListener("ended", resetZoom(), stopPlayback);
-
-		return; // Exit early
-	}
-
-	console.error("Unsupported file type:", file.type);
-}
-
-
-function getVideoId(fileName) {
-	// Generate or extract video ID from file name
-	return fileName.replace(/\.[^/.]+$/, "");
-}
-
-function savePlaybackTimeToCache(videoId, time) {
-	// Subtract 2 seconds from the current time, ensuring it's not negative
-	const adjustedTime = Math.max(0, time - 2);
-
-	// If the time is 0, clear the cache instead of saving it
-	if (adjustedTime === 0) {
-		clearCache(videoId);
+		video.style.display = "block";
+		document.getElementById("audioLogo").style.display = "none";
+		audioImage.style.display = "none";
+		audioLogoDropdown.style.pointerEvents = "none";
+		audioLogoDropdown.style.opacity = "0.5";
+		// Load saved playback time
+		const savedPlayback = await window.electron.invoke('load-playback-time', filename);
+		lastPlaybackTime = savedPlayback?.time || 0;
+		if (lastPlaybackTime > 0) {
+			console.log("🔄 Saved playback time found:", lastPlaybackTime);
+			handleContinueButtonVisibility();
+		} else {
+			// No saved playback time, start from the beginning
+			video.currentTime = 0;
+		}
+		// Reset and apply transformations
+		video.dataset.rotation = "0";
+		applyRotation();
+	} catch (error) {
+		console.error("❌ Error loading media file:", error);
 		return;
 	}
-
-	const playbackData = {
-		videoId,
-		time: adjustedTime,
-		timestamp: Date.now()
-	};
-	localStorage.setItem(`playback-${videoId}`, JSON.stringify(playbackData));
 }
 
-function getPlaybackTimeFromCache(videoId) {
-	const playbackData = localStorage.getItem(`playback-${videoId}`);
-	if (playbackData) {
-		const parsedData = JSON.parse(playbackData);
-		const currentTime = Date.now();
-		const twoDaysInMillis = 2 * 24 * 60 * 60 * 1000; // 2 days in milliseconds
+// ✅ Ensure event listeners are only added once
+currentMedia.addEventListener("loadedmetadata", async () => {
+	updateProgressBar();
+	updateNavigationButtons();
+	updateDurationDisplay();
+	resetZoom(showStatusMessage(''));
+	updateVideoTitle(video.dataset.videoId);
+	populateAudioTracks();
+	highlightCurrentVideoInPlaylist(video.dataset.videoId);
+	// Start from 0 unless "Continue Watching" button is pressed
+	video.currentTime = 0;
+	video.play().catch(console.error);
+});
 
-		// Check if the saved timestamp is older than 2 days
-		if (currentTime - parsedData.timestamp > twoDaysInMillis) {
-			clearCache(videoId); // If it's been more than 2 days, clear the cache
-			return 0; // Return 0 to reset playback
-		}
+// ✅ Handle playback ending
+currentMedia.addEventListener("ended", () => {
+	resetZoom();
+	stopPlayback();
+	updateNavigationButtons();
+	updateProgressBar();
+	updateDurationDisplay();
+});
 
-		return parsedData.time; // Return the saved playback time
-	}
-	return 0; // Return 0 if no cache exists
+// ✅ Get unique video ID
+function getVideoId() {
+    return video?.dataset?.videoId || null;
 }
 
-function clearCache(videoId) {
-	localStorage.removeItem(`playback-${videoId}`); // Remove the specific playback cache
+// ✅ Function to play a media file
+function playMediaFile(filePath) {
+    if (!filePath) return;
+
+    const fileName = filePath.split(/[/\\]/).pop(); // Get the file name
+    loadMediaFile(filePath, fileName); // Load the media file
+    updateVideoTitle(fileName); // Update the title with the filename
 }
 
-// Update visibility of the continue button
+// ✅ Function to play a video by its index
+function playVideoByIndex(index) {
+    if (index < 0 || index >= mediaFiles.length) return;
+    currentVideoIndex = index;
+    lastPlayedIndex = index;
+    
+    const filePath = mediaFiles[index];
+    const fileName = filePath.split(/[/\\]/).pop();
+    
+    loadMediaFile(filePath, fileName);
+    highlightCurrentVideoInPlaylist(fileName);
+    updateNavigationButtons();
+}
+
+video.addEventListener("ended", () => {
+    const nextIndex = getNextIndex();
+    if (nextIndex !== null) {
+        playVideoByIndex(nextIndex);
+    } else {
+        stopPlayback();
+    }
+});
+
+// 🟢 Open file dialog (Multiple File Selection)
+openFileButton.addEventListener("click", async () => {
+    try {
+        const filePaths = await window.electron.openFileDialog();
+        if (filePaths && filePaths.length > 0) {
+            mediaFiles = filePaths;
+            currentVideoIndex = 0;
+            playMediaFile(mediaFiles[currentVideoIndex]);
+            updatePlaylistDropdown();
+        }
+    } catch (error) {
+        console.error("Error opening files:", error);
+    }
+});
+
+
+// 🟢 Open folder dialog (Load all media in a folder)
+openFolderButton.addEventListener("click", async () => {
+    try {
+        const folderFiles = await window.electron.openFolderDialog();
+        if (folderFiles && folderFiles.length > 0) {
+            mediaFiles = folderFiles;
+            currentVideoIndex = 0;
+            playMediaFile(mediaFiles[currentVideoIndex]);
+            updatePlaylistDropdown();
+        }
+    } catch (error) {
+        console.error("Error opening folder:", error);
+    }
+});
+
+// Functions to toggle play/pause icon
+function updatePlayPauseIcon(isPlaying) {
+    playPauseBtn.src = isPlaying ? "../assets/icons/pause-.png" : "../assets/icons/play-.png";
+    playPauseBtn.setAttribute("alt", isPlaying ? "Pause" : "Play");
+    playPauseBtn.setAttribute("title", isPlaying ? "Pause" : "Play");
+}
+
+function togglePlayPause() {
+	if (video.readyState < 3) {
+return;
+}
+if (video.paused) {
+video.play();
+hideVideoTitle();
+window.electron.sendPlayPauseStateForTray("playing");
+window.electron.sendPlayPauseStateForThumbar("playing");
+} else {
+video.pause();
+stopGifPlayback();
+showVideoTitle();
+window.electron.sendPlayPauseStateForTray("paused");
+window.electron.sendPlayPauseStateForThumbar("paused");
+}
+}
+
+// Event listeners for play/pause button
+playPauseBtn.addEventListener("click", togglePlayPause);
+video.addEventListener("play", () => updatePlayPauseIcon(true));
+video.addEventListener("pause", () => updatePlayPauseIcon(false));
+
+// ✅ Function to get the next video index
+function getNextIndex() {
+    if (mediaFiles.length === 0) return null;
+
+    if (isShuffle) {
+        let remainingVideos = mediaFiles
+            .map((file, index) => ({ file, index }))
+            .filter(({ index }) => !playedVideos.includes(index)); // ✅ Ensure videos aren’t repeated
+
+        if (remainingVideos.length > 0) {
+            let randomVideo = remainingVideos[Math.floor(Math.random() * remainingVideos.length)];
+            return randomVideo.index;
+        } else {
+            playedVideos = []; // ✅ Reset when all videos are played
+            return Math.floor(Math.random() * mediaFiles.length); // Restart shuffle
+        }
+    }
+
+    let nextIndex = currentVideoIndex + 1;
+    return nextIndex < mediaFiles.length ? nextIndex : (isRepeatMode === 2 ? 0 : null);
+}
+
+
+// ✅ Function to get the previous video index
+function getPreviousIndex() {
+    if (mediaFiles.length === 0) return null;
+
+    if (!isShuffle && lastPlayedStack.length > 0) {
+        return lastPlayedStack.pop();
+    }
+
+    let prevIndex = currentVideoIndex - 1;
+    return prevIndex >= 0 ? prevIndex : (isRepeatMode === 2 ? mediaFiles.length - 1 : null);
+}
+
+// ✅ Play next video while tracking playback history
+function playNext() {
+    if (video.duration >= 60 && video.currentTime < video.duration) {
+        savePlaybackTime(video.dataset.videoId, video.currentTime);
+    }
+
+    const nextIndex = getNextIndex();
+    if (nextIndex === null) {
+        stopPlayback();
+        return;
+    }
+
+    lastPlayedStack.push(currentVideoIndex); // ✅ Store history for Previous button
+    playedVideos.push(currentVideoIndex); // ✅ Store played videos
+
+    currentVideoIndex = nextIndex;
+    lastPlayedIndex = nextIndex;
+
+    playVideoByIndex(nextIndex);
+    highlightCurrentVideoInPlaylist(mediaFiles[nextIndex]);
+    updateNavigationButtons();
+    showStatusMessage("Next Video");
+}
+
+
+// ✅ Play previous video correctly
+function playPrevious() {
+    if (video.duration >= 60 && video.currentTime < video.duration) {
+        savePlaybackTime(video.dataset.videoId, video.currentTime);
+    }
+
+    if (isShuffle && lastPlayedStack.length > 0) {
+        let prevIndex = lastPlayedStack.pop(); // ✅ Retrieve last played video
+        playVideoByIndex(prevIndex);
+        highlightCurrentVideoInPlaylist(mediaFiles[prevIndex]);
+        updateNavigationButtons();
+        showStatusMessage("Previous Video");
+        return;
+    }
+
+    const prevIndex = getPreviousIndex();
+    if (prevIndex === null) {
+        console.warn("No previous video available.");
+        return;
+    }
+
+    currentVideoIndex = prevIndex;
+    lastPlayedIndex = prevIndex;
+
+    playVideoByIndex(prevIndex);
+    highlightCurrentVideoInPlaylist(mediaFiles[prevIndex]);
+    updateNavigationButtons();
+    showStatusMessage("Previous Video");
+}
+
+
+// ✅ Ensure buttons are updated properly
+function updateNavigationButtons() {
+    const nextIndex = getNextIndex();
+    const prevIndex = getPreviousIndex();
+
+    nextButton.classList.toggle("hidden", nextIndex === null || mediaFiles.length === 0);
+    prevButton.classList.toggle("hidden", prevIndex === null || mediaFiles.length === 0);
+
+    console.log("🔄 Navigation updated | Next:", nextIndex, "| Previous:", prevIndex);
+}
+
+
+// Function to update video title with truncation
+function updateVideoTitle(fileName) {
+    const videoTitleElement = document.getElementById("videoTitle");
+
+    if (!fileName || typeof fileName !== "string") {
+        console.error("Invalid fileName passed to updateVideoTitle:", fileName);
+        return;
+    }
+
+    if (videoTitleElement) {
+        // Remove file extensions (.mp4, .mp3, etc.)
+        const nameWithoutExtension = fileName.replace(/\.[^/.]+$/, "");
+        videoTitleElement.textContent = nameWithoutExtension;
+    } else {
+        console.error('Element with id "videoTitle" not found.');
+    }
+}
+
+// Function to show video title when video is paused
+function showVideoTitle() {
+	videoTitleElement.style.display = "block";
+}
+
+// Function to hide video title when video is playing
+function hideVideoTitle() {
+	videoTitleElement.style.display = "none";
+}
+
+
+// Function to stop playback and reset the media player
+function stopPlayback() {
+	video.pause();
+	video.src = "";
+    updateVideoTitle(video.dataset.videoId);
+    updatePlayPauseIcon(false);
+	playedVideos = [];
+	video.currentTime = 0;
+	updateProgressBar();
+	currentTimeDisplay.textContent = formatTime(0);
+	progressBar.style.width = `0%`;
+	progressHandle.style.left = `0%`;
+	stopGifPlayback();
+	updateNavigationButtons();
+}
+
+// Event listener for stop playback using querySelectorAll and forEach
+document.querySelectorAll(".stopPlayback").forEach(button => {
+	button.addEventListener("click", () => {
+		stopPlayback();
+		updateNavigationButtons(); // Ensure buttons are updated when stopped
+	});
+});
+
+
+prevButton.addEventListener("click", playPrevious);
+nextButton.addEventListener("click", playNext);
+
+// Event listener for Previous Video using querySelectorAll and forEach
+document.querySelectorAll(".previousbtn").forEach(button => {
+	button.addEventListener("click", () => {
+		playPrevious();
+	});
+});
+
+// Event listener for Next Video using querySelectorAll and forEach
+document.querySelectorAll(".nextbtn").forEach(button => {
+	button.addEventListener("click", () => {
+		playNext();
+	});
+});
+
+
+// Rewind and Forward video 10 sec
+rewind.addEventListener("click", () => {
+	currentMedia.currentTime = Math.max(0, currentMedia.currentTime - 10);
+});
+
+// Add tooltip for rewind button
+rewind.setAttribute("title", "Rewind 10 seconds");
+
+forward.addEventListener("click", () => {
+	currentMedia.currentTime = Math.min(currentMedia.duration, currentMedia.currentTime + 10);
+});
+
+// Add tooltip for forward button
+forward.setAttribute("title", "Forward 10 seconds");
+
+// Initial button visibility update
+updateNavigationButtons();
+
+
+// ✅ Save playback time
+function savePlaybackTime(videoId, time) {
+    if (!videoId) return;
+    const adjustedTime = Math.max(0, time - 2);
+    if (adjustedTime === 0) {
+        clearPlaybackTime(videoId);
+        return;
+    }
+    console.log("✅ Saving playback time:", videoId, adjustedTime);
+    window.electron.send('save-playback-time', adjustedTime, videoId);
+}
+
+
+
+// ✅ Clear playback time entry
+function clearPlaybackTime(videoId) {
+    if (!videoId) return;
+    console.log("🗑️ Clearing playback time for:", videoId);
+    window.electron.send('delete-playback-entry', videoId);
+}
+
+
+// ✅ Handle "Continue Watching" button visibility
 function handleContinueButtonVisibility() {
-	if (lastPlaybackTime > 0) {
-		continueButton.style.display = "block"; // Show the button if playback time exists
-		startAutoHideContinueButton(); // Start the 5-second timeout for auto-hiding the button
-	} else {
-		continueButton.style.display = "none"; // Hide the button if no playback time
-	}
+    if (lastPlaybackTime > 0) {
+        continueButton.style.display = "block";
+        startAutoHideContinueButton();
+    } else {
+        continueButton.style.display = "none";
+    }
 }
 
-// Start a timeout to auto-hide the "Continue Watching" button and clear playback cache after 5 seconds
+// ✅ Auto-hide "Continue Watching" button after 5 seconds and clear playback cache
 function startAutoHideContinueButton() {
-	clearTimeout(hideContinueButtonTimeout); // Clear any previous timeout
-	hideContinueButtonTimeout = setTimeout(() => {
-		continueButton.style.display = "none"; // Hide the button after 5 seconds
-
-		// Clear the playback cache if the button is not clicked
-		clearCache(videoId);
-	}, 5000); // 5 seconds (5000 milliseconds)
+    clearTimeout(hideContinueButtonTimeout);
+    hideContinueButtonTimeout = setTimeout(() => {
+        console.log("⏳ Continue Watching button auto-hidden");
+        continueButton.style.display = "none";
+        clearPlaybackTime(video.dataset.videoId);
+    }, 5000);
 }
 
+// ✅ Save playback time on pause
 video.addEventListener("pause", () => {
-	// Check if the video/audio ended
-	if (video.currentTime >= video.duration || video.currentTime === 0) {
-		clearCache(videoId); // Clear the cache when the media ends or currentTime is 0
-		return; // Exit early, no need to save the playback time
-	}
-
-	// Only save playback time if the video length is 1 minute or more
-	if (video.duration >= 60) {
-		lastPlaybackTime = video.currentTime; // Store the current playback time
-		savePlaybackTimeToCache(videoId, lastPlaybackTime); // Save to cache
-	}
-
-	handleContinueButtonVisibility(); // Update the button visibility on pause
-	continueButton.style.display = "none"; // Hide when video is paused
+    const videoId = getVideoId();
+    if (!videoId || video.currentTime === 0 || video.currentTime >= video.duration) {
+        clearPlaybackTime(videoId);
+        return;
+    }
+    if (video.duration >= 60) {
+        lastPlaybackTime = video.currentTime;
+        savePlaybackTime(videoId, lastPlaybackTime);
+    }
+    handleContinueButtonVisibility();
+	continueButton.style.display = "none";
 });
 
-// Save playback time only when the window is about to unload
-window.addEventListener('beforeunload', () => {
-	if (!currentMedia.paused && currentMedia.duration >= 60) { // Check video duration
-		lastPlaybackTime = currentMedia.currentTime;
-		if (window.electron && window.electron.savePlaybackTime) {
-			window.electron.savePlaybackTime(lastPlaybackTime, videoId);
-		}
-	}
+
+// ✅ Save playback time before window closes
+window.addEventListener("beforeunload", () => {
+    const videoId = getVideoId();
+    if (videoId && video.currentTime > 0 && video.duration >= 60) {
+        console.log("💾 Saving playback time before closing:", videoId, video.currentTime);
+        window.electron.send('save-playback-time', video.currentTime, videoId);
+    }
 });
 
-if (window.electron && window.electron.onAppClosing) {
+// ✅ Handle app closing
 	window.electron.onAppClosing(async () => {
-		if (!currentMedia.paused && currentMedia.duration >= 60) { // Check video duration
-			lastPlaybackTime = currentMedia.currentTime;
-			try {
-				await window.electron.savePlaybackTime(lastPlaybackTime, videoId); // Save to main process
-				savePlaybackTimeToCache(videoId, lastPlaybackTime); // Also save to localStorage
-			} catch (error) {
-				console.error('Error saving playback time:', error);
-			}
-		}
-	});
-}
-
-window.addEventListener('load', () => {
-	// Assume `videoId` is already defined
-	let lastPlaybackTime = getPlaybackTimeFromCache(videoId); // Load from local storage
-
-	// If there's a playback time in local storage, set it for the video
-	if (lastPlaybackTime > 0) {
-		video.currentTime = lastPlaybackTime; // Resume from last saved playback time
-		handleContinueButtonVisibility(); // Update button visibility
-	}
-
-	// Load saved playback time from main process (for reopening the same file)
-	window.electron.loadPlaybackTime((playbackData) => {
-		if (playbackData && playbackData.videoId === videoId) {
-			lastPlaybackTime = playbackData.time;
-			// Show the "Continue" button only if the playback time is greater than 0
-			if (lastPlaybackTime > 0) {
-				continueButton.style.display = "block";
-			}
-		}
-	});
+    const videoId = getVideoId();
+    if (videoId && !video.paused && video.duration >= 60) {
+        console.log("💾 Saving playback time before quit:", videoId, video.currentTime);
+        window.electron.send('save-playback-time', video.currentTime, videoId);
+    }
 });
 
-// Handle "Continue" button click to resume playback
-document.getElementById("continueButton").addEventListener("click", () => {
-	video.currentTime = lastPlaybackTime; // Resume from last saved playback time
-	video.play(); // Play the video
-	document.getElementById("continueOverlay").style.display = "none";
-	// Clear the playback cache after continuing
-	clearCache(videoId);
-});
 
+// ✅ Handle "Continue Watching" button click
+continueButton.addEventListener("click", () => {
+    if (lastPlaybackTime > 0) {
+        console.log("🎬 Resuming playback from:", lastPlaybackTime);
+        video.currentTime = lastPlaybackTime;
+        video.play();
+        clearPlaybackTime(video.dataset.videoId);
+    }
+    continueButton.style.display = "none";
+});
 
 function checkAndSetArtwork(artworkExists) {
 	if (artworkExists) {
@@ -846,7 +1042,6 @@ function checkAndSetArtwork(artworkExists) {
 		}
 	}
 }
-
 
 function readAudioMetadata(file, callback) {
 	const reader = new FileReader();
@@ -906,26 +1101,36 @@ function readAudioMetadata(file, callback) {
 
 // Efficiently Update Playlist Dropdown
 function updatePlaylistDropdown() {
-	const playlistContainers = document.querySelectorAll(".play-list");
+    const playlistContainers = document.querySelectorAll(".play-list");
+    playlistContainers.forEach((playlistContainer) => {
+        // Clear existing items
+        playlistContainer.innerHTML = "";
 
-	playlistContainers.forEach((playlistContainer) => {
-		// Clear and repopulate the playlist
-		playlistContainer.innerHTML = "";
+        // Populate each playlist container
+        mediaFiles.forEach((file, index) => {
+            const fileName = typeof file === "string" ? file.split(/[/\\]/).pop() : file.name;
 
-		videoFiles.forEach((file, index) => {
-			const fileLink = document.createElement("a");
-			fileLink.href = "javascript:void(0)";
-			fileLink.textContent = file.name;
-			fileLink.classList.add("playlist-item");
+            const fileLink = document.createElement("a");
+            fileLink.href = "javascript:void(0)";
+            fileLink.textContent = fileName;
+            fileLink.classList.add("playlist-item");
 
-			fileLink.addEventListener("click", () => {
-				playVideoByIndex(index);
-				highlightCurrentVideo(fileLink); // Highlight in all playlists
-			});
+            // Add click event to play the selected file
+            fileLink.addEventListener("click", () => {
+                playVideoByIndex(index);
+                highlightCurrentVideo(fileLink);
+            });
 
-			playlistContainer.appendChild(fileLink);
-		});
-	});
+            playlistContainer.appendChild(fileLink);
+        });
+    });
+
+    // // Show playlist only if there are files
+    // if (mediaFiles.length > 0) {
+    //     document.querySelectorAll(".playlist-container").forEach(container => {
+    //         container.classList.add("show");
+    //     });
+    // }
 }
 
 
@@ -1035,264 +1240,6 @@ window.addEventListener("click", function (event) {
     }
 });
 
-
-// Add drag-and-drop functionality
-document.addEventListener('dragover', (event) => {
-  event.preventDefault(); // Prevent default to allow drop
-});
-
-document.addEventListener('drop', (event) => {
-event.preventDefault();
-if (event.dataTransfer && event.dataTransfer.files.length > 0) {
-    const file = event.dataTransfer.files[0];
-    loadMediaFile(file); // Call your existing loadMediaFile function
-}
-});
-
-// Function to play a video by its index
-function playVideoByIndex(index) {
-	if (index < 0 || index >= videoFiles.length) return;
-
-	const videoFile = videoFiles[index];
-	loadMediaFile(videoFile);
-
-	playedVideos.push(index);
-	if (playedVideos.length === videoFiles.length) {
-		playedVideos = []; // Reset once all videos have been played
-	}
-
-	lastPlayedIndex = index;
-	currentVideoIndex = index;
-}
-
-// Function to play media based on file type
-function playMedia(file) {
-	const fileType = file.type.split("/")[0];
-	if (["video", "audio"].includes(fileType) || file.type === "image/gif") {
-		loadMediaFile(file);
-	} else {
-		// console.error("Unsupported file type");
-	}
-}
-
-// Event listener for file input changes
-fileInput.addEventListener("change", async (event) => {
-	const file = event.target.files[0];
-	if (file) {
-		playMedia(file);
-		updateVideoTitle(file.name);
-	}
-});
-
-// Handle file selection from input
-function handleFileSelection(files) {
-	videoFiles = Array.from(files).filter(
-		(file) =>
-		file.type.startsWith("video/") ||
-		file.type.startsWith("audio/") ||
-		file.type === "image/gif"
-	);
-
-	// Update the playlist dropdown
-	updatePlaylistDropdown();
-
-	// Check if there are valid video files and update navigation buttons
-	if (videoFiles.length > 0) {
-		currentVideoIndex = 0; // Default to the first file
-		playMedia(videoFiles[currentVideoIndex]);
-		audioLogo.style.display = videoFiles[0].type.startsWith("video/") ? "none" : "block";
-		updateNavigationButtons();
-	} else {
-		nextButton.classList.add("hidden");
-		prevButton.classList.add("hidden");
-	}
-}
-
-// Event listener for multiple file selection
-CSOInput.addEventListener("change", (event) => handleFileSelection(event.target.files));
-
-// Event listener for folder file selection
-folderInput.addEventListener("change", (event) => handleFileSelection(event.target.files));
-
-// File input button click handlers
-Ofile.addEventListener("click", () => fileInput.click());
-CSO.addEventListener("click", () => CSOInput.click());
-folder.addEventListener("click", () => folderInput.click());
-
-// Functions to toggle play/pause icon
-function updatePlayPauseIcon(isPlaying) {
-    playPauseBtn.src = isPlaying ? "../assets/icons/pause-.png" : "../assets/icons/play-.png";
-    playPauseBtn.setAttribute("alt", isPlaying ? "Pause" : "Play");
-    playPauseBtn.setAttribute("title", isPlaying ? "Pause" : "Play");
-}
-
-function togglePlayPause() {
-	if (video.readyState < 3) {
-return;
-}
-if (video.paused) {
-video.play();
-hideVideoTitle();
-window.electron.sendPlayPauseStateForTray("playing");
-window.electron.sendPlayPauseStateForThumbar("playing");
-} else {
-video.pause();
-stopGifPlayback();
-showVideoTitle();
-window.electron.sendPlayPauseStateForTray("paused");
-window.electron.sendPlayPauseStateForThumbar("paused");
-}
-}
-
-// Event listeners for play/pause button
-playPauseBtn.addEventListener("click", togglePlayPause);
-video.addEventListener("play", () => updatePlayPauseIcon(true));
-video.addEventListener("pause", () => updatePlayPauseIcon(false));
-
-// Function to determine next video index
-function getNextIndex() {
-	if (isShuffle) {
-		let remainingVideos = videoFiles.filter((_, index) => !playedVideos.includes(index));
-		return remainingVideos.length > 0 ?
-			videoFiles.indexOf(remainingVideos[Math.floor(Math.random() * remainingVideos.length)]) :
-			null;
-	}
-	return (currentVideoIndex + 1) % videoFiles.length;
-}
-
-// Function to determine previous video index
-function getPreviousIndex() {
-	if (!isShuffle && lastPlayedStack.length > 0) {
-		return lastPlayedStack[lastPlayedStack.length - 1]; // Return last played video from stack
-	}
-	return (currentVideoIndex - 1 + videoFiles.length) % videoFiles.length;
-}
-
-// Function to update the visibility of next and previous buttons
-function updateNavigationButtons() {
-	const nextIndex = getNextIndex();
-	const prevIndex = getPreviousIndex();
-
-	// Hide next button if no next video
-	if (nextIndex == null || videoFiles.length === 0) {
-		nextButton.classList.add("hidden");
-	} else {
-		nextButton.classList.remove("hidden");
-	}
-
-	// Hide previous button if no previous video
-	if (prevIndex == null || videoFiles.length === 0) {
-		prevButton.classList.add("hidden");
-	} else {
-		prevButton.classList.remove("hidden");
-	}
-}
-
-function playNext() {
-    if (video.duration >= 60 && video.currentTime < video.duration) {
-        savePlaybackTimeToCache(videoId, video.currentTime);
-    }
-    const nextIndex = getNextIndex();
-    if (nextIndex === null) {
-        if (isRepeatMode === 2) {
-            playVideoByIndex(0);
-            highlightCurrentVideoInPlaylist(videoFiles[0].name);
-        } else {
-            stopPlayback();
-        }
-        return;
-    }
-    lastPlayedStack.push(currentVideoIndex);
-    lastPlayedIndex = nextIndex;
-    playVideoByIndex(nextIndex);
-    highlightCurrentVideoInPlaylist(videoFiles[nextIndex].name);
-    updateNavigationButtons();
-    showStatusMessage("Next");
-}
-
-function playPrevious() {
-    if (video.duration >= 60 && video.currentTime < video.duration) {
-        savePlaybackTimeToCache(videoId, video.currentTime);
-    }
-    if (lastPlayedStack.length > 0) {
-        const prevIndex = lastPlayedStack.pop();
-        playVideoByIndex(prevIndex);
-        highlightCurrentVideoInPlaylist(videoFiles[prevIndex].name);
-        updateNavigationButtons();
-        showStatusMessage("Back");
-    }
-}
-
-
-// Function to stop playback and reset the media player
-function stopPlayback() {
-	video.pause();
-	currentVideoIndex = null;
-	video.src = "";
-	updateVideoTitle("");
-	updatePlayPauseIcon(false);
-	playedVideos = [];
-	video.currentTime = 0;
-	updateProgressBar();
-	currentTimeDisplay.textContent = formatTime(0);
-	progressBar.style.width = `0%`;
-	progressHandle.style.left = `0%`;
-	stopGifPlayback();
-	updateNavigationButtons();
-}
-
-// Event listener for stop playback using querySelectorAll and forEach
-document.querySelectorAll(".stopPlayback").forEach(button => {
-	button.addEventListener("click", () => {
-		stopPlayback();
-		updateNavigationButtons(); // Ensure buttons are updated when stopped
-	});
-});
-
-
-prevButton.addEventListener("click", playPrevious);
-nextButton.addEventListener("click", playNext);
-
-// Event listener for Previous Video using querySelectorAll and forEach
-document.querySelectorAll(".previousbtn").forEach(button => {
-	button.addEventListener("click", () => {
-		playPrevious();
-	});
-});
-
-// Event listener for Next Video using querySelectorAll and forEach
-document.querySelectorAll(".nextbtn").forEach(button => {
-	button.addEventListener("click", () => {
-		playNext();
-	});
-});
-
-// Handle video end event (to automatically play the next video)
-video.addEventListener("ended", () => {
-	playNext();
-	updateNavigationButtons();
-	updateProgressBar();
-	updateDurationDisplay();
-});
-
-// Rewind and Forward video 10 sec
-rewind.addEventListener("click", () => {
-	currentMedia.currentTime = Math.max(0, currentMedia.currentTime - 10);
-});
-
-// Add tooltip for rewind button
-rewind.setAttribute("title", "Rewind 10 seconds");
-
-forward.addEventListener("click", () => {
-	currentMedia.currentTime = Math.min(currentMedia.duration, currentMedia.currentTime + 10);
-});
-
-// Add tooltip for forward button
-forward.setAttribute("title", "Forward 10 seconds");
-
-// Initial button visibility update
-updateNavigationButtons();
-
 // Function to set playback speed
 function setPlaybackSpeed(speed) {
 	video.playbackRate = speed;
@@ -1354,40 +1301,24 @@ playbackSpeedLinks.forEach(link => {
 // Optional: Initialize to normal speed
 setPlaybackSpeed(1); // Default to normal playback speed
 
-// Function to update video title with truncation
-function updateVideoTitle(title) {
-	const videoTitleElement = document.getElementById("videoTitle");
 
-	if (videoTitleElement) {
-		// Remove file extensions (.mp4, .mp3, etc.)
-		const nameWithoutExtension = title.replace(/\.[^/.]+$/, "");
-		videoTitleElement.textContent = nameWithoutExtension;
-	} else {
-		// console.error('Element with id "videoTitle" not found.');
-	}
+// Create a reusable function for tooltip styling
+function createTooltip() {
+    const tooltip = document.createElement("div");
+    tooltip.style.position = "absolute";
+    tooltip.style.textShadow =
+        "1px 1px 2px rgba(0, 0, 0, 0.863), -1px -1px 2px rgba(0, 0, 0, 0.733), 1px -1px 2px rgba(0, 0, 0, 0.707),-1px 1px 2px black";
+    tooltip.style.color = "#fff";
+    tooltip.style.fontWeight = "300";
+    tooltip.style.padding = "5px 10px";
+    tooltip.style.borderRadius = "5px";
+    tooltip.style.transition = "opacity 0.2s ease-in-out";
+    tooltip.style.opacity = "0"; 
+    tooltip.style.pointerEvents = "none"; 
+    tooltip.style.zIndex = "99";
+    document.body.appendChild(tooltip);
+    return tooltip;
 }
-
-// Function to show video title when video is paused
-function showVideoTitle() {
-	videoTitleElement.style.display = "block";
-}
-
-// Function to hide video title when video is playing
-function hideVideoTitle() {
-	videoTitleElement.style.display = "none";
-}
-
-// Volume Tooltip (existing)
-const tooltip = document.createElement("div");
-tooltip.style.position = "absolute";
-tooltip.style.textShadow = "1px 1px 2px rgba(0, 0, 0, 0.863), -1px -1px 2px rgba(0, 0, 0, 0.733), 1px -1px 2px rgba(0, 0, 0, 0.707),-1px 1px 2px black";
-tooltip.style.color = "#fff";
-tooltip.style.fontWeight = "300";
-// tooltip.style.padding = "5px";
-tooltip.style.borderRadius = "5px";
-tooltip.style.display = "none";
-tooltip.style.zIndex = "99";
-mediaPlayer.appendChild(tooltip);
 
 // Audio Context and Gain Node setup (existing)
 const videoElement = document.querySelector("video");
@@ -1505,33 +1436,56 @@ function updateVolume(newVolume) {
 }
 
 
-// Function to show tooltip (existing)
-function showTooltip(volume) {
-	tooltip.textContent = `Volume: ${(volume * 100).toFixed(0)}%`;
-	const sliderRect = volumeSlider.getBoundingClientRect();
-	const sliderX = sliderRect.left + volumeSlider.offsetWidth * (volumeSlider.value / 200);
-	tooltip.style.left = `${sliderX}px`;
-	tooltip.style.top = `${sliderRect.top - 30}px`;
-	tooltip.style.display = "block";
+// Function to update and show the tooltip
+function showTooltip(volume, event = null) {
+    tooltip.textContent = `Volume: ${(volume * 100).toFixed(0)}%`;
+    
+    if (event) {
+        const offsetX = 10; // Offset to avoid covering the mouse
+        const offsetY = 25;
+        tooltip.style.left = `${event.pageX + offsetX}px`;
+        tooltip.style.top = `${event.pageY - offsetY}px`;
+    } else {
+        // Fallback positioning (near volume slider)
+        const sliderRect = volumeSlider.getBoundingClientRect();
+        tooltip.style.left = `${sliderRect.left + volumeSlider.offsetWidth * (volumeSlider.value / 200)}px`;
+        tooltip.style.top = `${sliderRect.top - 30}px`;
+    }
 
-	setTimeout(() => {
-		tooltip.style.display = "none";
-	}, 1500);
+    tooltip.style.opacity = "1"; // Make visible
+
+    // Clear previous timeout and set a new delay for hiding
+    clearTimeout(tooltipTimeout);
+    tooltipTimeout = setTimeout(() => {
+        tooltip.style.opacity = "0";
+    }, 1500);
 }
 
-// Update volume when slider changes (existing)
-let tooltipTimeout;
+// Attach event listener for volume updates
 volumeSlider.addEventListener("input", (event) => {
-	const volume = event.target.value / 100;
-	updateVolume(volume);
-	clearTimeout(tooltipTimeout); // Clear any existing timeout
+    updateVolume(event.target.value / 100);
+    showTooltip(gainNode.gain.value);
 });
 
-// Hide tooltip after a delay only if the user is not actively changing the volume (existing)
-volumeSlider.addEventListener("change", () => {
-	tooltipTimeout = setTimeout(() => {
-		tooltip.style.display = "none";
-	}, 1000);
+volumeSlider.addEventListener("mouseenter", () => {
+    showTooltip(gainNode.gain.value);
+});
+
+volumeSlider.addEventListener("mouseleave", () => {
+    tooltipTimeout = setTimeout(() => {
+        tooltip.style.opacity = "0";
+    }, 1000);
+});
+
+// Volume adjustment using mouse wheel
+volumeSlider.addEventListener("wheel", (e) => {
+    e.preventDefault();
+    const direction = e.deltaY > 0 ? -1 : 1;
+    let newVolume = gainNode.gain.value + direction * 0.05;
+    newVolume = Math.max(0, Math.min(newVolume, 2));
+
+    updateVolume(newVolume);
+    showTooltip(newVolume, e);
 });
 
 // Initialize tooltip for font size
@@ -1605,9 +1559,9 @@ mediaPlayer.addEventListener("wheel", (event) => {
 	} else {
 		// Adjust volume
 		if (event.deltaY < 0) {
-			updateVolume(Math.min(2, gainNode.gain.value + 0.1)); // Increase volume up to 200%
+			updateVolume(Math.min(2, gainNode.gain.value + 0.05)); // Increase volume up to 200%
 		} else if (event.deltaY > 0) {
-			updateVolume(Math.max(0, gainNode.gain.value - 0.1)); // Decrease volume
+			updateVolume(Math.max(0, gainNode.gain.value - 0.05)); // Decrease volume
 		}
 
 		tooltip.style.left = `${event.pageX}px`;
@@ -1621,30 +1575,6 @@ mediaPlayer.addEventListener("wheel", (event) => {
 	}
 });
 
-// Add mouse wheel event listener to the volume slider
-volumeSlider.addEventListener("wheel", (e) => {
-	e.preventDefault(); // Prevent the default scrolling behavior
-
-	const direction = e.deltaY > 0 ? -1 : 1; // Determine direction of scroll (up or down)
-	let newVolume = gainNode.gain.value + direction * 0.05; // Adjust volume by a small step
-
-	// Ensure new volume is within the range [0, 2]
-	newVolume = Math.max(0, Math.min(newVolume, 2));
-
-	// Update volume, slider value, and show tooltip
-	updateVolume(newVolume);
-});
-
-// Show tooltip when hovering over the volume slider
-volumeSlider.addEventListener("mouseenter", () => {
-	// Show tooltip with the current volume
-	showTooltip(gainNode.gain.value);
-});
-
-// Hide tooltip when the mouse leaves the slider
-volumeSlider.addEventListener("mouseleave", () => {
-	tooltip.style.display = "none";
-});
 
 // Update the volume button icon and tooltip
 function updateVolumeIcon() {
@@ -1796,52 +1726,55 @@ function resetZoom() {
 
 	// Reset the CSS transform for zoom, pan, and maintain rotation
 	applyTransformations();
-
-	// Reset zoom status message
-	showStatusMessage(`Zoom: 100%`);
 }
 
 // Toggle shuffle mode and show status
 function toggleShuffleMode() {
-	isShuffle = !isShuffle;
+    isShuffle = !isShuffle;
 
-	if (isShuffle) {
-		shuffleButton.classList.add("active");
-		shuffleButton.src = "../assets/icons/shuffle.png"; 
-		showStatusMessage("Random: On");
-		window.electron.sendShuffleState("on");
-	} else {
-		shuffleButton.classList.remove("active");
-		shuffleButton.src = "../assets/icons/no-shuffle.png"; 
-		showStatusMessage("Random: Off");
-		playedVideos = [];
-		lastPlayedStack = [];
-		window.electron.sendShuffleState("off");
-	}
+    if (isShuffle) {
+        shuffleButton.classList.add("active");
+        shuffleButton.src = "../assets/icons/shuffle.png"; 
+        showStatusMessage("Shuffle: On");
+        shuffleButton.title = "Shuffle off";
+        window.electron.sendShuffleState("on");
+    } else {
+        shuffleButton.classList.remove("active");
+        shuffleButton.src = "../assets/icons/no-shuffle.png"; 
+        showStatusMessage("Shuffle: Off");
+        shuffleButton.title = "Shuffle";
+        playedVideos = [];
+        lastPlayedStack = [];
+        window.electron.sendShuffleState("off");
+    }
 }
 
 // Toggle repeat mode and show status
 function toggleRepeat() {
-	// 0 = Off, 1 = Loop One, 2 = Loop All
-	isRepeatMode = (isRepeatMode + 1) % 3;
+    // 0 = Off, 1 = Loop One, 2 = Loop All
+    isRepeatMode = (isRepeatMode + 1) % 3;
 
-	if (isRepeatMode === 0) {
-		currentMedia.loop = false;
-		showStatusMessage("Loop: Off");
-		window.electron.sendRepeatState("off");
-		loopBtn.src = "../assets/icons/repeat-on.png";
-	} else if (isRepeatMode === 1) {
-		currentMedia.loop = true; // Loop only one video
-		showStatusMessage("Loop: One");
-		window.electron.sendRepeatState("one");
-		loopBtn.src = "../assets/icons/repeat-one.png";
-	} else if (isRepeatMode === 2) {
-		currentMedia.loop = false; // Handled manually in playNext
-		showStatusMessage("Loop: All");
-		window.electron.sendRepeatState("all");
-		loopBtn.src = "../assets/icons/repeat-on.png";
-	}
+    if (isRepeatMode === 0) {
+        currentMedia.loop = false;
+        showStatusMessage("Loop: Off");
+        loopBtn.src = "../assets/icons/repeat-on.png";
+        loopBtn.title = "Loop one";
+        window.electron.sendRepeatState("off");
+    } else if (isRepeatMode === 1) {
+        currentMedia.loop = true; // Loop only one video
+        showStatusMessage("Loop: One");
+        loopBtn.src = "../assets/icons/repeat-one.png";
+        loopBtn.title = "Loop All";
+        window.electron.sendRepeatState("one");
+    } else if (isRepeatMode === 2) {
+        currentMedia.loop = false; // Handled manually in playNext
+        showStatusMessage("Loop: All");
+        loopBtn.src = "../assets/icons/repeat-on.png";
+        loopBtn.title = "Loop off";
+        window.electron.sendRepeatState("all");
+    }
 }
+
 
 // Event listener for shuffle mode button loopbutton, switchtrack button and Full screen 
 document.getElementById("shuffleButton").addEventListener("click", toggleShuffleMode);
@@ -1859,20 +1792,26 @@ function updateFullScreenUI(isFullscreen) {
                 ? "../assets/icons/exit-full-screen.png" 
                 : "../assets/icons/full-screen.png"; 
         }
+        // Update the tooltip (title) based on fullscreen state
+        button.title = isFullscreen ? "Exit Fullscreen" : "Enter Fullscreen";
     });
 }
 
- // Fullscreen toggle function
+// Fullscreen toggle function
 function toggleFullScreen() {
-window.electron.toggleFullscreen(); // Notify the main process to toggle fullscreen
+    window.electron.toggleFullscreen(); // Notify the main process to toggle fullscreen
 }
 
 // Add event listeners for full-screen buttons
 fullscreenButtons.forEach((element) => {
-	element.addEventListener("click", () => {
-		toggleFullScreen();
-	});
+    element.addEventListener("click", () => {
+        toggleFullScreen();
+    });
+
+    // Set initial title
+    element.title = "Enter Fullscreen";
 });
+
 
 // Add double-click event listener to the media player
 mediaPlayer.addEventListener("dblclick", toggleFullScreen);
@@ -1884,21 +1823,33 @@ document.addEventListener("fullscreenchange", () => {
 });
 
 
+// Function to update the PiP button tooltip
+function updatePiPTooltip(isPiP) {
+    pipButton.title = isPiP ? "Exit Picture-in-Picture" : "Enter Picture-in-Picture";
+}
+
 // Toggle PiP mode
 function togglePiPMode() {
-	if (!document.pictureInPictureElement) {
-		video.requestPictureInPicture().then(() => {}).catch((error) => {
-			// console.error("Failed to enter Picture-in-Picture mode:", error);
-		});
-	} else {
-		document.exitPictureInPicture().then(() => {}).catch((error) => {
-			// console.error("Failed to exit Picture-in-Picture mode:", error);
-		});
-	}
+    if (!document.pictureInPictureElement) {
+        video.requestPictureInPicture()
+            .then(() => updatePiPTooltip(true))
+            .catch((error) => {
+                // console.error("Failed to enter Picture-in-Picture mode:", error);
+            });
+    } else {
+        document.exitPictureInPicture()
+            .then(() => updatePiPTooltip(false))
+            .catch((error) => {
+                // console.error("Failed to exit Picture-in-Picture mode:", error);
+            });
+    }
 }
 
 // Event listener for PiP mode button
-pipButton.addEventListener("click", () => togglePiPMode(video));
+pipButton.addEventListener("click", togglePiPMode);
+
+// Set initial tooltip
+pipButton.title = "Enter Picture-in-Picture";
 
 document.addEventListener("DOMContentLoaded", function() {
 	const navbar = document.querySelector("nav");
@@ -2057,9 +2008,9 @@ document.addEventListener("DOMContentLoaded", function() {
 			const target = event.target;
 
 			if (target.closest("#contextOpenFile")) {
-				CSOInput.click();
+				openFileButton.click();
 			} else if (target.closest("#contextOpenFolder")) {
-				folderInput.click();
+				openFolderButton.click();
 			} else if (target.closest("#contextTogglePlayPause")) {
 				togglePlayPause(); // Call the toggle function
 			}
@@ -2275,19 +2226,13 @@ document.addEventListener("keydown", (event) => {
 	}
 	if (event.ctrlKey && event.key.toLowerCase() === "o") {
 		event.preventDefault();
-		fileInput.click();
-		return;
-	}
-
-	if (event.shiftKey && event.key.toLowerCase() === "o") {
-		event.preventDefault();
-		CSOInput.click();
+		openFileButton.click();
 		return;
 	}
 
 	if (event.ctrlKey && event.key.toLowerCase() === "f") {
 		event.preventDefault();
-		folderInput.click();
+		openFolderButton.click();
 		return;
 	}
 
@@ -2393,7 +2338,7 @@ document.addEventListener("keydown", (event) => {
 			); // Show current time and total duration
 		},
 		f: () => toggleFullScreen(),
-		r: () => toggleShuffleMode(),
+		s: () => toggleShuffleMode(),
 		p: () => {
 			playPrevious();
 			showStatusMessage("Previous");
@@ -2857,31 +2802,22 @@ function hideLoader() {
     if (loader) loader.style.display = "none";
 }
 
+// ✅ Handle File Open from System (Double-click on a file)
 document.addEventListener("DOMContentLoaded", () => {
     window.electron.onFileOpen((filePath) => {
         if (filePath) {
-            showLoader();
-            window.electron.getFileData(filePath)
-                .then((fileData) => {
-                    if (fileData) {
-                        const file = createFileObject(fileData);
-                        playMedia(file);
-                        updateVideoTitle(fileData.fileName);
-                    }
-                })
-                .catch((error) => console.error("Failed to load file:", error))
-                .finally(() => hideLoader());
+            loadMediaFile(filePath, filePath.split("/").pop());
         }
     });
-
-    window.electron.requestOpenFile();
 });
+
 
 // Create File object from received data
 function createFileObject({ buffer, mimeType, fileName }) {
     const blob = new Blob([buffer], { type: mimeType });
     return new File([blob], fileName, { type: mimeType });
 }
+
 
 window.electron.onDownloadProgress((percent) => {
 const progressBar = document.getElementById('progress-bar');
@@ -2927,24 +2863,21 @@ window.electron.onPrevious(() => {
 	playPrevious();
 });
 
-// Handle mute action from tray
-window.electron.onMute(() => {
-	toggleMute();
-});
-
 // Handle volume increase action from tray
 window.electron.onIncreaseVolume(() => {
-	increaseVolume();
+	updateVolume(gainNode.gain.value + 0.1) // Increase volume
+	showStatusMessage(`Volume: ${(gainNode.gain.value * 100).toFixed(0)}%`);
 });
 
 // Handle volume decrease action from tray
 window.electron.onDecreaseVolume(() => {
-	decreaseVolume();
+	updateVolume(gainNode.gain.value - 0.1); // Decrease volume
+	showStatusMessage(`Volume: ${(gainNode.gain.value * 100).toFixed(0)}%`);
 });
 
-// Handle shuffle action from tray
-window.electron.onShuffleState(() => {
-	toggleShuffleMode();
+// Handle mute action from tray
+window.electron.onMute(() => {
+	toggleMute();
 });
 
 // Handle Repate action from tray

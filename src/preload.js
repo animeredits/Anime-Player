@@ -3,13 +3,12 @@ const { contextBridge, ipcRenderer } = require('electron');
 contextBridge.exposeInMainWorld('electron', {
   // App Controls
   minimize: () => ipcRenderer.send('Minimize'),
-  maximize: () => ipcRenderer.send("Maximize"),
+  maximize: () => ipcRenderer.send('Maximize'),
   close: () => ipcRenderer.send('appClose'),
   toggleFullscreen: () => ipcRenderer.send('toggle-fullscreen'),
-  onWindowStateChange: (callback) => {ipcRenderer.on("window-state-changed", (_, isFullScreen) => {callback(isFullScreen);}); }, 
-  onFullscreenStateChanged: (callback) => {ipcRenderer.on('fullscreen-state-changed', (_, isFullscreen) => {callback(isFullscreen);});},
-  onInitialWindowState: (callback) => {ipcRenderer.on("initial-window-state", (_, isFullScreen) => {callback(isFullScreen);});
-  },
+  onWindowStateChange: (callback) => ipcRenderer.on("window-state-changed", (_, isFullScreen) => callback(isFullScreen)),
+  onFullscreenStateChanged: (callback) => ipcRenderer.on('fullscreen-state-changed', (_, isFullscreen) => callback(isFullscreen)),
+  onInitialWindowState: (callback) => ipcRenderer.on("initial-window-state", (_, isFullScreen) => callback(isFullScreen)),
 
   // Update Control
   onUpdateAvailable: (callback) => ipcRenderer.on('update_available', callback),
@@ -22,8 +21,9 @@ contextBridge.exposeInMainWorld('electron', {
   // Media Controls
   onPlayPause: (callback) => ipcRenderer.on('play-pause', callback),
   sendPlayPauseStateForTray: (state) => ipcRenderer.send('play-pause-state-tray', state),
-  sendPlayPauseStateForThumbar: (state) => ipcRenderer.send('play-pause-state-thumbar', state),  requestInitialPlayState: () => ipcRenderer.send('request-initial-play-state'),
-  onInitialPlayState: (callback) => ipcRenderer.on('initial-play-state', (_, state) => callback(state)),  
+  sendPlayPauseStateForThumbar: (state) => ipcRenderer.send('play-pause-state-thumbar', state),
+  requestInitialPlayState: () => ipcRenderer.send('request-initial-play-state'),
+  onInitialPlayState: (callback) => ipcRenderer.on('initial-play-state', (_, state) => callback(state)),
   onNext: (callback) => ipcRenderer.on('next', callback),
   onPrevious: (callback) => ipcRenderer.on('previous', callback),
   onMute: (callback) => ipcRenderer.on('mute', callback),
@@ -35,28 +35,32 @@ contextBridge.exposeInMainWorld('electron', {
   sendRepeatState: (state) => ipcRenderer.send('repeat-state', state),
 
   // Custom Logo Handling
-  saveCustomLogo: (fileBuffer, fileName) => { return ipcRenderer.invoke('save-gif', fileBuffer, fileName);},
+  saveCustomLogo: (fileBuffer, fileName) => ipcRenderer.invoke('save-gif', fileBuffer, fileName),
   deleteLogo: (fileName) => ipcRenderer.invoke('delete-logo', fileName), 
 
   // Playback State Management
-  savePlaybackTime: (playbackTime, videoId) => {
-    return new Promise((resolve, reject) => {
-      ipcRenderer.send('save-playback-time', playbackTime, videoId);
-      ipcRenderer.once('playback-time-saved', (event, success) => {
-        if (success) resolve();
-        else reject(new Error('Failed to save playback time'));
-      });
-    });
+  savePlaybackTime: (playbackTime, videoId) => ipcRenderer.invoke('save-playback-time', playbackTime, videoId),
+
+  send: (channel, ...args) => {
+    const validChannels = ["save-playback-time", "delete-playback-entry", "appClose"];
+    if (validChannels.includes(channel)) {
+        ipcRenderer.send(channel, ...args);
+    }
   },
 
-  onAppClosing: (callback) => ipcRenderer.on('app-closing', callback),
-  loadPlaybackTime: (callback) => {ipcRenderer.on('load-playback-time', (event, playbackData) => {callback(playbackData);});},
+  invoke: (channel, ...args) => {
+    const validChannels = ["load-playback-time"];
+    if (validChannels.includes(channel)) {
+        return ipcRenderer.invoke(channel, ...args);
+    }
+  },
 
-  send: (channel, data) => {ipcRenderer.send(channel, data);},
-  on: (channel, func) => {ipcRenderer.on(channel, (event, ...args) => func(...args));},
+  onAppClosing: (callback) => ipcRenderer.on("app-closing", callback),
 
-   // File Open Handling
-  onFileOpen: (callback) => {ipcRenderer.on('open-file', (event, filePath) => {callback(filePath); });},
-  requestOpenFile: () => {ipcRenderer.send('request-open-file');},
-  getFileData: (filePath) => ipcRenderer.invoke("get-file-data", filePath),
+  loadPlaybackTime: (callback) => ipcRenderer.on('load-playback-time', (event, playbackData) => callback(playbackData)),
+
+  // File Open Handling
+  onFileOpen: (callback) => ipcRenderer.on("open-file", (event, filePath) => callback(filePath)),
+  openFileDialog: () => ipcRenderer.invoke("open-file-dialog"),
+  openFolderDialog: () => ipcRenderer.invoke("open-folder-dialog"),
 });

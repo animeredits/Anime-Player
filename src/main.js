@@ -2,8 +2,6 @@ const { app, BrowserWindow, Tray, Menu, screen, Notification,dialog, ipcMain, gl
 const { autoUpdater } = require('electron-updater');
 const path = require('path');
 const fs = require('fs');
-const mime = require("mime-types");
-const { readFileSync } = require("fs");
 const { net } = require('electron');
 
 let win;
@@ -128,81 +126,28 @@ function createTray() {
   tray = new Tray(path.join(__dirname, "../assets/icons/icon.ico"));
   tray.setToolTip('Anime Player');
   const updateContextMenu = (shuffleState = 'off', repeatState = 'off') => {
-    const playPauseLabel = playbackState === 'playing' ? 'Pause' : 'Play';
-    const shuffleLabel = (shuffleState === 'off') ? 'Shuffle Off' : 'Shuffle On';
-    const repeatLabel = (repeatState === 'off') ? 'Repeat Off' : 'Repeat On';
+      const playPauseLabel = playbackState === 'playing' ? 'Pause' : 'Play';
+      const shuffleLabel = shuffleState === 'off' ? 'Shuffle Off' : 'Shuffle On';
+      const repeatLabel = repeatState === 'off' ? 'Repeat Off' : 'Repeat On';
 
-    const contextMenu = Menu.buildFromTemplate([
-      {
-        label: win.isVisible() ? 'Hide Anime Media Player in Taskbar' : 'Show Anime Media Player',
-        click: () => {
-          win.isVisible() ? win.hide() : (win.show(), win.maximize());
-        }
-      },
-      {
-        label: playPauseLabel,
-        click: () => {
-          win.webContents.send('play-pause');
-        }
-      },
-      {
-        label: "Next",
-        click: () => {
-          win.webContents.send('next');
-        }
-      },
-      {
-        label: "Previous",
-        click: () => {
-          win.webContents.send('previous');
-        }
-      },
-      {
-        label: shuffleLabel,
-        click: () => {
-          win.webContents.send('shuffle');
-        }
-      },
-      {
-        label: repeatLabel,
-        click: () => {
-          win.webContents.send('repeat');
-        }
-      },
-      {
-        label: "Mute",
-        click: () => {
-          win.webContents.send('mute');
-        }
-      },
-      {
-        label: "Increase Volume",
-        click: () => {
-          win.webContents.send('increase-volume');
-        }
-      },
-      {
-        label: "Decrease Volume",
-        click: () => {
-          win.webContents.send('decrease-volume');
-        }
-      },
-      {
-        label: "Quit",
-        click: () => {
-          app.quit();
-        }
-      }
-    ]);
-
-    tray.setContextMenu(contextMenu);
+      const contextMenu = Menu.buildFromTemplate([
+          { label: win.isVisible() ? 'Hide' : 'Show', click: () => win.isVisible() ? win.hide() : win.show() },
+          { label: playPauseLabel, click: () => win.webContents.send('play-pause') },
+          { label: "Next", click: () => win.webContents.send('next') },
+          { label: "Previous", click: () => win.webContents.send('previous') },
+          { label: "Increase Volume", click: () => win.webContents.send('increase-volume') },
+          { label: "Decrease Volume", click: () => win.webContents.send('decrease-volume') },
+          { label: "Mute", click: () => win.webContents.send('mute') },
+          { label: shuffleLabel, click: () => win.webContents.send('shuffle') },
+          { label: repeatLabel, click: () => win.webContents.send('repeat') },
+          { label: "Quit", click: () => app.quit() }
+      ]);
+      tray.setContextMenu(contextMenu);
   };
-
-  updateContextMenu(); // Initialize with 'paused' state and 'off' for shuffle and repeat
-
+  updateContextMenu();
   tray.on("click", () => {
-    win.isVisible() ? win.hide() : (win.show(), win.maximize());
-    updateContextMenu();
+      win.isVisible() ? win.hide() : win.show();
+      updateContextMenu();
   });
 
   win.on('hide', updateContextMenu);
@@ -285,6 +230,7 @@ app.on('ready', () => {
   // Remove default menu to prevent any built-in Electron shortcuts
   Menu.setApplicationMenu(null); // Disable application menu globally
 });
+
 
 app.on('will-quit', () => {
   globalShortcut.unregisterAll(); // Unregister all shortcuts
@@ -424,74 +370,134 @@ ipcMain.handle('delete-logo', async (event, fileName) => {
   }
 });
 
-ipcMain.on("appClose", (event, playbackTime, videoId) => {
-  const animePlayerPath = app.getPath("userData");
-  const savePath = path.join(animePlayerPath, "playback-time.json");
+// Playback time save path
+const savePath = path.join(animePlayerPath, 'playback-time.json');
 
-  // Read existing playback data if available
-  let playbackData = {};
-  if (fs.existsSync(savePath)) {
-    try {
-      playbackData = JSON.parse(fs.readFileSync(savePath, "utf-8"));
-    } catch (error) {
-      console.error("Error reading playback data:", error);
-      playbackData = {};
-    }
+// ✅ Save playback time on request from renderer process
+ipcMain.on('save-playback-time', (event, playbackTime, videoId) => {
+  if (!videoId) {
+      console.error("❌ Error: videoId is undefined.");
+      return;
   }
 
-  // Save playback time for the video
-  playbackData[videoId] = {
-    time: playbackTime,
-    timestamp: Date.now(),
-  };
+  let playbackData = loadPlaybackTime();
+  playbackData[videoId] = { time: playbackTime, timestamp: Date.now() };
 
-  // Write updated playback data to file
   try {
-    fs.writeFileSync(savePath, JSON.stringify(playbackData, null, 2)); // Pretty print for readability
-  } catch (error) {
-    console.error("Error writing playback data:", error);
+      fs.writeFileSync(savePath, JSON.stringify(playbackData, null, 2));
+      event.reply('playback-time-saved', true);
+  } catch (err) {
+      console.error("❌ Failed to save playback time:", err);
+      event.reply('playback-time-saved', false);
   }
-
-  // Destroy tray if exists
-  if (global.tray) {
-    global.tray.destroy();
-  }
-
-  // Close the window safely
-  if (global.win) {
-    global.win.destroy();
-  }
-
-  // Ensure app exits cleanly
-  setTimeout(() => {
-    app.quit();
-    process.exit(0);
-  }, 100);
 });
 
-ipcMain.on('save-playback-time', (event, playbackTime, videoId) => {
-  const animePlayerPath = app.getPath('userData');
-  const savePath = path.join(animePlayerPath, 'playback-time.json');
-
-  // Save the playback time data synchronously
+// ✅ Function to load playback time and remove expired entries
+function loadPlaybackTime() {
   try {
-    const playbackData = { videoId, time: playbackTime };
-    fs.writeFileSync(savePath, JSON.stringify(playbackData)); // Sync write
-    // console.log('Playback time saved successfully.');
-    event.reply('playback-time-saved', true); // Send success response
-  } catch (err) {
-    console.error('Failed to save playback time:', err);
-    event.reply('playback-time-saved', false); // Send failure response
+      if (fs.existsSync(savePath)) {
+          let playbackData = JSON.parse(fs.readFileSync(savePath, 'utf8'));
+
+          const now = Date.now();
+          let updated = false;
+
+          for (const videoId in playbackData) {
+              if (now - playbackData[videoId].timestamp > twoDaysInMillis) {
+                  delete playbackData[videoId]; // Remove outdated entry
+                  updated = true;
+              }
+          }
+
+          // Save the updated data if any entry was removed
+          if (updated) {
+              fs.writeFileSync(savePath, JSON.stringify(playbackData, null, 2));
+              console.log("🗑️ Deleted expired playback time entries");
+          }
+
+          return playbackData;
+      }
+  } catch (error) {
+      console.error("❌ Error loading playback time:", error);
   }
+  return {};
+}
+
+
+// ✅ Load playback time when requested
+ipcMain.handle('load-playback-time', async (_, videoId) => {
+  try {
+      if (!fs.existsSync(savePath)) return { time: 0 };
+
+      let playbackData = JSON.parse(fs.readFileSync(savePath, 'utf8'));
+      const now = Date.now();
+      const twoDaysInMillis = 2 * 24 * 60 * 60 * 1000;
+
+      if (playbackData[videoId]) {
+          const { time, timestamp } = playbackData[videoId];
+
+          if (now - timestamp > twoDaysInMillis) {
+              delete playbackData[videoId]; // Remove expired entry
+              fs.writeFileSync(savePath, JSON.stringify(playbackData, null, 2));
+              console.log(`🗑️ Deleted expired playback time for videoId: ${videoId}`);
+              return { time: 0 };
+          }
+
+          return { time };
+      }
+
+      return { time: 0 };
+  } catch (error) {
+      console.error('❌ Error loading playback time:', error);
+      return { time: 0 };
+  }
+});
+
+// ✅ Delete playback entry
+ipcMain.on("delete-playback-entry", (event, videoId) => {
+  if (!videoId) {
+      console.error("❌ Error: videoId is undefined.");
+      return;
+  }
+
+  try {
+      if (fs.existsSync(savePath)) {
+          let playbackData = JSON.parse(fs.readFileSync(savePath, "utf8"));
+          if (playbackData[videoId]) {
+              delete playbackData[videoId];
+              fs.writeFileSync(savePath, JSON.stringify(playbackData, null, 2));
+          }
+      }
+  } catch (error) {
+      console.error("❌ Error deleting playback entry:", error);
+  }
+});
+
+ipcMain.on("appClose", (event, playbackTime, videoId) => {
+  let playbackData = loadPlaybackTime();
+  playbackData[videoId] = { time: playbackTime, timestamp: Date.now() };
+
+  try {
+      fs.writeFileSync(savePath, JSON.stringify(playbackData, null, 2));
+  } catch (error) {
+      console.error("Error writing playback data:", error);
+  }
+
+  if (global.tray) global.tray.destroy();
+  if (global.win) global.win.destroy();
+
+  setTimeout(() => {
+      app.quit();
+      process.exit(0);
+  }, 100);
 });
 
 // Ensure playback time is saved before the app quits
 app.on('before-quit', (event) => {
   if (!isQuitting) {
-    event.preventDefault();
-    isQuitting = true;
-    win?.webContents.send('app-closing');
-    setTimeout(app.quit, 500); 
+      event.preventDefault();
+      isQuitting = true;
+      if (global.win) global.win.webContents.send('app-closing');
+      setTimeout(app.quit, 500);
   }
 });
 
@@ -501,79 +507,70 @@ app.on('activate', () => {
   }
 });
 
-if (process.platform === 'darwin') {
-  app.on('open-file', (event, filePath) => {
-      event.preventDefault();
-      fileToOpen = filePath;
-      if (win) {
-          win.webContents.send('open-file', filePath);
-      } else {
-        win.show(filePath);
-      }
-  });
-} else {
-  // Handle file path for Windows
-  fileToOpen = process.argv.length > 1 ? process.argv[1] : null;
-  app.on('open-file', (event, filePath) => {
-    event.preventDefault();
-    fileToOpen = filePath;
-  
-    if (win) {
-      if (win.isMinimized()) win.restore();
-      win.focus();
-      win.webContents.send('open-file', filePath); // Send file to existing window
-    } else {
-      createWindow();
-      win.once('ready-to-show', () => {
-        win.webContents.send('open-file', filePath);
-      });
-    }
-  });
-  
-  app.on('second-instance', (event, commandLine) => {
-    if (win) {
-      if (win.isMinimized()) win.restore();
-      win.focus();
-  
-      // Check if a file was passed when the app was opened again
-      const newFile = commandLine.find(arg => /\.(mp4|mkv|mp3)$/i.test(arg));
-      if (newFile) {
-        win.webContents.send('open-file', newFile);
-      }
-    }
-  });
-  
-
-  // Ensure Windows handles files correctly when launched
-  app.whenReady().then(() => {
-    const newFile = process.argv.find(arg => /\.(mp4|mkv|mp3)$/i.test(arg));
-    if (newFile) fileToOpen = newFile;
-    win.show();
-  });
-}
-
-ipcMain.on('request-open-file', (event) => {
-  if (fileToOpen) {
-      event.reply('open-file', fileToOpen);
-  }
-});
-
-// Handle file open event from renderer
-ipcMain.handle("get-file-data", (event, filePath) => {
-  try {
-      const buffer = readFileSync(filePath);
-      const mimeType = mime.lookup(filePath) || "application/octet-stream";
-      const fileName = path.basename(filePath);
-      return { buffer, mimeType, fileName };
-  } catch (error) {
-      console.error("Error reading file:", error);
-      return null;
-  }
-});
-
 app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') {
       app.quit();
   }    
 });  
+
+app.on("open-file", (event, filePath) => {
+  event.preventDefault();
+  fileToOpen = filePath;
+
+  if (win) {
+      win.webContents.send("open-file", filePath);
+  }
+});
+
+app.whenReady().then(() => {
+  const openedFile = process.argv.find(arg => /\.(mp4|mkv|avi|mp3|flac|wav)$/i.test(arg));
+  if (openedFile) {
+      fileToOpen = openedFile;
+  }
+
+
+  win.webContents.once("did-finish-load", () => {
+      if (fileToOpen) {
+          win.webContents.send("open-file", fileToOpen);
+      }
+  });
+});
+
+// ✅ Open File Dialog (Multiple File Selection)
+ipcMain.handle("open-file-dialog", async () => {
+  try {
+    const result = await dialog.showOpenDialog({
+      properties: ["openFile", "multiSelections"],
+      filters: [{ name: "Media Files", extensions: ["mp4", "mkv", "avi", "mp3", "flac", "wav"] }]
+    });
+
+    if (result.canceled) return null;
+    return result.filePaths.map(filePath => path.normalize(filePath)); // Normalize paths for consistency
+  } catch (error) {
+    console.error("❌ Error opening file dialog:", error);
+    return null;
+  }
+});
+
+// ✅ Open Folder Dialog (Preserve File Order)
+ipcMain.handle("open-folder-dialog", async () => {
+  try {
+    const result = await dialog.showOpenDialog({ properties: ["openDirectory"] });
+
+    if (result.canceled) return null;
+    
+    const folderPath = path.normalize(result.filePaths[0]); // Normalize for consistency
+
+    // ✅ Read directory safely & maintain original order
+    const mediaFiles = fs.readdirSync(folderPath, { withFileTypes: true })
+      .filter(file => file.isFile() && file.name.match(/\.(mp4|mkv|avi|mp3|flac|wav)$/i))
+      .map(file => path.join(folderPath, file.name))
+      .sort((a, b) => a.localeCompare(b, undefined, { numeric: true })); // Natural sorting
+
+    return mediaFiles.length > 0 ? mediaFiles : null;
+  } catch (error) {
+    console.error("❌ Error reading folder:", error);
+    return null;
+  }
+});
 
