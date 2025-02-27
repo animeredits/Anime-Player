@@ -7,6 +7,7 @@ const { net } = require('electron');
 let win;
 let tray = null;
 let fileToOpen = process.argv.find(arg => /\.(mp4|mkv|mp3)$/i.test(arg)) || null;
+const gotTheLock = app.requestSingleInstanceLock(); 
 let playbackState = 'paused'; 
 let isPlayingForTray = false;   
 let isPlayingForThumbar = false; 
@@ -513,28 +514,43 @@ app.on('window-all-closed', () => {
   }    
 });  
 
-app.on("open-file", (event, filePath) => {
-  event.preventDefault();
-  fileToOpen = filePath;
-
-  if (win) {
-      win.webContents.send("open-file", filePath);
-  }
-});
-
-app.whenReady().then(() => {
-  const openedFile = process.argv.find(arg => /\.(mp4|mkv|avi|mp3|flac|wav)$/i.test(arg));
-  if (openedFile) {
-      fileToOpen = openedFile;
-  }
 
 
-  win.webContents.once("did-finish-load", () => {
-      if (fileToOpen) {
-          win.webContents.send("open-file", fileToOpen);
+if (!gotTheLock) {
+  app.quit(); // Quit if another instance is running
+} else {
+  app.on("second-instance", (event, commandLine) => {
+    if (win) {
+      if (win.isMinimized()) win.restore(); // Restore if minimized
+      win.focus(); // Bring the window to front
+
+      // Extract the file path from command line arguments
+      const filePath = commandLine.find(arg => /\.(mp4|mkv|mp3)$/i.test(arg));
+      if (filePath) {
+        win.webContents.send("open-file", filePath);
       }
+    }
   });
-});
+
+  app.on("open-file", (event, path) => {  // macOS specific file open event
+    event.preventDefault();
+    if (win) {
+      win.webContents.send("open-file", path);
+    } else {
+      fileToOpen = path; // Store for later use if window is not yet created
+    }
+  });
+
+  app.whenReady().then(() => {
+
+    if (fileToOpen) {
+      win.webContents.once("did-finish-load", () => {
+        win.webContents.send("open-file", fileToOpen);
+      });
+    }
+  });
+}
+
 
 // ✅ Open File Dialog (Multiple File Selection)
 ipcMain.handle("open-file-dialog", async () => {
@@ -574,3 +590,16 @@ ipcMain.handle("open-folder-dialog", async () => {
   }
 });
 
+ipcMain.handle("delete-file", async (event, filePath) => {
+  if (!fs.existsSync(filePath)) {
+      throw new Error("File not found");
+  }
+
+  try {
+      const trash = await import("trash"); // Dynamically import the ESM module
+      await trash.default(filePath); // Use trash.default() because it's an ES module
+      console.log("🗑️ File moved to Recycle Bin:", filePath);
+  } catch (error) {
+      console.error("❌ Error deleting file:", error);
+  }
+});

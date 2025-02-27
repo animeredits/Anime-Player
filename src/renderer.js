@@ -845,7 +845,7 @@ function updateNavigationButtons() {
     nextButton.classList.toggle("hidden", nextIndex === null || mediaFiles.length === 0);
     prevButton.classList.toggle("hidden", prevIndex === null || mediaFiles.length === 0);
 
-    console.log("🔄 Navigation updated | Next:", nextIndex, "| Previous:", prevIndex);
+    // console.log("🔄 Navigation updated | Next:", nextIndex, "| Previous:", prevIndex);
 }
 
 
@@ -1016,7 +1016,6 @@ window.addEventListener("beforeunload", () => {
     }
 });
 
-
 // ✅ Handle "Continue Watching" button click
 continueButton.addEventListener("click", () => {
     if (lastPlaybackTime > 0) {
@@ -1027,6 +1026,39 @@ continueButton.addEventListener("click", () => {
     }
     continueButton.style.display = "none";
 });
+
+
+// ✅ Function to delete the current media file
+async function deleteCurrentMediaFile() {
+    if (!mediaFiles.length || currentVideoIndex < 0) return;
+    
+    const filePath = mediaFiles[currentVideoIndex];
+    if (!filePath) return;
+
+    try {
+        await window.electron.deleteFile(filePath); // Call API from preload.js
+        // console.log("🗑️ File moved to Recycle Bin:", filePath);
+
+        // Remove file from playlist and move to next video
+        mediaFiles.splice(currentVideoIndex, 1);
+
+        // Update the playlist UI
+        updatePlaylistDropdown();
+
+        // Play next file if available
+        if (mediaFiles.length > 0) {
+            if (currentVideoIndex >= mediaFiles.length) {
+                currentVideoIndex = mediaFiles.length - 1;
+            }
+            playMediaFile(mediaFiles[currentVideoIndex]);
+        } else {
+            stopPlayback(); // Stop playback if no files left
+        }
+    } catch (error) {
+        console.error("❌ Error deleting file:", error);
+    }
+}
+
 
 function checkAndSetArtwork(artworkExists) {
 	if (artworkExists) {
@@ -1098,15 +1130,12 @@ function readAudioMetadata(file, callback) {
 	reader.readAsArrayBuffer(file.slice(0, 1024 * 10)); // Read the first 10KB
 }
 
-
-// Efficiently Update Playlist Dropdown
+// ✅ Function to update playlist dropdown dynamically
 function updatePlaylistDropdown() {
     const playlistContainers = document.querySelectorAll(".play-list");
     playlistContainers.forEach((playlistContainer) => {
-        // Clear existing items
         playlistContainer.innerHTML = "";
 
-        // Populate each playlist container
         mediaFiles.forEach((file, index) => {
             const fileName = typeof file === "string" ? file.split(/[/\\]/).pop() : file.name;
 
@@ -1115,7 +1144,6 @@ function updatePlaylistDropdown() {
             fileLink.textContent = fileName;
             fileLink.classList.add("playlist-item");
 
-            // Add click event to play the selected file
             fileLink.addEventListener("click", () => {
                 playVideoByIndex(index);
                 highlightCurrentVideo(fileLink);
@@ -1125,94 +1153,77 @@ function updatePlaylistDropdown() {
         });
     });
 
-    // // Show playlist only if there are files
-    // if (mediaFiles.length > 0) {
-    //     document.querySelectorAll(".playlist-container").forEach(container => {
-    //         container.classList.add("show");
-    //     });
-    // }
+    // // Show the playlist container only if there are items
+    // document.querySelectorAll(".playlist-container").forEach(container => {
+    //     container.classList.add("show");
+    // });
 }
 
-
-// Function to highlight the currently playing video and scroll to it
+// ✅ Function to highlight the currently playing video and scroll to it
 function highlightCurrentVideo(selectedLink) {
-	// Get the text of the selected item to use as a reference
-	const selectedText = selectedLink.textContent.trim();
+    if (!selectedLink) return;
 
-	// Remove the highlight from any previously highlighted video across all playlists
-	document.querySelectorAll(".play-list .highlight").forEach((item) => {
-		item.classList.remove("highlight");
-	});
+    // Get the text of the selected item to use as reference
+    const selectedText = selectedLink.textContent.trim();
 
-	// Find and highlight matching items in all playlist containers
-	document.querySelectorAll(".play-list .playlist-item").forEach((item) => {
-		if (item.textContent.trim() === selectedText) {
-			item.classList.add("highlight");
+    // Remove highlight from previous selections
+    document.querySelectorAll(".play-list .highlight").forEach((item) => {
+        item.classList.remove("highlight");
+    });
 
-			// Auto-scroll to the highlighted item if the user isn't scrolling
-			if (!isUserScrolling) {
-				item.scrollIntoView({
-					behavior: "smooth",
-					block: "center",
-				});
-			}
-		}
-	});
+    // Find and highlight matching items in all playlist containers
+    document.querySelectorAll(".play-list .playlist-item").forEach((item) => {
+        if (item.textContent.trim() === selectedText) {
+            item.classList.add("highlight");
+
+            // Auto-scroll to the highlighted item if the user isn't scrolling
+            if (!isUserScrolling) {
+                item.scrollIntoView({
+                    behavior: "smooth",
+                    block: "center",
+                });
+            }
+        }
+    });
 }
 
-
-// Auto-scroll to the current video in the playlist if user isn't interacting
+// ✅ Auto-scroll to the current video in the playlist if the user isn't interacting
 function highlightCurrentVideoInPlaylist(fileName) {
-	const playlistItems = document.querySelectorAll(".play-list .playlist-item");
-
-	playlistItems.forEach((item) => {
-		if (item.textContent === fileName) {
-			highlightCurrentVideo(item); // Highlight and scroll to the current video
-		}
-	});
+    document.querySelectorAll(".play-list .playlist-item").forEach((item) => {
+        if (item.textContent === fileName) {
+            highlightCurrentVideo(item);
+        }
+    });
 }
 
-// Set up auto-scrolling interval
+// ✅ Auto-scroll logic: checks and scrolls every second
 setInterval(() => {
-	const highlightedItem = document.querySelector(".play-list .highlight");
-	if (highlightedItem && !isUserScrolling) {
-		highlightedItem.scrollIntoView({
-			behavior: "smooth",
-			block: "center",
-		});
-	}
-}, 1000); // Check every 1 second; adjust as needed
+    const highlightedItem = document.querySelector(".play-list .highlight");
+    if (highlightedItem && !isUserScrolling) {
+        highlightedItem.scrollIntoView({
+            behavior: "smooth",
+            block: "center",
+        });
+    }
+}, 1000); // Check every second
 
 const playlistContainers = document.querySelectorAll(".play-list");
 
-// Attach scroll and mouse interaction listeners to each playlist container
-playlistContainers.forEach((playlistContainer) => {
-	playlistContainer.addEventListener("scroll", () => {
-		isUserScrolling = true;
+// ✅ Set up event listeners for scroll detection
+document.querySelectorAll(".play-list").forEach((playlistContainer) => {
+    playlistContainer.addEventListener("scroll", () => {
+        isUserScrolling = true;
 
-		// Clear the timeout if it already exists
-		clearTimeout(scrollTimeout);
+        // Reset after 2 seconds of no scrolling
+        clearTimeout(scrollTimeout);
+        scrollTimeout = setTimeout(() => {
+            isUserScrolling = false;
+        }, 2000);
+    });
 
-		// Set a timeout to reset `isUserScrolling` after 1.5 seconds of no scroll
-		scrollTimeout = setTimeout(() => {
-			isUserScrolling = false;
-		}, 2000); // Adjust delay as needed
-	});
-
-	// Allow playlist scrolling when mouse is over it
-	playlistContainer.addEventListener("wheel", (event) => {
-		if (isMouseOver) {
-			event.stopPropagation();
-		}
-	});
-
-	// Detect mouse enter/leave events for the playlist container
-	playlistContainer.addEventListener("mouseenter", () => {
-		isMouseOver = true;
-	});
-	playlistContainer.addEventListener("mouseleave", () => {
-		isMouseOver = false;
-	});
+  // Allow mouse scrolling only when hovering
+playlistContainer.addEventListener("mouseenter", () => isMouseOver = true);
+playlistContainer.addEventListener("mouseleave", () => isMouseOver = false);MouseOver = false;
 });
 
 // playlist Container show
@@ -1575,7 +1586,6 @@ mediaPlayer.addEventListener("wheel", (event) => {
 	}
 });
 
-
 // Update the volume button icon and tooltip
 function updateVolumeIcon() {
     if (gainNode.gain.value === 0) {
@@ -1774,7 +1784,6 @@ function toggleRepeat() {
         window.electron.sendRepeatState("all");
     }
 }
-
 
 // Event listener for shuffle mode button loopbutton, switchtrack button and Full screen 
 document.getElementById("shuffleButton").addEventListener("click", toggleShuffleMode);
@@ -2316,6 +2325,11 @@ document.addEventListener("keydown", (event) => {
 		const zoomPercentage = Math.round(scale * 100);
 		showStatusMessage(`Zoom: ${zoomPercentage}%`);
 	}
+
+	if (event.ctrlKey && event.key === "d") {
+        event.preventDefault();
+        deleteCurrentMediaFile();
+    }
 	const keyActions = {
 		ArrowUp: () => {
 			updateVolume(gainNode.gain.value + 0.1) // Increase volume
@@ -2373,7 +2387,9 @@ document.addEventListener("keydown", (event) => {
 		0: () => {
 			currentMedia.currentTime = 0;
 			currentMedia.play();
-		}
+		},
+		Delete: () => {
+			deleteCurrentMediaFile();		}
 	};
 
 	if (keyActions[event.key]) {
@@ -2884,4 +2900,3 @@ window.electron.onMute(() => {
 window.electron.onRepeatState(() => {
 	toggleRepeat();
 });
-
