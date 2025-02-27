@@ -12,13 +12,9 @@
         "anime player"
     ],
     "scripts": {
-        "start": "electron .",
-        "pack": "electron-builder --dir",
-        "dist": "electron-builder",
-        "clean": "rimraf dist node_modules && npm install",
-        "rebuild": "electron-rebuild",
-        "lint": "eslint . --fix",
-        "postinstall": "electron-builder install-app-deps"
+        "start": " electron .",
+        "pack": "@electron/packager . --platform=win64 --arch=x64 --out=dist/ --overwrite --icon=icon.ico",
+        "dist": "electron-builder --publish=always"
     },
     "dependencies": {
         "depcheck": "^1.4.7",
