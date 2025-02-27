@@ -70,24 +70,24 @@ jobs:
     name: Create Draft Release
     needs: [build-linux, build-windows]
     runs-on: ubuntu-latest
-    if: startsWith(github.ref, 'refs/tags/v')  # Run only for version tags
-
+    if: github.ref_type == 'tag' && startsWith(github.ref_name, 'v')
+  
     steps:
       - name: Checkout Code
         uses: actions/checkout@v3
-
+  
       - name: Download Linux Artifacts
         uses: actions/download-artifact@v4
         with:
           name: linux-build
           path: linux-dist/
-
+  
       - name: Download Windows Artifacts
         uses: actions/download-artifact@v4
         with:
           name: windows-build
           path: windows-dist/
-
+  
       - name: Create Draft Release and Upload Assets
         env:
           GH_TOKEN: ${{ secrets.GH_TOKEN }}
