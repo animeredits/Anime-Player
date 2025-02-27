@@ -77,7 +77,7 @@ function createWindow() {
     win.maximize();
     createTray();
     setThumbarButtons();
-    win.webContents.openDevTools();
+    // win.webContents.openDevTools();
   });
 
   win.on("show", setThumbarButtons);
