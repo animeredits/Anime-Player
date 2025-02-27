@@ -77,7 +77,7 @@ function createWindow() {
     win.maximize();
     createTray();
     setThumbarButtons();
-    // win.webContents.openDevTools();
+    win.webContents.openDevTools();
   });
 
   win.on("show", setThumbarButtons);
@@ -412,7 +412,7 @@ function loadPlaybackTime() {
           // Save the updated data if any entry was removed
           if (updated) {
               fs.writeFileSync(savePath, JSON.stringify(playbackData, null, 2));
-              console.log("🗑️ Deleted expired playback time entries");
+              // console.log("🗑️ Deleted expired playback time entries");
           }
 
           return playbackData;
@@ -439,7 +439,7 @@ ipcMain.handle('load-playback-time', async (_, videoId) => {
           if (now - timestamp > twoDaysInMillis) {
               delete playbackData[videoId]; // Remove expired entry
               fs.writeFileSync(savePath, JSON.stringify(playbackData, null, 2));
-              console.log(`🗑️ Deleted expired playback time for videoId: ${videoId}`);
+              // console.log(`🗑️ Deleted expired playback time for videoId: ${videoId}`);
               return { time: 0 };
           }
 
@@ -514,8 +514,6 @@ app.on('window-all-closed', () => {
   }    
 });  
 
-
-
 if (!gotTheLock) {
   app.quit(); // Quit if another instance is running
 } else {
@@ -532,12 +530,12 @@ if (!gotTheLock) {
     }
   });
 
-  app.on("open-file", (event, path) => {  // macOS specific file open event
+  app.on("open-file", (event, path) => {  
     event.preventDefault();
     if (win) {
       win.webContents.send("open-file", path);
     } else {
-      fileToOpen = path; // Store for later use if window is not yet created
+      fileToOpen = path; 
     }
   });
 
@@ -561,7 +559,7 @@ ipcMain.handle("open-file-dialog", async () => {
     });
 
     if (result.canceled) return null;
-    return result.filePaths.map(filePath => path.normalize(filePath)); // Normalize paths for consistency
+    return result.filePaths.map(filePath => path.normalize(filePath)); 
   } catch (error) {
     console.error("❌ Error opening file dialog:", error);
     return null;
@@ -575,13 +573,13 @@ ipcMain.handle("open-folder-dialog", async () => {
 
     if (result.canceled) return null;
     
-    const folderPath = path.normalize(result.filePaths[0]); // Normalize for consistency
+    const folderPath = path.normalize(result.filePaths[0]); 
 
     // ✅ Read directory safely & maintain original order
     const mediaFiles = fs.readdirSync(folderPath, { withFileTypes: true })
       .filter(file => file.isFile() && file.name.match(/\.(mp4|mkv|avi|mp3|flac|wav)$/i))
       .map(file => path.join(folderPath, file.name))
-      .sort((a, b) => a.localeCompare(b, undefined, { numeric: true })); // Natural sorting
+      .sort((a, b) => a.localeCompare(b, undefined, { numeric: true })); 
 
     return mediaFiles.length > 0 ? mediaFiles : null;
   } catch (error) {
@@ -596,9 +594,9 @@ ipcMain.handle("delete-file", async (event, filePath) => {
   }
 
   try {
-      const trash = await import("trash"); // Dynamically import the ESM module
-      await trash.default(filePath); // Use trash.default() because it's an ES module
-      console.log("🗑️ File moved to Recycle Bin:", filePath);
+      const trash = await import("trash"); 
+      await trash.default(filePath); 
+      // console.log("🗑️ File moved to Recycle Bin:", filePath);
   } catch (error) {
       console.error("❌ Error deleting file:", error);
   }

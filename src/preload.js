@@ -64,5 +64,4 @@ contextBridge.exposeInMainWorld('electron', {
   openFileDialog: () => ipcRenderer.invoke("open-file-dialog"),
   openFolderDialog: () => ipcRenderer.invoke("open-folder-dialog"),
   deleteFile: (filePath) => ipcRenderer.invoke("delete-file", filePath),
-
 });

@@ -481,7 +481,6 @@ function searchGifs() {
         });
 }
 
-
 // Display GIF results
 function displayGifResults(gifs) {
 	gifResultsContainer.innerHTML = ""; // Clear previous results
@@ -505,6 +504,7 @@ function displayGifResults(gifs) {
 		gifResultsContainer.appendChild(gifPreview);
 	});
 }
+
 // Function to clear GIF results and free up network resources
 function clearGifResults() {
 	const gifElements = gifResultsContainer.querySelectorAll("img"); // Select all GIFs
@@ -877,7 +877,6 @@ function hideVideoTitle() {
 	videoTitleElement.style.display = "none";
 }
 
-
 // Function to stop playback and reset the media player
 function stopPlayback() {
 	video.pause();
@@ -902,7 +901,6 @@ document.querySelectorAll(".stopPlayback").forEach(button => {
 	});
 });
 
-
 prevButton.addEventListener("click", playPrevious);
 nextButton.addEventListener("click", playNext);
 
@@ -919,7 +917,6 @@ document.querySelectorAll(".nextbtn").forEach(button => {
 		playNext();
 	});
 });
-
 
 // Rewind and Forward video 10 sec
 rewind.addEventListener("click", () => {
@@ -939,7 +936,6 @@ forward.setAttribute("title", "Forward 10 seconds");
 // Initial button visibility update
 updateNavigationButtons();
 
-
 // ✅ Save playback time
 function savePlaybackTime(videoId, time) {
     if (!videoId) return;
@@ -948,19 +944,16 @@ function savePlaybackTime(videoId, time) {
         clearPlaybackTime(videoId);
         return;
     }
-    console.log("✅ Saving playback time:", videoId, adjustedTime);
+    // console.log("✅ Saving playback time:", videoId, adjustedTime);
     window.electron.send('save-playback-time', adjustedTime, videoId);
 }
-
-
 
 // ✅ Clear playback time entry
 function clearPlaybackTime(videoId) {
     if (!videoId) return;
-    console.log("🗑️ Clearing playback time for:", videoId);
+    // console.log("🗑️ Clearing playback time for:", videoId);
     window.electron.send('delete-playback-entry', videoId);
 }
-
 
 // ✅ Handle "Continue Watching" button visibility
 function handleContinueButtonVisibility() {
@@ -1136,6 +1129,20 @@ function updatePlaylistDropdown() {
     playlistContainers.forEach((playlistContainer) => {
         playlistContainer.innerHTML = "";
 
+        // Create search input field
+        const searchInput = document.createElement("input");
+        searchInput.type = "text";
+        searchInput.placeholder = "Search video...";
+		searchInput.style.backgroundColor = "transparent";
+		searchInput.style.color = "#fff";
+		searchInput.style.width = "100%";
+		searchInput.style.height = "28px";
+		searchInput.style.border = "none";
+		searchInput.style.outline = "none";
+        searchInput.classList.add("playlist-search");
+        searchInput.addEventListener("input", filterPlaylistItems);
+        playlistContainer.appendChild(searchInput);
+
         mediaFiles.forEach((file, index) => {
             const fileName = typeof file === "string" ? file.split(/[/\\]/).pop() : file.name;
 
@@ -1151,13 +1158,55 @@ function updatePlaylistDropdown() {
 
             playlistContainer.appendChild(fileLink);
         });
-    });
 
-    // // Show the playlist container only if there are items
-    // document.querySelectorAll(".playlist-container").forEach(container => {
-    //     container.classList.add("show");
-    // });
+// Prevent container from closing when clicked inside
+searchInput.addEventListener("click", function(event) {
+event.stopPropagation();
+});
+
+// Allow  scrolling when mouse is over it
+searchInput.addEventListener("wheel", (event) => {
+	if (isMouseOver) {
+		event.stopPropagation();
+	}
+});
+
+// Detect mouse enter/leave events for the playlist container
+searchInput.addEventListener("mouseenter", () => {
+	isMouseOver = true;
+});
+searchInput.addEventListener("mouseleave", () => {
+	isMouseOver = false;
+});
+
+searchInput.addEventListener("input", function() {
+	clearTimeout(debounceTimeout);
+	debounceTimeout = setTimeout(filterPlaylistItems, 300); // Debounce search
+});
+
+searchInput.addEventListener("keydown", function(event) {
+	if (document.activeElement === searchInput) {
+        event.stopPropagation();
+    }
+});
+    });
 }
+
+// ✅ Function to filter playlist items based on search input
+function filterPlaylistItems(event) {
+    const searchQuery = event.target.value.toLowerCase();
+    const playlistContainer = event.target.closest(".play-list");
+
+    playlistContainer.querySelectorAll(".playlist-item").forEach((item) => {
+        const fileName = item.textContent.toLowerCase();
+        if (fileName.includes(searchQuery)) {
+            item.style.display = "block";
+        } else {
+            item.style.display = "none";
+        }
+    });
+}
+
 
 // ✅ Function to highlight the currently playing video and scroll to it
 function highlightCurrentVideo(selectedLink) {
@@ -1209,21 +1258,34 @@ setInterval(() => {
 
 const playlistContainers = document.querySelectorAll(".play-list");
 
-// ✅ Set up event listeners for scroll detection
-document.querySelectorAll(".play-list").forEach((playlistContainer) => {
-    playlistContainer.addEventListener("scroll", () => {
-        isUserScrolling = true;
+// Attach scroll and mouse interaction listeners to each playlist container
+playlistContainers.forEach((playlistContainer) => {
+	playlistContainer.addEventListener("scroll", () => {
+		isUserScrolling = true;
 
-        // Reset after 2 seconds of no scrolling
-        clearTimeout(scrollTimeout);
-        scrollTimeout = setTimeout(() => {
-            isUserScrolling = false;
-        }, 2000);
-    });
+		// Clear the timeout if it already exists
+		clearTimeout(scrollTimeout);
 
-  // Allow mouse scrolling only when hovering
-playlistContainer.addEventListener("mouseenter", () => isMouseOver = true);
-playlistContainer.addEventListener("mouseleave", () => isMouseOver = false);MouseOver = false;
+		// Set a timeout to reset `isUserScrolling` after 1.5 seconds of no scroll
+		scrollTimeout = setTimeout(() => {
+			isUserScrolling = false;
+		}, 2000); // Adjust delay as needed
+	});
+
+	// Allow playlist scrolling when mouse is over it
+	playlistContainer.addEventListener("wheel", (event) => {
+		if (isMouseOver) {
+			event.stopPropagation();
+		}
+	});
+
+	// Detect mouse enter/leave events for the playlist container
+	playlistContainer.addEventListener("mouseenter", () => {
+		isMouseOver = true;
+	});
+	playlistContainer.addEventListener("mouseleave", () => {
+		isMouseOver = false;
+	});
 });
 
 // playlist Container show
@@ -1242,12 +1304,53 @@ function togglePlaylist() {
     }
 }
 
-// Hide dropdown when clicking outside
+// ✅ Hide dropdown and clear search input when clicking outside
 window.addEventListener("click", function (event) {
     const playlistContainer = document.querySelector(".playlist-container");
-    // Check if the click was outside the playlist container
+    const searchInput = document.querySelector(".playlist-search");
+
     if (!playlistContainer.contains(event.target)) {
         playlistContainer.classList.remove("show");
+
+        // Clear search input when closing
+        if (searchInput) {
+            searchInput.value = "";
+            filterPlaylistItems({ target: searchInput }); // Reset the search filter
+        }
+    }
+});
+
+document.addEventListener("keydown", function (event) {
+    const playlistContainer = document.querySelector(".playlist-container");
+    const isPlaylistVisible = playlistContainer.classList.contains("show");
+
+    if (isPlaylistVisible) {
+        // Playlist navigation when visible
+        const playlistItems = Array.from(playlistContainer.querySelectorAll(".playlist-item"));
+        if (playlistItems.length === 0) return;
+
+        const currentIndex = playlistItems.findIndex(item => item.classList.contains("highlight"));
+
+        if (event.key === "ArrowDown") {
+            event.preventDefault();
+            const nextIndex = (currentIndex + 1) % playlistItems.length;
+            playlistItems[nextIndex].click();
+        } else if (event.key === "ArrowUp") {
+            event.preventDefault();
+            const prevIndex = (currentIndex - 1 + playlistItems.length) % playlistItems.length;
+            playlistItems[prevIndex].click();
+        }
+    } else {
+        // Adjust volume when playlist is hidden
+        if (event.key === "ArrowUp") {
+            event.preventDefault();
+            updateVolume(gainNode.gain.value + 0.1);
+            showStatusMessage(`Volume: ${(gainNode.gain.value * 100).toFixed(0)}%`);
+        } else if (event.key === "ArrowDown") {
+            event.preventDefault();
+            updateVolume(gainNode.gain.value - 0.1);
+            showStatusMessage(`Volume: ${(gainNode.gain.value * 100).toFixed(0)}%`);
+        }
     }
 });
 
@@ -2331,14 +2434,6 @@ document.addEventListener("keydown", (event) => {
         deleteCurrentMediaFile();
     }
 	const keyActions = {
-		ArrowUp: () => {
-			updateVolume(gainNode.gain.value + 0.1) // Increase volume
-			showStatusMessage(`Volume: ${(gainNode.gain.value * 100).toFixed(0)}%`);
-		},
-		ArrowDown: () => {
-			updateVolume(gainNode.gain.value - 0.1) // Decrease volume
-			showStatusMessage(`Volume: ${(gainNode.gain.value * 100).toFixed(0)}%`);
-		},
 		ArrowLeft: () => {
 			currentMedia.currentTime = Math.max(0, currentMedia.currentTime - 10);
 			showStatusMessage(
