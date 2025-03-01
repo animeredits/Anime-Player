@@ -1009,6 +1009,16 @@ window.addEventListener("beforeunload", () => {
     }
 });
 
+// ✅ Function to save playback time and then quit
+function savePlaybackAndQuit() {
+	const videoId = getVideoId();
+	if (videoId && video.currentTime > 0 && video.duration >= 60) {
+		window.electron.send("appClose", video.currentTime, videoId);
+	} else {
+		window.electron.close();
+	}
+}
+
 // ✅ Handle "Continue Watching" button click
 continueButton.addEventListener("click", () => {
     if (lastPlaybackTime > 0) {
@@ -2235,7 +2245,7 @@ updateDurationDisplay();
 // Event listeners for all nav components
 document.querySelectorAll(".quit").forEach((element) => {
 	element.addEventListener("click", () => {
-		window.electron.close();
+		savePlaybackAndQuit();
 	});
 });
 
@@ -2818,7 +2828,7 @@ window.electron.onWindowStateChange(updateMaximizeIcon);
 window.electron.onInitialWindowState(updateMaximizeIcon);
 
 document.querySelector("#window-close").addEventListener("click", () => {
-	window.electron.close();
+	savePlaybackAndQuit();
 });
 
 
