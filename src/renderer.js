@@ -610,7 +610,7 @@ async function loadMediaFile(filePath, fileName) {
 		const savedPlayback = await window.electron.invoke('load-playback-time', filename);
 		lastPlaybackTime = savedPlayback?.time || 0;
 		if (lastPlaybackTime > 0) {
-			console.log("🔄 Saved playback time found:", lastPlaybackTime);
+			// console.log("🔄 Saved playback time found:", lastPlaybackTime);
 			handleContinueButtonVisibility();
 		} else {
 			// No saved playback time, start from the beginning
@@ -969,7 +969,7 @@ function handleContinueButtonVisibility() {
 function startAutoHideContinueButton() {
     clearTimeout(hideContinueButtonTimeout);
     hideContinueButtonTimeout = setTimeout(() => {
-        console.log("⏳ Continue Watching button auto-hidden");
+        // console.log("⏳ Continue Watching button auto-hidden");
         continueButton.style.display = "none";
         clearPlaybackTime(video.dataset.videoId);
     }, 5000);
@@ -995,7 +995,7 @@ video.addEventListener("pause", () => {
 window.addEventListener("beforeunload", () => {
     const videoId = getVideoId();
     if (videoId && video.currentTime > 0 && video.duration >= 60) {
-        console.log("💾 Saving playback time before closing:", videoId, video.currentTime);
+        // console.log("💾 Saving playback time before closing:", videoId, video.currentTime);
         window.electron.send('save-playback-time', video.currentTime, videoId);
     }
 });
@@ -1004,7 +1004,7 @@ window.addEventListener("beforeunload", () => {
 	window.electron.onAppClosing(async () => {
     const videoId = getVideoId();
     if (videoId && !video.paused && video.duration >= 60) {
-        console.log("💾 Saving playback time before quit:", videoId, video.currentTime);
+        // console.log("💾 Saving playback time before quit:", videoId, video.currentTime);
         window.electron.send('save-playback-time', video.currentTime, videoId);
     }
 });
@@ -1012,7 +1012,7 @@ window.addEventListener("beforeunload", () => {
 // ✅ Handle "Continue Watching" button click
 continueButton.addEventListener("click", () => {
     if (lastPlaybackTime > 0) {
-        console.log("🎬 Resuming playback from:", lastPlaybackTime);
+        // console.log("🎬 Resuming playback from:", lastPlaybackTime);
         video.currentTime = lastPlaybackTime;
         video.play();
         clearPlaybackTime(video.dataset.videoId);
@@ -1052,80 +1052,10 @@ async function deleteCurrentMediaFile() {
     }
 }
 
-
-function checkAndSetArtwork(artworkExists) {
-	if (artworkExists) {
-		// If artwork exists, set the logo to none
-		audioImage.src = ''; // Clear the logo
-		audioImage.style.display = 'none'; // Hide the logo
-		localStorage.removeItem('selectedLogo'); // Remove any saved selection
-	} else {
-		// If no artwork, set the selected logo if available
-		const selectedLogo = localStorage.getItem('selectedLogo');
-		if (selectedLogo) {
-			setSelectedLogo(selectedLogo);
-		}
-	}
-}
-
-function readAudioMetadata(file, callback) {
-	const reader = new FileReader();
-
-	reader.onload = function(event) {
-		const data = new Uint8Array(event.target.result);
-
-		// Check for ID3 tag header (first 3 bytes should be 'ID3')
-		if (data[0] === 0x49 && data[1] === 0x44 && data[2] === 0x33) {
-			let offset = 10; // ID3 header is 10 bytes
-
-			// The size of the ID3 tag is stored in the next 4 bytes, using a synchsafe integer
-			const size =
-				((data[6] & 0x7f) << 21) |
-				((data[7] & 0x7f) << 14) |
-				((data[8] & 0x7f) << 7) |
-				(data[9] & 0x7f);
-
-			while (offset < size) {
-				const frameID = String.fromCharCode(
-					data[offset],
-					data[offset + 1],
-					data[offset + 2],
-					data[offset + 3]
-				);
-				const frameSize =
-					(data[offset + 4] << 24) |
-					(data[offset + 5] << 16) |
-					(data[offset + 6] << 8) |
-					data[offset + 7];
-				const frameFlags = (data[offset + 8] << 8) | data[offset + 9];
-
-				// 'APIC' frame contains the artwork
-				if (frameID === "APIC") {
-					callback(true);
-					return;
-				}
-
-				// Move to the next frame
-				offset += 10 + frameSize;
-			}
-		}
-
-		// If no artwork was found
-		callback(false);
-	};
-
-	reader.onerror = function() {
-		console.error("Error reading audio file metadata");
-		callback(false);
-	};
-
-	// Read the first part of the file to get the metadata
-	reader.readAsArrayBuffer(file.slice(0, 1024 * 10)); // Read the first 10KB
-}
-
 // ✅ Function to update playlist dropdown dynamically
 function updatePlaylistDropdown() {
     const playlistContainers = document.querySelectorAll(".play-list");
+
     playlistContainers.forEach((playlistContainer) => {
         playlistContainer.innerHTML = "";
 
@@ -1133,12 +1063,13 @@ function updatePlaylistDropdown() {
         const searchInput = document.createElement("input");
         searchInput.type = "text";
         searchInput.placeholder = "Search video...";
-		searchInput.style.backgroundColor = "transparent";
-		searchInput.style.color = "#fff";
-		searchInput.style.width = "100%";
-		searchInput.style.height = "28px";
-		searchInput.style.border = "none";
-		searchInput.style.outline = "none";
+        searchInput.style.backgroundColor = "transparent";
+        searchInput.style.color = "#fff";
+        searchInput.style.paddingLeft = "5px";
+        searchInput.style.width = "100%";
+        searchInput.style.height = "28px";
+        searchInput.style.border = "none";
+        searchInput.style.outline = "none";
         searchInput.classList.add("playlist-search");
         searchInput.addEventListener("input", filterPlaylistItems);
         playlistContainer.appendChild(searchInput);
@@ -1159,54 +1090,52 @@ function updatePlaylistDropdown() {
             playlistContainer.appendChild(fileLink);
         });
 
-// Prevent container from closing when clicked inside
-searchInput.addEventListener("click", function(event) {
-event.stopPropagation();
-});
+        // Prevent container from closing when clicked inside
+        searchInput.addEventListener("click", function(event) {
+            event.stopPropagation();
+        });
 
-// Allow  scrolling when mouse is over it
-searchInput.addEventListener("wheel", (event) => {
-	if (isMouseOver) {
-		event.stopPropagation();
-	}
-});
+        // Debounce search input
+        let debounceTimeout;
+        searchInput.addEventListener("input", function() {
+            clearTimeout(debounceTimeout);
+            debounceTimeout = setTimeout(filterPlaylistItems, 300);
+        });
 
-// Detect mouse enter/leave events for the playlist container
-searchInput.addEventListener("mouseenter", () => {
-	isMouseOver = true;
-});
-searchInput.addEventListener("mouseleave", () => {
-	isMouseOver = false;
-});
+        // Stop key events from propagating
+        searchInput.addEventListener("keydown", function(event) {
+            if (document.activeElement === searchInput) {
+                event.stopPropagation();
+            }
+        });
+    });
 
-searchInput.addEventListener("input", function() {
-	clearTimeout(debounceTimeout);
-	debounceTimeout = setTimeout(filterPlaylistItems, 300); // Debounce search
-});
-
-searchInput.addEventListener("keydown", function(event) {
-	if (document.activeElement === searchInput) {
-        event.stopPropagation();
-    }
-});
+    // ✅ Click outside clears search input and restores playlist
+    document.addEventListener("click", function(event) {
+        document.querySelectorAll(".play-list").forEach((playlistContainer) => {
+            if (!playlistContainer.contains(event.target)) {
+                const searchInput = playlistContainer.querySelector(".playlist-search");
+                if (searchInput) searchInput.value = ""; // Clear input
+                playlistContainer.querySelectorAll(".playlist-item").forEach((item) => {
+                    item.style.display = "block"; // Show all items
+                });
+            }
+        });
     });
 }
 
 // ✅ Function to filter playlist items based on search input
 function filterPlaylistItems(event) {
-    const searchQuery = event.target.value.toLowerCase();
-    const playlistContainer = event.target.closest(".play-list");
+    const searchQuery = event?.target?.value?.toLowerCase() || "";
+    const playlistContainer = event?.target?.closest(".play-list");
+
+    if (!playlistContainer) return;
 
     playlistContainer.querySelectorAll(".playlist-item").forEach((item) => {
         const fileName = item.textContent.toLowerCase();
-        if (fileName.includes(searchQuery)) {
-            item.style.display = "block";
-        } else {
-            item.style.display = "none";
-        }
+        item.style.display = fileName.includes(searchQuery) ? "block" : "none";
     });
 }
-
 
 // ✅ Function to highlight the currently playing video and scroll to it
 function highlightCurrentVideo(selectedLink) {
@@ -1307,16 +1236,8 @@ function togglePlaylist() {
 // ✅ Hide dropdown and clear search input when clicking outside
 window.addEventListener("click", function (event) {
     const playlistContainer = document.querySelector(".playlist-container");
-    const searchInput = document.querySelector(".playlist-search");
-
     if (!playlistContainer.contains(event.target)) {
         playlistContainer.classList.remove("show");
-
-        // Clear search input when closing
-        if (searchInput) {
-            searchInput.value = "";
-            filterPlaylistItems({ target: searchInput }); // Reset the search filter
-        }
     }
 });
 
@@ -2896,7 +2817,7 @@ window.electron.onWindowStateChange(updateMaximizeIcon);
   // Set the correct icon when the app starts
 window.electron.onInitialWindowState(updateMaximizeIcon);
 
-document.querySelector("#windws-close").addEventListener("click", () => {
+document.querySelector("#window-close").addEventListener("click", () => {
 	window.electron.close();
 });
 

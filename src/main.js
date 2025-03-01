@@ -124,28 +124,37 @@ function updateThumbarButtons() {
 }
 
 function createTray() {
+
   tray = new Tray(path.join(__dirname, "../assets/icons/icon.ico"));
   tray.setToolTip('Anime Player');
+
   const updateContextMenu = (shuffleState = 'off', repeatState = 'off') => {
+    
       const playPauseLabel = playbackState === 'playing' ? 'Pause' : 'Play';
       const shuffleLabel = shuffleState === 'off' ? 'Shuffle Off' : 'Shuffle On';
       const repeatLabel = repeatState === 'off' ? 'Repeat Off' : 'Repeat On';
 
       const contextMenu = Menu.buildFromTemplate([
-          { label: win.isVisible() ? 'Hide' : 'Show', click: () => win.isVisible() ? win.hide() : win.show() },
+          { label: win.isVisible() ? 'Hide Anime Player' : 'Show Anime Player', click: () => win.isVisible() ? win.hide() : win.show() },
+          { type: "separator" },
           { label: playPauseLabel, click: () => win.webContents.send('play-pause') },
           { label: "Next", click: () => win.webContents.send('next') },
           { label: "Previous", click: () => win.webContents.send('previous') },
+          { type: "separator" },
           { label: "Increase Volume", click: () => win.webContents.send('increase-volume') },
           { label: "Decrease Volume", click: () => win.webContents.send('decrease-volume') },
           { label: "Mute", click: () => win.webContents.send('mute') },
+          { type: "separator" },
           { label: shuffleLabel, click: () => win.webContents.send('shuffle') },
           { label: repeatLabel, click: () => win.webContents.send('repeat') },
-          { label: "Quit", click: () => app.quit() }
+          { type: "separator" },
+          { label: "Quit Anime Player", click: () => app.quit() }
       ]);
       tray.setContextMenu(contextMenu);
   };
+
   updateContextMenu();
+
   tray.on("click", () => {
       win.isVisible() ? win.hide() : win.show();
       updateContextMenu();
