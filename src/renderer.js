@@ -92,7 +92,7 @@ let isMouseOver = false;
 shuffleButton.title = "Shuffle";
 loopBtn.title = "Repeat";
 
-// Function to show the temporary status message
+// ✅ Function to show the temporary status message
 function showStatusMessage(text) {
 	statusMessage.innerText = text;
 	statusMessage.style.opacity = '1';
@@ -108,7 +108,7 @@ document.querySelectorAll("a ,img").forEach((link) => {
 	link.setAttribute("draggable", "false");
 });
 
-// Function to update logo if the audio doesn't have a thumbnail
+// ✅ Function to update logo if the audio doesn't have a thumbnail
 function updateLogo(src) {
 	if (!audioThumbnailExists()) {
 		// Check if the audio has a thumbnail
@@ -128,13 +128,13 @@ logoOptions.addEventListener("change", function() {
 	}
 });
 
-// Trigger file input when clicking the custom logo link
+// ✅ Trigger file input when clicking the custom logo link
 customLogoLink.addEventListener("click", function() {
 	customLogoInput.click(); // Programmatically click the file input
 });
 
 
-// Function to show the preview
+// ✅ Function to show the preview
 function showLogoPreview(logoSrc) {
     Array.from(logoPreviewImages).forEach((img) => {
         img.src = logoSrc;
@@ -142,14 +142,66 @@ function showLogoPreview(logoSrc) {
     });
 }
 
-// Function to hide the preview
+// ✅ Function to hide the preview
 function hideLogoPreview() {
     Array.from(logoPreviewContainers).forEach((container) => {
         container.style.display = "none"; // Hide the preview container
     });
 }
 
-// Update the saveCustomLogo function to add hover preview functionality
+// ✅ Updated customLogoInput change event
+customLogoInput.addEventListener("change", async function (event) {
+    if (!event.target.files.length) {
+        console.error("No file selected or invalid file");
+        return;
+    }
+
+    const file = event.target.files[0];
+    event.target.value = ""; // Reset input value to allow re-selecting the same file
+
+    const fileName = file.name;
+    const reader = new FileReader();
+
+    reader.onload = async function (e) {
+        const fileBuffer = e.target.result;
+        const autoSaveLogo = JSON.parse(localStorage.getItem("autoSaveLogo")) || false;
+
+        if (autoSaveLogo) {
+            const response = await window.electron.saveCustomLogo(fileBuffer, fileName);
+            if (response.success) {
+                console.log("GIF saved successfully at:", response.path);
+                saveCustomLogo(response.path, fileName);
+                loadCustomLogos(); // ✅ Refresh the list
+            } else {
+                console.error("Failed to save GIF:", response.error);
+            }
+        } else {
+            const { confirmed, autoSave } = await showCustomConfirm();
+            if (confirmed) {
+                const response = await window.electron.saveCustomLogo(fileBuffer, fileName);
+                if (response.success) {
+                    console.log("GIF saved successfully at:", response.path);
+                    saveCustomLogo(response.path, fileName);
+                    loadCustomLogos(); // ✅ Refresh the list
+                    if (autoSave) {
+                        localStorage.setItem("autoSaveLogo", JSON.stringify(true));
+                    }
+                } else {
+                    console.error("Failed to save GIF:", response.error);
+                }
+            }
+        }
+    };
+
+    reader.onerror = function () {
+        console.error("Failed to read the file");
+    };
+
+    reader.readAsArrayBuffer(file);
+});
+
+
+// ✅ Update the saveCustomLogo function to add hover preview functionality
 function saveCustomLogo(filePath, fileName) {
     const logoOptionsContainer = document.querySelector("#logoOptions .sub-dropdown-content");
 
@@ -161,6 +213,7 @@ function saveCustomLogo(filePath, fileName) {
     newLogoLink.setAttribute("data-src", filePath);
     newLogoLink.textContent = fileName;
 
+    // Show logo preview on hover
     newLogoLink.addEventListener("mouseenter", function () {
         showLogoPreview(filePath);
     });
@@ -168,11 +221,9 @@ function saveCustomLogo(filePath, fileName) {
         hideLogoPreview();
     });
 
+    // Set the uploaded logo as selected when clicked
     newLogoLink.addEventListener("click", function () {
-        const audioImage = document.querySelector(".audio-image"); // Assuming there's a class for the audio image
-        audioImage.src = filePath;
-        audioImage.style.display = "block";
-        audioImage.classList.remove("D-logo-rotate-animation");
+        setSelectedLogo(filePath);
     });
 
     const deleteIcon = document.createElement("i");
@@ -180,67 +231,59 @@ function saveCustomLogo(filePath, fileName) {
 
     deleteIcon.addEventListener("click", function () {
         logoOptionsContainer.removeChild(newLogoDiv);
-        removeCustomLogoFromStorage(fileName); // Assuming this function exists
+        removeCustomLogoFromStorage(fileName);
+        deleteCustomLogo(fileName);
     });
 
     newLogoDiv.appendChild(newLogoLink);
     newLogoDiv.appendChild(deleteIcon);
     logoOptionsContainer.appendChild(newLogoDiv);
 
- saveCustomLogoToStorage(filePath, fileName); // Assuming this function exists
- checkPlayAllButton();
+    saveCustomLogoToStorage(filePath, fileName);
+    checkPlayAllButton();
+
+    // ✅ Immediately select and show the new logo
+    setSelectedLogo(filePath);
 }
 
-// Function to remove the logo from localStorage
+
+// ✅ Function to remove the logo from localStorage
 function removeCustomLogoFromStorage(fileName) {
 	const logos = JSON.parse(localStorage.getItem("customLogos")) || {};
 	delete logos[fileName];
 	localStorage.setItem("customLogos", JSON.stringify(logos));
 }
 
-// Save the custom logo to localStorage with an absolute file path
+// ✅ Save the custom logo to localStorage with an absolute file path
 function saveCustomLogoToStorage(filePath, fileName) {
-	const logos = JSON.parse(localStorage.getItem("customLogos")) || {};
-	logos[fileName] = filePath; // Store the absolute file path
-	localStorage.setItem("customLogos", JSON.stringify(logos));
+    const logos = JSON.parse(localStorage.getItem("customLogos")) || {};
+    logos[fileName] = filePath;  // Store absolute path
+    localStorage.setItem("customLogos", JSON.stringify(logos));
 }
 
-// Load custom logos from localStorage and add them to the dropdown list
+//✅  Load custom logos from localStorage and add them to the dropdown list
 function loadCustomLogos() {
-	const logos = JSON.parse(localStorage.getItem("customLogos")) || {};
-	const logoOptionsContainer = document.querySelector(
-		"#logoOptions .sub-dropdown-content"
-	);
+    const logos = JSON.parse(localStorage.getItem("customLogos")) || {};
+    const logoOptionsContainer = document.querySelector("#logoOptions .sub-dropdown-content");
 
-	// Clear previous custom logo entries, keep default ones
-	const customLogoItems =
-		logoOptionsContainer.querySelectorAll(".logo-item.custom");
-	customLogoItems.forEach((item) => logoOptionsContainer.removeChild(item));
+    // Clear existing custom logo items
+    const customLogoItems = logoOptionsContainer.querySelectorAll(".logo-item.custom");
+    customLogoItems.forEach((item) => logoOptionsContainer.removeChild(item));
 
-	// Load all saved logos
-	for (const [fileName, filePath] of Object.entries(logos)) {
-		saveCustomLogo(filePath, fileName); // Use the saved file path
-	}
+    let lastLogoSrc = null;
 
-	// Check if there's a previously selected logo
-	const selectedLogo = localStorage.getItem("selectedLogo");
+    for (const [fileName, filePath] of Object.entries(logos)) {
+        saveCustomLogo(filePath, fileName);
+        lastLogoSrc = filePath; // Store the last logo path
+    }
 
-	if (selectedLogo) {
-		// If a logo was previously selected, set it as the audio logo
-		setSelectedLogo(selectedLogo);
-	} else {
-		// No previous logo selection, set the first default logo
-		const defaultLogoLinks = document.querySelectorAll(
-			"#logoOptions .sub-dropdown-content a[data-src]"
-		);
-		if (defaultLogoLinks.length > 0) {
-			const firstLogoSrc = defaultLogoLinks[0].getAttribute("data-src");
-			setSelectedLogo(firstLogoSrc); // Set the first logo as the default logo
-		}
-	}
+    const selectedLogo = localStorage.getItem("selectedLogo") || lastLogoSrc;
+    if (selectedLogo) {
+        setSelectedLogo(selectedLogo);
+    }
 }
 
-// Show custom confirm dialog and return a promise
+// ✅ Show custom confirm dialog and return a promise
 function showCustomConfirm() {
 	return new Promise((resolve) => {
 		const modal = document.getElementById("customConfirmDialog");
@@ -267,60 +310,7 @@ function showCustomConfirm() {
 	});
 }
 
-// Updated customLogoInput change event
-customLogoInput.addEventListener("change", async function (event) {
-	const file = event.target.files[0];
-	if (file) {
-	  const fileName = file.name; // Get file name
-	  // Use FileReader to read the file as an ArrayBuffer
-	const reader = new FileReader();
-	reader.onload = async function (e) {
-		const fileBuffer = e.target.result; // ArrayBuffer of the file content
-
-		// Check if auto-save is enabled
-		const autoSaveLogo =
-		JSON.parse(localStorage.getItem("autoSaveLogo")) || false;
-
-		if (autoSaveLogo) {
-		  // Automatically save the logo without asking
-		const response = await window.electron.saveCustomLogo(fileBuffer, fileName);
-		if (response.success) {
-			console.log("GIF saved successfully at:", response.path);
-			saveCustomLogo(URL.createObjectURL(file), fileName); // Add to the logo list
-		} else {
-			console.error("Failed to save GIF:", response.error);
-		}
-		} else {
-		  // Use custom confirm dialog
-		const { confirmed, autoSave } = await showCustomConfirm();
-		if (confirmed) {
-			const response = await window.electron.saveCustomLogo(
-			fileBuffer,
-			fileName
-			);
-			if (response.success) {
-			console.log("GIF saved successfully at:", response.path);
-			  saveCustomLogo(URL.createObjectURL(file), fileName); // Add to the logo list
-			  // If checkbox is checked, save the auto-save preference
-			if (autoSave) {
-				localStorage.setItem("autoSaveLogo", JSON.stringify(true));
-			}
-			} else {
-			console.error("Failed to save GIF:", response.error);
-			}
-		}
-		}
-	};
-	reader.onerror = function () {
-		console.error("Failed to read the file");
-	};
-	  reader.readAsArrayBuffer(file); // Read the file as ArrayBuffer
-	} else {
-	console.error("No file selected or invalid file");
-	}
-});
-
-// Function to delete the custom logo
+// ✅ Function to delete the custom logo
 function deleteCustomLogo(fileName) {
     window.electron.deleteLogo(fileName)
         .then(response => {
@@ -347,7 +337,7 @@ function deleteCustomLogo(fileName) {
         });
 }
 
-// Function to check and show the "Play All" button
+// ✅ Function to check and show the "Play All" button
 function checkPlayAllButton() {
     const logos = JSON.parse(localStorage.getItem("customLogos")) || {};
     const playAllButtonContainer = document.getElementById("playAllButtonContainer");
@@ -365,7 +355,7 @@ function checkPlayAllButton() {
     }
 }
 
-// Function to play all custom logos
+//✅  Function to play all custom logos
 async function playAllCustomLogos() {
     const logos = JSON.parse(localStorage.getItem("customLogos")) || {};
     const logoKeys = Object.keys(logos);
@@ -397,12 +387,12 @@ async function playAllCustomLogos() {
     }
 }
 
-// Function to stop playback
+// ✅ Function to stop playback
 function stopGifPlayback() {
 	isGifPlaying = false; // Set to false to stop the loop
 }
 
-// Function to set the selected logo and save the preference
+// ✅ Function to set the selected logo and save the preference
 function setSelectedLogo(logoSrc) {
 	if (logoSrc) {
 		audioImage.src = logoSrc; // Set the image source
@@ -429,8 +419,7 @@ function setSelectedLogo(logoSrc) {
 	});
 }
 
-
-// Update default logo links to add hover preview functionality
+// ✅ Update default logo links to add hover preview functionality
 const defaultLogoLinks = document.querySelectorAll(
 	"#logoOptions .sub-dropdown-content a[data-src]"
 );
@@ -461,7 +450,7 @@ defaultLogoLinks.forEach((link) => {
     });
 });
 
-
+// ✅ Function to search GIFs using the Giphy API
 function searchGifs() {
     const searchTerm = gifSearchInput.value.trim();
     if (!searchTerm) return;
@@ -481,7 +470,7 @@ function searchGifs() {
         });
 }
 
-// Display GIF results
+// ✅ Display GIF results
 function displayGifResults(gifs) {
 	gifResultsContainer.innerHTML = ""; // Clear previous results
 	if (gifs.length === 0) {
@@ -505,7 +494,7 @@ function displayGifResults(gifs) {
 	});
 }
 
-// Function to clear GIF results and free up network resources
+// ✅ Function to clear GIF results and free up network resources
 function clearGifResults() {
 	const gifElements = gifResultsContainer.querySelectorAll("img"); // Select all GIFs
 	gifElements.forEach((gif) => {
@@ -585,44 +574,82 @@ async function downloadAndSaveGif(gifUrl, gifName) {
 	}
 }
 
-// ✅ Funtion to load media file
+// ✅ Function to load media file
 async function loadMediaFile(filePath, fileName) {
-	if (!filePath) return;
-	try {
-		// Normalize path and extract filename
-		let fixedPath = filePath.replace(/\\/g, "/");
-		const filename = fixedPath.substring(fixedPath.lastIndexOf("/") + 1);
-		video.dataset.videoId = filename;
-		// Encode only the filename, not the full path
-		const encodedFilename = encodeURIComponent(filename);
-		const directory = fixedPath.substring(0, fixedPath.lastIndexOf("/") + 1);
-		const fileURL = `file://${directory}${encodedFilename}`;
-		video.src = fileURL;
-		// Update UI
-		updateVideoTitle(fileName);
-		gifImageElement.style.display = "none";
-		video.style.display = "block";
-		document.getElementById("audioLogo").style.display = "none";
-		audioImage.style.display = "none";
-		audioLogoDropdown.style.pointerEvents = "none";
-		audioLogoDropdown.style.opacity = "0.5";
-		// Load saved playback time
-		const savedPlayback = await window.electron.invoke('load-playback-time', filename);
-		lastPlaybackTime = savedPlayback?.time || 0;
-		if (lastPlaybackTime > 0) {
-			// console.log("🔄 Saved playback time found:", lastPlaybackTime);
-			handleContinueButtonVisibility();
+    if (!filePath) return;
+    try {
+        // Normalize path and extract filename
+        let fixedPath = filePath.replace(/\\/g, "/");
+        const filename = fixedPath.substring(fixedPath.lastIndexOf("/") + 1);
+        video.dataset.videoId = filename;
+
+        // Encode only the filename, not the full path
+        const encodedFilename = encodeURIComponent(filename);
+        const directory = fixedPath.substring(0, fixedPath.lastIndexOf("/") + 1);
+        const fileURL = `file://${directory}${encodedFilename}`;
+        video.src = fileURL;
+
+        // Detect if the file is video or audio
+        const fileExtension = filename.split(".").pop().toLowerCase();
+        const videoFormats = ["mp4", "webm", "mkv", "avi", "mov"];
+        const audioFormats = ["mp3", "wav", "aac", "ogg", "flac"];
+
+		if (videoFormats.includes(fileExtension)) {
+            // If it's a video file
+            audioImage.style.display = "none"; // Hide audio logo
+            document.getElementById("audioLogo").style.display = "none";
+			audioLogoDropdown.style.pointerEvents = "none"; // Disable dropdown
+            audioLogoDropdown.style.opacity = "0.5"; // Make it look disabled
+        } else if (audioFormats.includes(fileExtension)) {
+        	// Show the audio logo when an audio file is played
+			document.getElementById("audioLogo").style.display = "block";
+			audioImage.style.display = "block";
+			loadCustomLogos(); 
+			// Enable the logo dropdown for selection
+			audioLogoDropdown.style.pointerEvents = "auto";
+			audioLogoDropdown.style.opacity = "1";
+
+			// Check if a logo has already been set, if not, select the first logo
+			const savedLogo = localStorage.getItem("selectedLogo");
+			if (savedLogo) {
+				setSelectedLogo(savedLogo); // Apply the saved logo
+			} else {
+				// Use the first logo as default
+				const defaultLogoLinks = document.querySelectorAll(
+					"#logoOptions .sub-dropdown-content a[data-src]"
+				);
+				if (defaultLogoLinks.length > 0) {
+					const firstLogoSrc = defaultLogoLinks[0].getAttribute("data-src");
+					setSelectedLogo(firstLogoSrc);
+				}
+			}
 		} else {
-			// No saved playback time, start from the beginning
-			video.currentTime = 0;
-		}
-		// Reset and apply transformations
-		video.dataset.rotation = "0";
-		applyRotation();
-	} catch (error) {
-		console.error("❌ Error loading media file:", error);
-		return;
-	}
+			// Hide the audio logo when a video file is played
+			document.getElementById("audioLogo").style.display = "none";
+			audioImage.style.display = "none";
+        }
+
+        // Update UI
+        updateVideoTitle(fileName);
+        gifImageElement.style.display = "none";
+        video.style.display = "block";
+		
+        // Load saved playback time
+        const savedPlayback = await window.electron.invoke('load-playback-time', filename);
+        lastPlaybackTime = savedPlayback?.time || 0;
+        if (lastPlaybackTime > 0) {
+            handleContinueButtonVisibility();
+        } else {
+            video.currentTime = 0;
+        }
+
+        // Reset and apply transformations
+        video.dataset.rotation = "0";
+        applyRotation();
+    } catch (error) {
+        console.error("❌ Error loading media file:", error);
+        return;
+    }
 }
 
 // ✅ Ensure event listeners are only added once
@@ -889,6 +916,8 @@ function stopPlayback() {
 	currentTimeDisplay.textContent = formatTime(0);
 	progressBar.style.width = `0%`;
 	progressHandle.style.left = `0%`;
+	audioImage.style.display = "none";
+	document.getElementById("audioLogo").style.display = "none";
 	stopGifPlayback();
 	updateNavigationButtons();
 }
@@ -939,13 +968,12 @@ updateNavigationButtons();
 // ✅ Save playback time
 function savePlaybackTime(videoId, time) {
     if (!videoId) return;
-    const adjustedTime = Math.max(0, time - 2);
-    if (adjustedTime === 0) {
+    if (time === 0) {
         clearPlaybackTime(videoId);
         return;
     }
-    // console.log("✅ Saving playback time:", videoId, adjustedTime);
-    window.electron.send('save-playback-time', adjustedTime, videoId);
+    // console.log("✅ Saving playback time:", videoId, time);
+    window.electron.send('save-playback-time', time, videoId);
 }
 
 // ✅ Clear playback time entry
@@ -1275,11 +1303,11 @@ document.addEventListener("keydown", function (event) {
         // Adjust volume when playlist is hidden
         if (event.key === "ArrowUp") {
             event.preventDefault();
-            updateVolume(gainNode.gain.value + 0.1);
+            updateVolume(gainNode.gain.value + 0.05);
             showStatusMessage(`Volume: ${(gainNode.gain.value * 100).toFixed(0)}%`);
         } else if (event.key === "ArrowDown") {
             event.preventDefault();
-            updateVolume(gainNode.gain.value - 0.1);
+            updateVolume(gainNode.gain.value - 0.05);
             showStatusMessage(`Volume: ${(gainNode.gain.value * 100).toFixed(0)}%`);
         }
     }
@@ -1525,8 +1553,8 @@ volumeSlider.addEventListener("mouseleave", () => {
 // Volume adjustment using mouse wheel
 volumeSlider.addEventListener("wheel", (e) => {
     e.preventDefault();
-    const direction = e.deltaY > 0 ? -1 : 1;
-    let newVolume = gainNode.gain.value + direction * 0.05;
+    const direction = e.deltaY > 0 ? -0.05 : 0.05;
+    let newVolume = gainNode.gain.value + direction;
     newVolume = Math.max(0, Math.min(newVolume, 2));
 
     updateVolume(newVolume);
@@ -2066,7 +2094,7 @@ document.addEventListener("DOMContentLoaded", function() {
     });
 });
 
-// Format time to HH:MM:SS
+// ✅ Format time to HH:MM:SS
 function formatTime(time) {
 	const hours = Math.floor(time / 3600);
 	const minutes = Math.floor((time % 3600) / 60);
@@ -2080,23 +2108,21 @@ function formatTime(time) {
 	return `${formattedHours}${formattedMinutes}:${seconds}`;
 }
 
-// Update the progress bar and handle position
+// ✅ Update the progress bar and handle position
 function updateProgressBar() {
 	if (video && video.duration && !isNaN(video.duration)) {
 		const progress = (video.currentTime / video.duration) * 100;
 		progressBar.style.width = `${progress}%`;
-		progressHandle.style.left = `100%`; // Keep the handle at the end of the progress bar
+		progressHandle.style.left = `${progress}%`;
 		currentTimeDisplay.textContent = formatTime(video.currentTime);
-		progressHandle.style.display = "block"; 
-
+		progressHandle.style.display = "block";
 	} else {
 		progressHandle.style.display = "none";
-
 		currentTimeDisplay.textContent = "0:00:00";
 	}
 }
 
-// Function to update duration display
+// ✅ Function to update duration display
 function updateDurationDisplay() {
 	if (video && video.duration && !isNaN(video.duration)) {
 		if (showRemainingTime) {
@@ -2107,123 +2133,72 @@ function updateDurationDisplay() {
 		}
 	} else {
 		durationDisplay.textContent = "0:00:00";
-
 	}
 }
 
 // Sync the progress bar and duration display when the video is playing
 video.addEventListener("timeupdate", () => {
 	updateProgressBar();
-	updateDurationDisplay(); // Update the duration display dynamically
+	updateDurationDisplay();
 });
 
-// Update the duration display on click
 durationDisplay.addEventListener("click", () => {
-	showRemainingTime = !showRemainingTime; // Toggle the flag
-	updateDurationDisplay(); // Update the display based on the flag
+	showRemainingTime = !showRemainingTime;
+	updateDurationDisplay();
 });
 
-// Update the progress bar when clicking within the extended clickable area
 progressBarWrapper.addEventListener("click", (e) => {
 	const rect = progressBarWrapper.getBoundingClientRect();
-	const posY = e.clientY - rect.top; // Position of the click relative to the top of the wrapper
-	const posX = e.clientX - rect.left; // Position of the click relative to the left of the wrapper
-
-	if (posY >= -20 && posY <= 20) {
-		// Check if click is within the extended clickable area
-		const percentage = posX / rect.width;
-		video.currentTime = percentage * video.duration;
-		updateProgressBar(); // Ensure handle and progress bar update immediately
-	}
+	const posX = e.clientX - rect.left;
+	const percentage = posX / rect.width;
+	video.currentTime = percentage * video.duration;
+	updateProgressBar();
 });
 
 // Handle dragging for smoother seeking
 let isDragging = false;
-let seekUpdateInterval;
 let temporaryTime = 0;
-const updateInterval = 20; // Adjust this to control speed (e.g., 20ms for smoother, faster updates)
 
 function updateDragging(e) {
 	if (isDragging) {
 		const rect = progressBarWrapper.getBoundingClientRect();
 		const posX = e.clientX - rect.left;
-		const percentage = Math.min(Math.max(posX / rect.width, 0), 1); // Ensure percentage is between 0 and 1
-
-		// Update both progress bar and handle position continuously
+		const percentage = Math.min(Math.max(posX / rect.width, 0), 1);
 		progressBar.style.width = `${percentage * 100}%`;
 		progressHandle.style.left = `${percentage * 100}%`;
-
-		// Update temporary time for display
-		temporaryTime = percentage * video.duration;
-		currentTimeDisplay.textContent = formatTime(temporaryTime);
-		
-		// Calculate the new time based on drag position
-		const newTime = percentage * video.duration;
-		currentTimeDisplay.textContent = formatTime(newTime);
-
-		// Use debounced approach with reduced interval for faster response
-		if (!seekUpdateInterval) {
-			seekUpdateInterval = setInterval(() => {
-				video.currentTime = newTime; // Update video time at a faster rate for smoother playback
-			}, updateInterval);
-		}
+		currentTimeDisplay.textContent = formatTime(percentage * video.duration);
 	}
 }
 
-// Show the progress handle on mouse enter
-progressBarWrapper.addEventListener("mouseenter", () => {
-	isDragging = true
-	progressHandle.style.opacity = "1"; // Show the handle
-	if (hideHandleTimeout) clearTimeout(hideHandleTimeout);
-});
-
-// Hide the progress handle on mouse leave with a delay
-progressBarWrapper.addEventListener("mouseleave", () => {
-	hideHandleTimeout = setTimeout(() => {
-		progressHandle.style.opacity = "0"; // Hide the handle
-	}, 2000); // Hide after 3 seconds
-});
-
-// Reset the handle visibility if dragging starts
-progressHandle.addEventListener("mousedown", () => {
+progressHandle.addEventListener("mousedown", (e) => {
+	e.preventDefault();
 	isDragging = true;
-	progressHandle.style.opacity = "1"; // Show handle during dragging
 	document.addEventListener("mousemove", updateDragging);
 });
 
-// Handle `mouseup` event to end dragging and clean up
 document.addEventListener("mouseup", () => {
 	if (isDragging) {
 		isDragging = false;
-		clearInterval(seekUpdateInterval); // Clear the interval after dragging ends
-		seekUpdateInterval = null;
 		document.removeEventListener("mousemove", updateDragging);
-		// Hide the handle after a delay
-		hideHandleTimeout = setTimeout(() => {
-			progressHandle.style.opacity = "0";
-		}, 2000);
+		const rect = progressBarWrapper.getBoundingClientRect();
+		const percentage = parseFloat(progressBar.style.width) / 100;
+		video.currentTime = percentage * video.duration; // Update video time only after dragging ends
+		updateProgressBar();
 	}
 });
 
-
-// Add mouse wheel event listener to the progress bar wrapper
 progressBarWrapper.addEventListener("wheel", (e) => {
-	e.preventDefault(); // Prevent the default scrolling behavior
-
+	e.preventDefault();
 	if (video && video.duration && !isNaN(video.duration)) {
-		const step = 10; // Number of seconds to seek per wheel scroll (adjust as desired)
-		const direction = e.deltaY > 0 ? -1 : 1; // Determine direction of scroll (up or down)
+		const step = 10;
+		const direction = e.deltaY > 0 ? -1 : 1;
 		let newTime = video.currentTime + direction * step;
-
-		// Ensure new time is within valid bounds
 		newTime = Math.max(0, Math.min(newTime, video.duration));
-
-		// Update video current time
 		video.currentTime = newTime;
 	}
 });
 
-// Allow progressBarWrapper scrolling when mouse is over it
+// ✅ Allow progressBarWrapper scrolling when mouse is over it
 progressBarWrapper.addEventListener("wheel", (event) => {
 	if (isMouseOver) {
 		event.stopPropagation();

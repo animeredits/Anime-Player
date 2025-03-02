@@ -1603,8 +1603,9 @@ input[type="range"]::-moz-range-thumb:active {
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
-  background-color: #2f2f2fc5;
+  background-color: #2f2f2f99;
   backdrop-filter: blur(30px) saturate(180%);
+  border: 1px solid rgba(255, 255, 255, 0.125);
   color: white;
   font-weight: 300;
   padding: 25px;

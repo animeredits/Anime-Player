@@ -35,7 +35,7 @@ contextBridge.exposeInMainWorld('electron', {
   sendRepeatState: (state) => ipcRenderer.send('repeat-state', state),
 
   // Custom Logo Handling
-  saveCustomLogo: (fileBuffer, fileName) => ipcRenderer.invoke('save-gif', fileBuffer, fileName),
+  saveCustomLogo: (fileBuffer, fileName) => ipcRenderer.invoke('saveCustomLogo', fileBuffer, fileName),
   deleteLogo: (fileName) => ipcRenderer.invoke('delete-logo', fileName), 
 
   // Playback State Management
@@ -49,9 +49,9 @@ contextBridge.exposeInMainWorld('electron', {
   },
 
   invoke: (channel, ...args) => {
-    const validChannels = ["load-playback-time"];
+    const validChannels = ["load-playback-time", "get-audio-thumbnail"]; // Add here
     if (validChannels.includes(channel)) {
-        return ipcRenderer.invoke(channel, ...args);
+      return ipcRenderer.invoke(channel, ...args);
     }
   },
 

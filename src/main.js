@@ -77,7 +77,7 @@ function createWindow() {
     win.maximize();
     createTray();
     setThumbarButtons();
-    // win.webContents.openDevTools();
+    win.webContents.openDevTools();
   });
 
   win.on("show", setThumbarButtons);
@@ -342,21 +342,20 @@ ipcMain.on('play-pause-state', (event, state) => {
 
 
 // Save custom logo to a user directory "Visualization" in this folder
-ipcMain.handle('save-gif', async (event, fileBuffer, fileName) => {
+ipcMain.handle('saveCustomLogo', async (event, fileBuffer, fileName) => {
   try {
-    const savePath = path.join(visualizationPath, fileName);
+      const savePath = path.join(visualizationPath, fileName);
 
-    // Ensure the Visualization directory exists
-    if (!fs.existsSync(visualizationPath)) {
-      fs.mkdirSync(visualizationPath, { recursive: true });
-    }
+      if (!fs.existsSync(visualizationPath)) {
+          fs.mkdirSync(visualizationPath, { recursive: true });
+      }
 
-    // Write the file buffer to the target path
-    fs.writeFileSync(savePath, Buffer.from(fileBuffer)); // Save the buffer
-    return { success: true, path: savePath };
+      fs.writeFileSync(savePath, Buffer.from(fileBuffer));
+
+      return { success: true, path: `file://${savePath}` };  // Return absolute path
   } catch (error) {
-    console.error('Failed to save GIF:', error);
-    return { success: false, error: error.message };
+      console.error('Failed to save logo:', error);
+      return { success: false, error: error.message };
   }
 });
 
@@ -443,16 +442,15 @@ ipcMain.handle('load-playback-time', async (_, videoId) => {
       const twoDaysInMillis = 2 * 24 * 60 * 60 * 1000;
 
       if (playbackData[videoId]) {
-          const { time, timestamp } = playbackData[videoId];
+          let { time, timestamp } = playbackData[videoId];
 
           if (now - timestamp > twoDaysInMillis) {
               delete playbackData[videoId]; // Remove expired entry
               fs.writeFileSync(savePath, JSON.stringify(playbackData, null, 2));
-              // console.log(`🗑️ Deleted expired playback time for videoId: ${videoId}`);
               return { time: 0 };
           }
 
-          return { time };
+          return { time: Math.max(0, time - 2) }; // Load 2 seconds earlier
       }
 
       return { time: 0 };
@@ -461,6 +459,7 @@ ipcMain.handle('load-playback-time', async (_, videoId) => {
       return { time: 0 };
   }
 });
+
 
 // ✅ Delete playback entry
 ipcMain.on("delete-playback-entry", (event, videoId) => {
