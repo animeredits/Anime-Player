@@ -2828,14 +2828,6 @@ document.addEventListener("DOMContentLoaded", () => {
     });
 });
 
-
-// Create File object from received data
-function createFileObject({ buffer, mimeType, fileName }) {
-    const blob = new Blob([buffer], { type: mimeType });
-    return new File([blob], fileName, { type: mimeType });
-}
-
-
 window.electron.onDownloadProgress((percent) => {
 const progressBar = document.getElementById('progress-bar');
 const progressContainer = document.querySelector('.progress');

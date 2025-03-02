@@ -14,8 +14,7 @@
     "scripts": {
         "start": " electron .",
         "pack": "@electron/packager . --platform=win64 --arch=x64 --out=dist/ --overwrite --icon=icon.ico",
-        "dist": "electron-builder --publish=always",
-        "postinstall": "regedit /s anime-player-context-menu.reg"
+        "dist": "electron-builder --publish=always"
     },
     "dependencies": {
         "depcheck": "^1.4.7",
@@ -62,7 +61,8 @@
             "allowElevation": true,
             "runAfterFinish": true,
             "warningsAsErrors": false,
-            "include": "scripts/context-menu.nsh"
+            "include": "script/installer.nsh"
+
         },
         "fileAssociations": [
             {
@@ -292,6 +292,5 @@
         "provider": "github",
         "owner": "animeredits",
         "repo": "Anime-player"
-    },
-    "afterPack": "scripts/context-menu.nsh"
+    }
 }
