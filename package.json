@@ -97,6 +97,11 @@
                 "name": "Anime Player",
                 "description": "Anime Player Video File",
                 "icon": "assets/icons/icon.ico"
+            },
+            {
+            "ext": "",
+            "name": "Anime Player",
+            "role": "Viewer"
             }
         ],
         "mac": {

@@ -587,6 +587,7 @@ async function loadMediaFile(filePath, fileName) {
         const encodedFilename = encodeURIComponent(filename);
         const directory = fixedPath.substring(0, fixedPath.lastIndexOf("/") + 1);
         const fileURL = `file://${directory}${encodedFilename}`;
+		
         video.src = fileURL;
 
         // Detect if the file is video or audio
@@ -683,7 +684,6 @@ function getVideoId() {
 // ✅ Function to play a media file
 function playMediaFile(filePath) {
     if (!filePath) return;
-
     const fileName = filePath.split(/[/\\]/).pop(); // Get the file name
     loadMediaFile(filePath, fileName); // Load the media file
     updateVideoTitle(fileName); // Update the title with the filename
@@ -716,11 +716,11 @@ video.addEventListener("ended", () => {
 openFileButton.addEventListener("click", async () => {
     try {
         const filePaths = await window.electron.openFileDialog();
-        if (filePaths && filePaths.length > 0) {
+        if (Array.isArray(filePaths) && filePaths.length > 0) {
             mediaFiles = filePaths;
             currentVideoIndex = 0;
             playMediaFile(mediaFiles[currentVideoIndex]);
-            updatePlaylistDropdown();
+            updatePlaylistDropdown(mediaFiles);
         }
     } catch (error) {
         console.error("Error opening files:", error);
@@ -732,11 +732,11 @@ openFileButton.addEventListener("click", async () => {
 openFolderButton.addEventListener("click", async () => {
     try {
         const folderFiles = await window.electron.openFolderDialog();
-        if (folderFiles && folderFiles.length > 0) {
+        if (Array.isArray(folderFiles) && folderFiles.length > 0) {
             mediaFiles = folderFiles;
             currentVideoIndex = 0;
             playMediaFile(mediaFiles[currentVideoIndex]);
-            updatePlaylistDropdown();
+            updatePlaylistDropdown(mediaFiles);
         }
     } catch (error) {
         console.error("Error opening folder:", error);
@@ -780,14 +780,15 @@ function getNextIndex() {
     if (isShuffle) {
         let remainingVideos = mediaFiles
             .map((file, index) => ({ file, index }))
-            .filter(({ index }) => !playedVideos.includes(index)); // ✅ Ensure videos aren’t repeated
+            .filter(({ index }) => !playedVideos.includes(index)); 
 
         if (remainingVideos.length > 0) {
             let randomVideo = remainingVideos[Math.floor(Math.random() * remainingVideos.length)];
+            playedVideos.push(randomVideo.index); // ✅ Mark as played
             return randomVideo.index;
         } else {
-            playedVideos = []; // ✅ Reset when all videos are played
-            return Math.floor(Math.random() * mediaFiles.length); // Restart shuffle
+            playedVideos = []; // ✅ Reset shuffle when all videos are played
+            return Math.floor(Math.random() * mediaFiles.length);
         }
     }
 
@@ -800,13 +801,14 @@ function getNextIndex() {
 function getPreviousIndex() {
     if (mediaFiles.length === 0) return null;
 
-    if (!isShuffle && lastPlayedStack.length > 0) {
-        return lastPlayedStack.pop();
+    if (isShuffle && lastPlayedStack.length > 0) {
+        return lastPlayedStack.pop(); // ✅ Use last played history
     }
 
     let prevIndex = currentVideoIndex - 1;
     return prevIndex >= 0 ? prevIndex : (isRepeatMode === 2 ? mediaFiles.length - 1 : null);
 }
+
 
 // ✅ Play next video while tracking playback history
 function playNext() {
@@ -1090,8 +1092,9 @@ async function deleteCurrentMediaFile() {
     }
 }
 
-// ✅ Function to update playlist dropdown dynamically
-function updatePlaylistDropdown() {
+function updatePlaylistDropdown(mediaFiles) {
+    if (!Array.isArray(mediaFiles) || mediaFiles.length === 0) return;
+
     const playlistContainers = document.querySelectorAll(".play-list");
 
     playlistContainers.forEach((playlistContainer) => {
@@ -1101,6 +1104,8 @@ function updatePlaylistDropdown() {
         const searchInput = document.createElement("input");
         searchInput.type = "text";
         searchInput.placeholder = "Search video...";
+        searchInput.classList.add("playlist-search");
+
         searchInput.style.backgroundColor = "transparent";
         searchInput.style.color = "#fff";
         searchInput.style.paddingLeft = "5px";
@@ -1108,12 +1113,12 @@ function updatePlaylistDropdown() {
         searchInput.style.height = "28px";
         searchInput.style.border = "none";
         searchInput.style.outline = "none";
-        searchInput.classList.add("playlist-search");
+
         searchInput.addEventListener("input", filterPlaylistItems);
         playlistContainer.appendChild(searchInput);
 
-        mediaFiles.forEach((file, index) => {
-            const fileName = typeof file === "string" ? file.split(/[/\\]/).pop() : file.name;
+        mediaFiles.forEach((filePath, index) => {
+            const fileName = filePath.split(/[/\\]/).pop(); // Extract only filename
 
             const fileLink = document.createElement("a");
             fileLink.href = "javascript:void(0)";
@@ -1380,7 +1385,7 @@ function createTooltip() {
     const tooltip = document.createElement("div");
     tooltip.style.position = "absolute";
     tooltip.style.textShadow =
-        "1px 1px 2px rgba(0, 0, 0, 0.863), -1px -1px 2px rgba(0, 0, 0, 0.733), 1px -1px 2px rgba(0, 0, 0, 0.707),-1px 1px 2px black";
+    "1px 1px 2px rgba(0, 0, 0, 0.863), -1px -1px 2px rgba(0, 0, 0, 0.733), 1px -1px 2px rgba(0, 0, 0, 0.707),-1px 1px 2px black";
     tooltip.style.color = "#fff";
     tooltip.style.fontWeight = "300";
     tooltip.style.padding = "5px 10px";
@@ -1466,24 +1471,28 @@ videoElement.addEventListener("play", () => {
 	monitorAudioLevels(); // Start monitoring when video playback begins
 });
 
-// Function to save volume to localStorage (existing)
+// Function to save volume setting to localStorage
 function saveVolumeSetting(volume) {
-	localStorage.setItem("volumeSetting", volume);
+    localStorage.setItem("volumeSetting", volume);
+    localStorage.setItem("muteState", volume === 0);
 }
 
 // Function to load volume from localStorage (existing)
 function loadVolumeSetting() {
-	const savedVolume = localStorage.getItem("volumeSetting");
-	if (savedVolume) {
-		updateVolume(parseFloat(savedVolume)); // Update volume based on saved value
-	} else {
-		updateVolume(1.0); // Set default to 100% volume if no saved value
-	}
+    const savedVolume = localStorage.getItem("volumeSetting");
+    const savedMuteState = localStorage.getItem("muteState");
+    
+    if (savedMuteState === "true") {
+        updateVolume(0); // If muted, set volume to 0
+    } else if (savedVolume) {
+        updateVolume(parseFloat(savedVolume)); // Update volume based on saved value
+    } else {
+        updateVolume(0.1); // Set default to 10% volume if no saved value
+    }
 }
 
-
 // Set initial volume (existing)
-gainNode.gain.value = 1.0; // Set default volume to 100%
+gainNode.gain.value = 0.1; // Set default volume to 10%
 volumeSlider.value = gainNode.gain.value * 100; // Sync slider with volume (0-200 range)
 
 // Call the loadVolumeSetting to apply saved or default volume
@@ -1491,23 +1500,22 @@ loadVolumeSetting(); // Load saved volume or apply default volume (100%)
 
 // Function to update volume, slider, and tooltip (existing)
 function updateVolume(newVolume) {
-	// Ensure the volume value is within the range [0, 2]
-	newVolume = Math.max(0, Math.min(2, newVolume));
+    // Ensure the volume value is within the range [0, 2]
+    newVolume = Math.max(0, Math.min(2, newVolume));
 
-	// Smoothly transition to the new volume level
-	gainNode.gain.linearRampToValueAtTime(newVolume, audioContext.currentTime + 0.1);
+    // Smoothly transition to the new volume level
+    gainNode.gain.linearRampToValueAtTime(newVolume, audioContext.currentTime + 0.1);
 
-	// Update slider value and show tooltip
-	volumeSlider.value = newVolume * 100; // Sync slider with volume (0-200 range)
-	showTooltip(newVolume);
+    // Update slider value and show tooltip
+    volumeSlider.value = newVolume * 100; // Sync slider with volume (0-200 range)
+    showTooltip(newVolume);
 
-	// Save the new volume setting to localStorage
-	saveVolumeSetting(newVolume);
+    // Save the new volume setting to localStorage
+    saveVolumeSetting(newVolume);
 
-	// Update volume button icon and tooltip
-	updateVolumeIcon();
+    // Update volume button icon and tooltip
+    updateVolumeIcon();
 }
-
 
 // Function to update and show the tooltip
 function showTooltip(volume, event = null) {
@@ -1669,39 +1677,34 @@ function updateVolumeIcon() {
 let previousVolume = gainNode.gain.value; // To store the previous volume
 
 volumeBtn.addEventListener("click", () => {
-	if (gainNode.gain.value > 0) {
-		previousVolume = gainNode.gain.value; // Store current volume
-		gainNode.gain.value = 0; // Mute
-		volumeSlider.value = 0; // Update the slider to 0
-	} else {
-		gainNode.gain.value = previousVolume; // Restore volume
-		volumeSlider.value = previousVolume * 100; // Restore slider value (adjust scale if needed)
-	}
+    if (gainNode.gain.value > 0) {
+        previousVolume = gainNode.gain.value; // Store current volume
+        updateVolume(0); // Mute
+    } else {
+        updateVolume(previousVolume || 0.1); // Restore volume or set default to 10%
+    }
 
-	// Update the icon and tooltip based on the current volume
-	updateVolumeIcon();
+    // Save mute state
+    localStorage.setItem("muteState", gainNode.gain.value === 0);
 });
 
 // Mute/Unmute functionality for multiple buttons
 mute.forEach((muteButton) => {
     muteButton.addEventListener("click", () => {
-        if (muteButton.textContent.trim() === "Mute") {
+        if (gainNode.gain.value > 0) {
             muteButton.textContent = "Unmute"; // Update button text
             previousVolume = gainNode.gain.value; // Store the current volume
-            gainNode.gain.value = 0; // Mute the volume
-            updateVolume(0); // Update volume display
-            volumeSlider.value = 0; // Set slider to 0
+            updateVolume(0); // Mute the volume
         } else {
             muteButton.textContent = "Mute"; // Update button text
-            gainNode.gain.value = previousVolume; // Restore the previous volume
-            updateVolume(previousVolume); // Update volume display
-            volumeSlider.value = previousVolume * 100; // Restore slider value
+            updateVolume(previousVolume || 0.1); // Restore the previous volume or default to 10%
         }
 
-        // Update the icon to reflect the new state
-        updateVolumeIcon();
+        // Save mute state
+        localStorage.setItem("muteState", gainNode.gain.value === 0);
     });
 });
+
 
 // Zoom functionality (CTRL + Shift + Mouse Wheel)
 // Handle zoom separately
@@ -2795,7 +2798,6 @@ function updateMaximizeIcon(isFullScreen) {
     }
 }
 
-
   // Listen for fullscreen state changes
 window.electron.onWindowStateChange(updateMaximizeIcon);
 
@@ -2828,6 +2830,26 @@ document.addEventListener("DOMContentLoaded", () => {
     });
 });
 
+
+window.electron.openFolderFromContext(async (folderPath) => { 
+    console.log("📂 Received folder from context menu:", folderPath);
+
+    try {
+        const mediaFiles = await window.electron.invoke("open-folder", folderPath);
+        console.log("📜 Files received:", mediaFiles);
+
+        if (Array.isArray(mediaFiles) && mediaFiles.length > 0) {
+            updatePlaylistDropdown(mediaFiles);
+            currentVideoIndex = 0;
+            playMediaFile(mediaFiles[currentVideoIndex]);
+        } else {
+            console.warn("⚠️ No media files found in the folder.");
+        }
+    } catch (error) {
+        console.error("❌ Error loading folder:", error);
+    }
+});
+
 window.electron.onDownloadProgress((percent) => {
 const progressBar = document.getElementById('progress-bar');
 const progressContainer = document.querySelector('.progress');
@@ -2849,7 +2871,7 @@ window.electron.hideProgressBar = () => {
 document.querySelector('.progress').style.display = 'none';
 }
 
-// Handle actions from tray
+// ✅ Handle actions from tray
 // Handle play/pause action from tray
 window.electron.onPlayPause(() => {
 	togglePlayPause();

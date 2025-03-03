@@ -184,6 +184,30 @@ ipcMain.on('play-pause-state-thumbar', (event, state) => {
     const shuffleState = 'off'; // Keep shuffleState unchanged
     updateContextMenu(playbackState, shuffleState, state);
   });
+
+      // Handle file/folder open from context menu
+      ipcMain.handle("open-folder", async (event, folderPath) => {
+        if (!fs.existsSync(folderPath)) return [];
+        const mediaExtensions = [".mp4", ".webm", ".mkv", ".avi", ".mov", ".mp3", ".wav", ".aac", ".ogg", ".flac"];
+
+        // Get all media files from the folder
+        const mediaFiles = fs
+            .readdirSync(folderPath)
+            .filter(file => mediaExtensions.includes(path.extname(file).toLowerCase()))
+            .map(file => path.join(folderPath, file));
+
+        return mediaFiles; // Return file list to the renderer
+    });
+
+    // Handle file open when launched via context menu
+    if (process.argv.length > 1) {
+        const openedPath = process.argv[1];
+        if (fs.lstatSync(openedPath).isDirectory()) {
+            win.webContents.once("did-finish-load", () => {
+                win.webContents.send("open-folder-from-context", openedPath);
+            });
+        }
+    }
 }
 
 // Prevent all global shortcuts and register new shortcut

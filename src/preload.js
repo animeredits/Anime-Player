@@ -49,7 +49,7 @@ contextBridge.exposeInMainWorld('electron', {
   },
 
   invoke: (channel, ...args) => {
-    const validChannels = ["load-playback-time", "get-audio-thumbnail"]; // Add here
+    const validChannels = ["load-playback-time", "get-audio-thumbnail", "open-folder"]; // Add here
     if (validChannels.includes(channel)) {
       return ipcRenderer.invoke(channel, ...args);
     }
@@ -64,4 +64,6 @@ contextBridge.exposeInMainWorld('electron', {
   openFileDialog: () => ipcRenderer.invoke("open-file-dialog"),
   openFolderDialog: () => ipcRenderer.invoke("open-folder-dialog"),
   deleteFile: (filePath) => ipcRenderer.invoke("delete-file", filePath),
+  openFolderFromContext: (callback) => ipcRenderer.on("open-folder-from-context", (_, folderPath) => callback(folderPath)),
+  openFolder: (folderPath) => ipcRenderer.invoke("open-folder", folderPath),
 });
