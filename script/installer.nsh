@@ -10,6 +10,11 @@ Function installRegistryKeys
     WriteRegStr HKCR "Directory\shell\AnimePlayer" "" "Play with Anime Player"
     WriteRegStr HKCR "Directory\shell\AnimePlayer" "Icon" "$INSTDIR\Anime Player.exe,0"
     WriteRegStr HKCR "Directory\shell\AnimePlayer\command" "" '"$INSTDIR\Anime Player.exe" "%1"'
+
+    # Add "Play with Anime Player" for folder backgrounds
+    WriteRegStr HKCR "Directory\Background\shell\AnimePlayer" "" "Play with Anime Player"
+    WriteRegStr HKCR "Directory\Background\shell\AnimePlayer" "Icon" "$INSTDIR\Anime Player.exe,0"
+    WriteRegStr HKCR "Directory\Background\shell\AnimePlayer\command" "" '"$INSTDIR\Anime Player.exe" "%V"'
 FunctionEnd
 
 Function un.installRegistryKeys
@@ -20,6 +25,10 @@ Function un.installRegistryKeys
     # Remove "Play with Anime Player" from folders
     DeleteRegKey HKCR "Directory\shell\AnimePlayer"
     DeleteRegKey HKCR "Directory\shell\AnimePlayer\command"
+
+    # Remove "Play with Anime Player" from folder backgrounds
+    DeleteRegKey HKCR "Directory\Background\shell\AnimePlayer"
+    DeleteRegKey HKCR "Directory\Background\shell\AnimePlayer\command"
 FunctionEnd
 
 Section "Install"
