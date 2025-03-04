@@ -49,7 +49,7 @@ function createWindow() {
       experimentalFeatures: true,
       webSecurity: true, 
       enableHardwareAcceleration: true,
-      backgroundThrottling: false,
+      backgroundThrottling: true,
       // devTools:true
     }
   });
