@@ -716,7 +716,7 @@ video.addEventListener("ended", () => {
 openFileButton.addEventListener("click", async () => {
     try {
         const filePaths = await window.electron.openFileDialog();
-        if (Array.isArray(filePaths) && filePaths.length > 0) {
+        if (filePaths.length > 0) {
             mediaFiles = filePaths;
             currentVideoIndex = 0;
             playMediaFile(mediaFiles[currentVideoIndex]);
@@ -732,7 +732,7 @@ openFileButton.addEventListener("click", async () => {
 openFolderButton.addEventListener("click", async () => {
     try {
         const folderFiles = await window.electron.openFolderDialog();
-        if (Array.isArray(folderFiles) && folderFiles.length > 0) {
+        if (folderFiles.length > 0) {
             mediaFiles = folderFiles;
             currentVideoIndex = 0;
             playMediaFile(mediaFiles[currentVideoIndex]);
@@ -2832,16 +2832,18 @@ document.addEventListener("DOMContentLoaded", () => {
 
 
 window.electron.openFolderFromContext(async (folderPath) => { 
-    console.log("📂 Received folder from context menu:", folderPath);
+    // console.log("📂 Received folder from context menu:", folderPath);
 
     try {
-        const mediaFiles = await window.electron.invoke("open-folder", folderPath);
-        console.log("📜 Files received:", mediaFiles);
+        const receivedFiles = await window.electron.invoke("open-folder", folderPath);
+        // console.log("📜 Files received:", receivedFiles);
 
-        if (Array.isArray(mediaFiles) && mediaFiles.length > 0) {
-            updatePlaylistDropdown(mediaFiles);
+        if (Array.isArray(receivedFiles) && receivedFiles.length > 0) {
+            mediaFiles = receivedFiles; // 🔥 Store files globally
             currentVideoIndex = 0;
-            playMediaFile(mediaFiles[currentVideoIndex]);
+
+            updatePlaylistDropdown(mediaFiles); 
+            playMediaFile(mediaFiles[currentVideoIndex]); 
         } else {
             console.warn("⚠️ No media files found in the folder.");
         }
@@ -2849,6 +2851,7 @@ window.electron.openFolderFromContext(async (folderPath) => {
         console.error("❌ Error loading folder:", error);
     }
 });
+
 
 window.electron.onDownloadProgress((percent) => {
 const progressBar = document.getElementById('progress-bar');
