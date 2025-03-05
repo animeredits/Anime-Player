@@ -218,10 +218,11 @@ app.on('ready', () => {
   app.commandLine.appendSwitch('enable-gpu-rasterization');
   app.commandLine.appendSwitch('enable-oop-rasterization');
   app.commandLine.appendSwitch('enable-zero-copy');
+  app.commandLine.appendSwitch("use-gl", "desktop");
+  app.commandLine.appendSwitch("use-angle", "d3d11");
   app.commandLine.appendSwitch('enable-media-playback-hinting');
   app.commandLine.appendSwitch('enable-features', 'HardwareMediaKeyHandling,MediaPlaybackHinting,HardwareVideoDecode');
   
-    
   createWindow();
 
   // Load playback data and remove outdated entries
