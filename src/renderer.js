@@ -831,7 +831,7 @@ function playNext() {
     playVideoByIndex(nextIndex);
     highlightCurrentVideoInPlaylist(mediaFiles[nextIndex]);
     updateNavigationButtons();
-    showStatusMessage("Next Video");
+    showStatusMessage("Next");
 }
 
 
@@ -846,7 +846,7 @@ function playPrevious() {
         playVideoByIndex(prevIndex);
         highlightCurrentVideoInPlaylist(mediaFiles[prevIndex]);
         updateNavigationButtons();
-        showStatusMessage("Previous Video");
+        showStatusMessage("Previous");
         return;
     }
 
