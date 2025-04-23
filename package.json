@@ -65,6 +65,8 @@
             "allowElevation": true,
             "runAfterFinish": true,
             "warningsAsErrors": false,
+            "allowToChangeInstallationDirectory": true,
+            "differentialPackage": true,
             "include": "script/installer.nsh"
         },
         "fileAssociations": [

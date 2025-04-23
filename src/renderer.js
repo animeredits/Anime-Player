@@ -945,7 +945,6 @@ function hideVideoTitle() {
 // Function to stop playback and reset the media player
 function stopPlayback() {
 	video.pause();
-	video.src = "";
     updateVideoTitle(video.dataset.videoId);
     updatePlayPauseIcon(false);
 	playedVideos = [];
@@ -1820,7 +1819,7 @@ function showTooltip(volume, event = null) {
 // Attach event listener for volume updates
 volumeSlider.addEventListener("input", (event) => {
     updateVolume(event.target.value / 100);
-    showTooltip(gainNode.gain.value);
+    showTooltip(gainNode.gain.value , event);
 });
 
 volumeSlider.addEventListener("mouseenter", () => {

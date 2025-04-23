@@ -218,8 +218,16 @@ ipcMain.on('play-pause-state-thumbar', (event, state) => {
 app.on('ready', () => {
   const animePlayerPath = app.getPath('userData');
   const savePath = path.join(animePlayerPath, 'playback-time.json');
+<<<<<<< HEAD
   app.commandLine.appendSwitch('disable-backgrounding-occluded-windows');
   app.commandLine.appendSwitch('disable-renderer-backgrounding');
+=======
+  app.commandLine.appendSwitch('ignore-gpu-blacklist');
+  app.commandLine.appendSwitch('enable-gpu-rasterization');
+  app.commandLine.appendSwitch('enable-oop-rasterization');
+  app.commandLine.appendSwitch('enable-zero-copy');
+  app.commandLine.appendSwitch("use-angle", "d3d11");
+>>>>>>> ae290e1a999e04e14d31efdfa235a058fbf6cff5
   app.commandLine.appendSwitch('enable-media-playback-hinting');
   app.commandLine.appendSwitch('enable-features', 'HardwareMediaKeyHandling,MediaPlaybackHinting,HardwareVideoDecode');
   
@@ -318,8 +326,8 @@ autoUpdater.on('update-available', () => {
     .showMessageBox(win, {
       type: 'info',
       title: 'Update Available',
-      message: 'A new version of Anime Player is available. Would you like to update now?',
-      buttons: ['Update Now', 'Later'],
+      message: 'Good news! A new version of Anime Player is available.',
+      buttons: ['Update', 'Later'],
     })
     .then((result) => {
       if (result.response === 0) {
@@ -348,7 +356,7 @@ autoUpdater.on('update-downloaded', () => {
     .then((result) => {
       if (result.response === 0) {
         app.quit();
-        autoUpdater.quitAndInstall();
+        autoUpdater.quitAndInstall(false, true);
       }
     });
 
