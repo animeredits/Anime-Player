@@ -53,6 +53,7 @@ let currentVideoIndex = 0;
 let currentAudioIndex = 0;
 let lastPlayedIndex = -1;
 let lastPlayedStack = [];
+let navigationHistory = [];
 let autoSwitchDone = false;
 let isGifPlaying = false;
 let debounceTimeout;
@@ -67,6 +68,13 @@ let videoId;
 let hideContinueButtonTimeout;
 let hideHandleTimeout;
 let isVideoPaused = false;
+let isLeftMouseDown = false;
+let isRightMouseDown = false;
+let leftWasPausedBeforeHold = false;
+let rightWasPausedBeforeHold = false;
+let isSpeedAdjustmentHold = false;
+let isContextMenuVisible = false;
+let contextMenuClick = false;
 let isShuffle = false;
 let isLooping = false;
 const volumeStep = 0.05;
@@ -86,6 +94,8 @@ const minZoom = 0.25;
 const maxZoom = 3;
 let recognitionActive = false;
 let isMouseOver = false;
+let isShutdownAtVideoEndEnabled = false;
+let isShutdownAtPlaylistEndEnabled = false;
 
 
 // Set tooltips for buttons
@@ -709,6 +719,16 @@ video.addEventListener("ended", () => {
         playVideoByIndex(nextIndex);
     } else {
         stopPlayback();
+
+        // Shutdown PC if the "Shutdown at end of playlist" checkbox is checked
+        if (isShutdownAtPlaylistEndEnabled) {
+            window.electron.sendShutdownRequest(); // Send shutdown request to main process
+        }
+    }
+
+    // Shutdown PC if the "Shutdown at end of video" checkbox is checked
+    if (isShutdownAtVideoEndEnabled) {
+        window.electron.sendShutdownRequest(); // Send shutdown request to main process
     }
 });
 
@@ -752,24 +772,29 @@ function updatePlayPauseIcon(isPlaying) {
 
 function togglePlayPause() {
 	if (video.readyState < 3) {
-return;
-}
-if (video.paused) {
-video.play();
-hideVideoTitle();
-window.electron.sendPlayPauseStateForTray("playing");
-window.electron.sendPlayPauseStateForThumbar("playing");
-} else {
-video.pause();
-stopGifPlayback();
-showVideoTitle();
-window.electron.sendPlayPauseStateForTray("paused");
-window.electron.sendPlayPauseStateForThumbar("paused");
-}
+		return;
+	}
+		if (video.paused) {
+			video.play();
+			hideVideoTitle();
+			window.electron.sendPlayPauseStateForTray("playing");
+			window.electron.sendPlayPauseStateForThumbar("playing");
+		} else {
+			video.pause();
+			stopGifPlayback();
+			showVideoTitle();
+			window.electron.sendPlayPauseStateForTray("paused");
+			window.electron.sendPlayPauseStateForThumbar("paused");
+		}
+	
 }
 
 // Event listeners for play/pause button
-playPauseBtn.addEventListener("click", togglePlayPause);
+playPauseBtn.addEventListener("click", (e) => {
+        togglePlayPause();
+    
+});
+
 video.addEventListener("play", () => updatePlayPauseIcon(true));
 video.addEventListener("pause", () => updatePlayPauseIcon(false));
 
@@ -784,10 +809,10 @@ function getNextIndex() {
 
         if (remainingVideos.length > 0) {
             let randomVideo = remainingVideos[Math.floor(Math.random() * remainingVideos.length)];
-            playedVideos.push(randomVideo.index); // ✅ Mark as played
+            playedVideos.push(randomVideo.index); // Mark as played
             return randomVideo.index;
         } else {
-            playedVideos = []; // ✅ Reset shuffle when all videos are played
+            playedVideos = []; // Reset shuffle when all videos are played
             return Math.floor(Math.random() * mediaFiles.length);
         }
     }
@@ -795,7 +820,6 @@ function getNextIndex() {
     let nextIndex = currentVideoIndex + 1;
     return nextIndex < mediaFiles.length ? nextIndex : (isRepeatMode === 2 ? 0 : null);
 }
-
 
 // ✅ Function to get the previous video index
 function getPreviousIndex() {
@@ -819,12 +843,21 @@ function playNext() {
     const nextIndex = getNextIndex();
     if (nextIndex === null) {
         stopPlayback();
+
+        // Shutdown PC if the "Shutdown at end of playlist" checkbox is checked
+        if (isShutdownAtPlaylistEndEnabled) {
+            window.electron.sendShutdownRequest(); // Send shutdown request to main process
+        }
         return;
     }
 
-    lastPlayedStack.push(currentVideoIndex); // ✅ Store history for Previous button
-    playedVideos.push(currentVideoIndex); // ✅ Store played videos
+    // Store the current video index in the navigation history stack
+    // Only if it's not already the last item in the stack
+    if (currentVideoIndex !== null && navigationHistory[navigationHistory.length - 1] !== currentVideoIndex) {
+        navigationHistory.push(currentVideoIndex);
+    }
 
+    playedVideos.push(currentVideoIndex); // Store played videos for shuffle mode
     currentVideoIndex = nextIndex;
     lastPlayedIndex = nextIndex;
 
@@ -834,15 +867,18 @@ function playNext() {
     showStatusMessage("Next");
 }
 
-
 // ✅ Play previous video correctly
 function playPrevious() {
     if (video.duration >= 60 && video.currentTime < video.duration) {
         savePlaybackTime(video.dataset.videoId, video.currentTime);
     }
 
-    if (isShuffle && lastPlayedStack.length > 0) {
-        let prevIndex = lastPlayedStack.pop(); // ✅ Retrieve last played video
+    if (navigationHistory.length > 0) {
+        let prevIndex = navigationHistory.pop(); // Retrieve the actual previous video
+        playedVideos.push(currentVideoIndex); // Store the current video as played
+        currentVideoIndex = prevIndex;
+        lastPlayedIndex = prevIndex;
+
         playVideoByIndex(prevIndex);
         highlightCurrentVideoInPlaylist(mediaFiles[prevIndex]);
         updateNavigationButtons();
@@ -850,6 +886,7 @@ function playPrevious() {
         return;
     }
 
+    // Fallback if navigation history is empty
     const prevIndex = getPreviousIndex();
     if (prevIndex === null) {
         console.warn("No previous video available.");
@@ -864,7 +901,6 @@ function playPrevious() {
     updateNavigationButtons();
     showStatusMessage("Previous Video");
 }
-
 
 // ✅ Ensure buttons are updated properly
 function updateNavigationButtons() {
@@ -951,21 +987,79 @@ document.querySelectorAll(".nextbtn").forEach(button => {
 
 // Rewind and Forward video 10 sec
 rewind.addEventListener("click", () => {
-	currentMedia.currentTime = Math.max(0, currentMedia.currentTime - 10);
+    currentMedia.currentTime = Math.max(0, currentMedia.currentTime - 10);
+	showStatusMessage(
+		`${formatTime(currentMedia.currentTime)} / ${formatTime(currentMedia.duration)}`
+	);
 });
 
 // Add tooltip for rewind button
 rewind.setAttribute("title", "Rewind 10 seconds");
 
 forward.addEventListener("click", () => {
-	currentMedia.currentTime = Math.min(currentMedia.duration, currentMedia.currentTime + 10);
+    currentMedia.currentTime = Math.min(currentMedia.duration, currentMedia.currentTime + 10);
+	showStatusMessage(
+		`${formatTime(currentMedia.currentTime)} / ${formatTime(currentMedia.duration)}`
+	);
 });
 
 // Add tooltip for forward button
 forward.setAttribute("title", "Forward 10 seconds");
 
+// Double click on video for rewind/forward (YouTube-like)
+// video.addEventListener('dblclick', (e) => {
+//     // Get click position relative to video element
+//     const rect = video.getBoundingClientRect();
+//     const clickX = e.clientX - rect.left;
+//     const videoWidth = rect.width;
+    
+//     // Determine if click was on left or right side (45% threshold like YouTube)
+//     if (clickX < videoWidth * 0.5) {
+//         // Left side - rewind
+//         currentMedia.currentTime = Math.max(0, currentMedia.currentTime - 10); 
+//         showStatusMessage(
+// 			`${formatTime(currentMedia.currentTime)} / ${formatTime(currentMedia.duration)}`
+// 		);
+//         // Visual feedback (optional)
+//         video.classList.add('rewind-effect');
+//         setTimeout(() => video.classList.remove('rewind-effect'), 300);
+//     } 
+//     else if (clickX > videoWidth * 0.5) {
+//         // Right side - forward
+//         currentMedia.currentTime = Math.min(currentMedia.duration, currentMedia.currentTime + 10);
+// 		showStatusMessage(
+// 			`${formatTime(currentMedia.currentTime)} / ${formatTime(currentMedia.duration)}`
+// 		);
+//         // Visual feedback (optional)
+//         video.classList.add('forward-effect');
+//         setTimeout(() => video.classList.remove('forward-effect'), 300);
+//     }
+//     // Middle area (50-50%) does nothing on double click
+// });
+
 // Initial button visibility update
 updateNavigationButtons();
+
+
+// ✅ Handle two-finger swipe using the "wheel" event
+document.addEventListener("wheel", (e) => {
+	// Check if the wheel event is horizontal (deltaX) and not vertical (deltaY)
+	if (Math.abs(e.deltaX) > Math.abs(e.deltaY)) {
+		if (e.deltaX > 0) {
+			// Two-finger swipe left (rewind)
+			currentMedia.currentTime = Math.max(0, currentMedia.currentTime - 10);
+			showStatusMessage(
+				`${formatTime(currentMedia.currentTime)} / ${formatTime(currentMedia.duration)}`
+			);
+		} else if (e.deltaX < 0) {
+		// Two-finger swipe right (fast forward)
+		currentMedia.currentTime = Math.min(currentMedia.duration, currentMedia.currentTime + 10);
+		showStatusMessage(
+			`${formatTime(currentMedia.currentTime)} / ${formatTime(currentMedia.duration)}`
+		);
+		}
+	}
+});
 
 // ✅ Save playback time
 function savePlaybackTime(videoId, time) {
@@ -1318,67 +1412,247 @@ document.addEventListener("keydown", function (event) {
     }
 });
 
-// Function to set playback speed
-function setPlaybackSpeed(speed) {
-	video.playbackRate = speed;
-}
-
-// Add click event listeners to each speed option
-playbackSpeedLinks.forEach(link => {
-	link.addEventListener("click", () => {
-		const speedText = link.textContent; // Get the text content of the clicked link
-		let speed;
-
-		// Determine the playback speed based on the link text
-		switch (speedText) {
-			case "0.25":
-				speed = 0.25;
-				showStatusMessage("Slow 0.25x");
-				break;
-			case "0.5":
-				speed = 0.5;
-				showStatusMessage("Slow 0.5x");
-				break;
-			case "0.75":
-				speed = 0.75;
-				showStatusMessage("Slow 0.75x");
-				break;
-			case "Normal Speed":
-				speed = 1;
-				break;
-			case "1.25":
-				speed = 1.25;
-				showStatusMessage("Fast 1.25x");
-				break;
-			case "1.5":
-				speed = 1.5;
-				showStatusMessage("Fast 1.5x");
-				break;
-			case "1.75":
-				speed = 1.75;
-				showStatusMessage("Fast 1.75x");
-				break;
-			case "2":
-				speed = 2;
-				showStatusMessage("Fast 2x");
-				break;
-			default:
-				speed = 1;
-				break;
-		}
-
-		// Set the playback speed
-		setPlaybackSpeed(speed);
-
-		// Optional: Highlight the selected speed
-		playbackSpeedLinks.forEach(l => l.classList.remove("selected")); // Remove selected class from all
-		link.classList.add("selected"); // Add selected class to the clicked link
-	});
+// ✅ Event listeners for shutdown checkboxes
+document.getElementById('shutdown-video-end-checkbox').addEventListener('change', (event) => {
+    isShutdownAtVideoEndEnabled = event.target.checked;
 });
 
-// Optional: Initialize to normal speed
-setPlaybackSpeed(1); // Default to normal playback speed
+document.getElementById('shutdown-playlist-end-checkbox').addEventListener('change', (event) => {
+    isShutdownAtPlaylistEndEnabled = event.target.checked;
+});
 
+// ✅ Function to set shutdown timer
+function setShutdownTimer(minutes) {
+    if (minutes > 0 && (isShutdownAtVideoEndEnabled || isShutdownAtPlaylistEndEnabled)) {
+        window.electron.setShutdownTimer(minutes);
+        showStatusMessage(`PC will shut down in ${minutes} minutes.`);
+    } else {
+        showStatusMessage('Shutdown is disabled. Enable one of the checkboxes to use this feature.');
+    }
+}
+
+// ✅ Quick-set buttons handler
+function setQuickTime(minutes) {
+    document.getElementById('hours').textContent = '00';
+    document.getElementById('minutes').textContent = minutes.toString().padStart(2, '0');
+    document.getElementById('seconds').textContent = '00';
+}
+
+// ✅ Mouse wheel scroll for time unit adjustments
+document.querySelectorAll('#hours, #minutes, #seconds').forEach(unit => {
+    unit.classList.add('time-unit');
+    let max = unit.id === 'hours' ? 23 : 59;
+
+    unit.addEventListener('wheel', function (event) {
+        event.preventDefault();
+        let delta = event.deltaY > 0 ? -1 : 1;
+        let newValue = parseInt(unit.textContent) + delta;
+
+        if (newValue < 0) newValue = max;
+        if (newValue > max) newValue = 0;
+
+        unit.textContent = newValue.toString().padStart(2, '0');
+    });
+});
+
+// ✅ Add .quick-time class to quick-set buttons and attach event
+document.querySelectorAll('.quick-set button').forEach(button => {
+    button.classList.add('quick-time');
+    button.addEventListener('click', function () {
+        let minutes = parseInt(button.textContent);
+        setQuickTime(minutes);
+    });
+});
+
+// ✅ If you want a manual shutdown timer input (optional)
+const shutdownBtn = document.getElementById('shutdownBtn');
+shutdownBtn.addEventListener('click', () => {
+    const minutes = parseInt(prompt("Enter shutdown time in minutes:"), 10);
+    if (!isNaN(minutes)) {
+        setShutdownTimer(minutes);
+    } else {
+        showStatusMessage('Invalid shutdown time.');
+    }
+});
+
+
+let countdownInterval = null;
+let totalTimeInSeconds = 0;
+
+// Function to convert current display time to total seconds
+function getTotalTimeInSeconds() {
+    const hours = parseInt(document.getElementById('hours').textContent, 10);
+    const minutes = parseInt(document.getElementById('minutes').textContent, 10);
+    const seconds = parseInt(document.getElementById('seconds').textContent, 10);
+    return hours * 3600 + minutes * 60 + seconds;
+}
+
+// Function to update time display from total seconds
+function updateTimeDisplay(totalSeconds) {
+    const hours = Math.floor(totalSeconds / 3600);
+    const minutes = Math.floor((totalSeconds % 3600) / 60);
+    const seconds = totalSeconds % 60;
+
+    document.getElementById('hours').textContent = hours.toString().padStart(2, '0');
+    document.getElementById('minutes').textContent = minutes.toString().padStart(2, '0');
+    document.getElementById('seconds').textContent = seconds.toString().padStart(2, '0');
+}
+
+// Function to start the countdown
+function startCountdown() {
+    totalTimeInSeconds = getTotalTimeInSeconds();
+
+    if (totalTimeInSeconds <= 0) {
+        showStatusMessage('Please set a valid timer.');
+        return;
+    }
+
+    // Prevent multiple intervals
+    if (countdownInterval) clearInterval(countdownInterval);
+
+    countdownInterval = setInterval(() => {
+        totalTimeInSeconds--;
+
+        updateTimeDisplay(totalTimeInSeconds);
+
+        if (totalTimeInSeconds <= 0) {
+            clearInterval(countdownInterval);
+            showStatusMessage('Time is up! Shutting down...');
+
+            // Shut down the PC using Electron
+            if (window.electron && typeof window.electron.sendShutdownRequest === 'function') {
+                window.electron.sendShutdownRequest(); // Send shutdown request to main process
+            } else {
+                console.warn('Electron shutdown function not found.');
+            }
+        }
+    }, 1000);
+}
+
+// Add click listener to the play button
+document.getElementById('startBtn').addEventListener('click', startCountdown);
+
+// Optional: Reset timer with the delete/reset button
+document.getElementById('resetBtn').addEventListener('click', () => {
+    if (countdownInterval) clearInterval(countdownInterval);
+    totalTimeInSeconds = 0;
+    document.getElementById('hours').textContent = '00';
+    document.getElementById('minutes').textContent = '00';
+    document.getElementById('seconds').textContent = '00';
+    showStatusMessage('Timer reset.');
+});
+
+// Close button
+document.getElementById('closeTimer').addEventListener('click', () => {
+    document.querySelector('.timer-container').style.display = 'none';
+});
+	
+// Function to set playback speed
+function setPlaybackSpeed(speed) {
+    video.playbackRate = speed;
+}
+
+video.addEventListener('mousedown', (e) => {
+    if (e.button === 0) { // Left mouse button
+        isLeftMouseDown = true;
+        leftWasPausedBeforeHold = video.paused;
+        if (leftWasPausedBeforeHold) video.play();
+        setPlaybackSpeed(2);
+        showStatusMessage("Fast 2x (hold)");
+        isSpeedAdjustmentHold = true;
+        e.preventDefault();
+    } 
+	// else if (e.button === 2) { // Right mouse button
+    //     isRightMouseDown = true;
+    //     rightWasPausedBeforeHold = video.paused;
+    //     if (rightWasPausedBeforeHold) video.play();
+    //     setPlaybackSpeed(1.5);
+    //     showStatusMessage("Fast 1.5x (hold)");
+    //     isSpeedAdjustmentHold = true;
+    //     e.preventDefault();
+    // }
+});
+
+document.addEventListener('mouseup', (e) => {
+    if (e.button === 0 && isLeftMouseDown) {
+        isLeftMouseDown = false;
+        setPlaybackSpeed(1);
+        if (leftWasPausedBeforeHold) video.pause();
+        leftWasPausedBeforeHold = false;
+        isSpeedAdjustmentHold = false; // Immediate reset
+    } 
+    // else if (e.button === 2 && isRightMouseDown) {
+    //     isRightMouseDown = false;
+    //     setPlaybackSpeed(1);
+    //     if (rightWasPausedBeforeHold) video.pause();
+    //     rightWasPausedBeforeHold = false;
+    //     isSpeedAdjustmentHold = false; // Immediate reset
+    // }
+});
+
+// Prevent click-triggered pause/play when releasing speed hold
+video.addEventListener('click', (e) => {
+    if (isSpeedAdjustmentHold) {
+        e.preventDefault();
+        e.stopImmediatePropagation();
+        // If video was playing before hold, resume playback
+        if (!leftWasPausedBeforeHold && !rightWasPausedBeforeHold) {
+            video.play();
+        }
+    }
+});
+
+// Keep your existing speed controls
+playbackSpeedLinks.forEach(link => {
+    link.addEventListener("click", () => {
+        const speedText = link.textContent;
+        let speed;
+
+        switch (speedText) {
+            case "0.25":
+                speed = 0.25;
+                showStatusMessage("Slow 0.25x");
+                break;
+            case "0.5":
+                speed = 0.5;
+                showStatusMessage("Slow 0.5x");
+                break;
+            case "0.75":
+                speed = 0.75;
+                showStatusMessage("Slow 0.75x");
+                break;
+            case "Normal Speed":
+                speed = 1;
+                break;
+            case "1.25":
+                speed = 1.25;
+                showStatusMessage("Fast 1.25x");
+                break;
+            case "1.5":
+                speed = 1.5;
+                showStatusMessage("Fast 1.5x");
+                break;
+            case "1.75":
+                speed = 1.75;
+                showStatusMessage("Fast 1.75x");
+                break;
+            case "2":
+                speed = 2;
+                showStatusMessage("Fast 2x");
+                break;
+            default:
+                speed = 1;
+                break;
+        }
+
+        setPlaybackSpeed(speed);
+        playbackSpeedLinks.forEach(l => l.classList.remove("selected"));
+        link.classList.add("selected");
+    });
+});
+
+// Initialize to normal speed
+setPlaybackSpeed(1);
 
 // Create a reusable function for tooltip styling
 function createTooltip() {
@@ -1413,14 +1687,15 @@ const stereoPanner = audioContext.createStereoPanner(); // Create a stereo panne
 midBoostFilter.type = "peaking";
 midBoostFilter.frequency.setValueAtTime(3650, audioContext.currentTime); // Center frequency
 midBoostFilter.Q.setValueAtTime(2, audioContext.currentTime); // Bandwidth (resonance) of the filter
-midBoostFilter.gain.setValueAtTime(4, audioContext.currentTime); // Boost mid-range frequencies by 4 dB (reduced)
+midBoostFilter.gain.setValueAtTime(2, audioContext.currentTime); // Milder mid boost
 
 // Set compressor parameters for vocal clarity (updated for softer compression)
 compressor.threshold.setValueAtTime(-40, audioContext.currentTime); // Lower threshold for more subtle compression
 compressor.knee.setValueAtTime(28, audioContext.currentTime); // Moderate knee
-compressor.ratio.setValueAtTime(3, audioContext.currentTime); // Softer compression ratio
-compressor.attack.setValueAtTime(0.01, audioContext.currentTime); // Fast attack time
-compressor.release.setValueAtTime(0.1, audioContext.currentTime); // Quick release time
+compressor.ratio.setValueAtTime(2, audioContext.currentTime);    // Gentler compression
+compressor.attack.setValueAtTime(0.03, audioContext.currentTime);// Slightly slower attack
+compressor.release.setValueAtTime(0.3, audioContext.currentTime);// Smoother release
+stereoPanner.pan.setValueAtTime(0.2, audioContext.currentTime);  // Slight stereo offset
 
 // Connect nodes
 const source = audioContext.createMediaElementSource(videoElement);
@@ -1819,7 +2094,7 @@ function toggleShuffleMode() {
         showStatusMessage("Shuffle: Off");
         shuffleButton.title = "Shuffle";
         playedVideos = [];
-        lastPlayedStack = [];
+        navigationHistory = [];
         window.electron.sendShuffleState("off");
     }
 }
@@ -1886,9 +2161,8 @@ fullscreenButtons.forEach((element) => {
     element.title = "Enter Fullscreen";
 });
 
-
 // Add double-click event listener to the media player
-mediaPlayer.addEventListener("dblclick", toggleFullScreen);
+video.addEventListener("dblclick", toggleFullScreen);
 
 // Listen for fullscreen change events
 document.addEventListener("fullscreenchange", () => {
@@ -2017,10 +2291,12 @@ document.addEventListener("DOMContentLoaded", function() {
 	// Ensure controls are shown on initial load
 	showControls();
 
+
 	// Function to show the context menu
 	function showContextMenu(event) {
 		event.preventDefault();
-	
+		isContextMenuVisible = true;
+
 		const { clientX: mouseX, clientY: mouseY } = event;
 		const { innerWidth: screenWidth, innerHeight: screenHeight } = window;
 	
@@ -2116,7 +2392,7 @@ function updateProgressBar() {
 	if (video && video.duration && !isNaN(video.duration)) {
 		const progress = (video.currentTime / video.duration) * 100;
 		progressBar.style.width = `${progress}%`;
-		progressHandle.style.left = `${progress}%`;
+		progressHandle.style.left = '100%';
 		currentTimeDisplay.textContent = formatTime(video.currentTime);
 		progressHandle.style.display = "block";
 	} else {
@@ -2151,11 +2427,11 @@ durationDisplay.addEventListener("click", () => {
 });
 
 progressBarWrapper.addEventListener("click", (e) => {
-	const rect = progressBarWrapper.getBoundingClientRect();
-	const posX = e.clientX - rect.left;
-	const percentage = posX / rect.width;
-	video.currentTime = percentage * video.duration;
-	updateProgressBar();
+    const rect = progressBarWrapper.getBoundingClientRect();
+    const posX = e.clientX - rect.left;
+    const percentage = posX / rect.width;
+    video.currentTime = percentage * video.duration;
+    updateProgressBar();
 });
 
 // Handle dragging for smoother seeking
@@ -2163,31 +2439,47 @@ let isDragging = false;
 let temporaryTime = 0;
 
 function updateDragging(e) {
-	if (isDragging) {
-		const rect = progressBarWrapper.getBoundingClientRect();
-		const posX = e.clientX - rect.left;
-		const percentage = Math.min(Math.max(posX / rect.width, 0), 1);
-		progressBar.style.width = `${percentage * 100}%`;
-		progressHandle.style.left = `${percentage * 100}%`;
-		currentTimeDisplay.textContent = formatTime(percentage * video.duration);
-	}
+    if (isDragging) {
+        const rect = progressBarWrapper.getBoundingClientRect();
+        const posX = e.clientX - rect.left;
+        const percentage = Math.min(Math.max(posX / rect.width, 0), 1); // Ensure percentage is between 0 and 1
+
+        // Update both progress bar and handle position continuously
+        progressBar.style.width = `${percentage * 100}%`;
+        progressHandle.style.left = `${percentage * 100}%`;
+
+        // Update temporary time for display only (don't update video time yet)
+        temporaryTime = percentage * video.duration;
+        currentTimeDisplay.textContent = formatTime(temporaryTime);
+    }
 }
 
 progressHandle.addEventListener("mousedown", (e) => {
-	e.preventDefault();
-	isDragging = true;
-	document.addEventListener("mousemove", updateDragging);
+    e.preventDefault();
+    isDragging = true;
+    video.pause(); // Pause video while seeking to prevent buffering
+    document.addEventListener("mousemove", updateDragging);
 });
 
 document.addEventListener("mouseup", () => {
-	if (isDragging) {
-		isDragging = false;
-		document.removeEventListener("mousemove", updateDragging);
-		const rect = progressBarWrapper.getBoundingClientRect();
-		const percentage = parseFloat(progressBar.style.width) / 100;
-		video.currentTime = percentage * video.duration; // Update video time only after dragging ends
-		updateProgressBar();
-	}
+    if (isDragging) {
+        isDragging = false;
+        document.removeEventListener("mousemove", updateDragging);
+        
+        // Only update video time once when dragging is complete
+        if (temporaryTime !== video.currentTime) {
+            video.currentTime = temporaryTime;
+        }
+        
+        // Resume playback if it was playing before seeking
+        if (!video.paused) {
+            video.play();
+        }
+
+        hideHandleTimeout = setTimeout(() => {
+            progressHandle.style.opacity = "0";
+        }, 2000);
+    }
 });
 
 progressBarWrapper.addEventListener("wheel", (e) => {
@@ -2342,6 +2634,24 @@ document.addEventListener("keydown", (event) => {
         event.preventDefault();
         deleteCurrentMediaFile();
     }
+
+	if (event.key.toLowerCase() === 't' && !event.ctrlKey) {
+        event.preventDefault();
+        if (currentMedia) {
+            showStatusMessage(
+                `${formatTime(currentMedia.currentTime)} / ${formatTime(currentMedia.duration)}`
+            );
+        }
+    }
+
+	if (event.ctrlKey && event.key.toLowerCase() === 't') {
+        event.preventDefault();
+        const container = document.querySelector('.timer-container');
+        if (container) {
+            container.style.display = container.style.display === 'none' ? 'block' : 'none';
+        }
+    }
+
 	const keyActions = {
 		ArrowLeft: () => {
 			currentMedia.currentTime = Math.max(0, currentMedia.currentTime - 10);
@@ -2367,11 +2677,6 @@ document.addEventListener("keydown", (event) => {
 		},
 		l: () => toggleRepeat(),
 		m: () => volumeBtn.click(),
-		t: () => {
-			showStatusMessage(
-				`${formatTime(currentMedia.currentTime)} /${formatTime(currentMedia.duration)}`
-			); // Show current time and total duration
-		},
 		8: () => {
 			rotateVideo(0);
 			showStatusMessage("Rotated 0°");

@@ -8,25 +8,9 @@
     <meta name="author" content="animeredits" />
     <meta http-equiv="Content-Security-Policy" content="script-src 'self' 'unsafe-inline';" />
     <title>Anime Player</title>
-    <!-- Open Graph Meta Tags -->
-    <meta property="og:title" content="Anime Player" />
-    <meta property="og:description" content="Enjoy seamless playback and advanced voice controls with Anime Player, designed for anime enthusiasts!" />
-    <meta property="og:url" content="https://aniplayer.netlify.app/" />
-    <meta property="og:image" content="https://aniplayer.netlify.app/assets/icons/Sicon.png" />
-    <meta property="og:type" content="website" />
-    <meta property="og:site_name" content="Anime Player" />
-    <!-- Twitter Card Meta Tags -->
-    <meta name="twitter:card" content="summary_large_image" />
-    <meta name="twitter:title" content="Anime Player" />
-    <meta name="twitter:description" content="Enjoy seamless playback and advanced voice controls with Anime Player, designed for anime enthusiasts!" />
-    <meta property="og:image" content="https://aniplayer.netlify.app/assets/icons/Sicon.png" />
     <!-- Favicon -->
-    <link rel="icon" type="image/png" sizes="16x16" href="../favicon/favicon-16x16.png" />
-    <link rel="icon" type="image/png" sizes="32x32" href="../favicon/favicon-32x32.png" />
     <link rel="icon" type="image/x-icon" href="../favicon/favicon.ico" />
     <link rel="apple-touch-icon" sizes="180x180" href=".../favicon/apple-touch-icon.png" />
-    <link rel="icon" sizes="192x192" href="../favicon/android-chrome-192x192.png" />
-    <link rel="icon" sizes="512x512" href="../favicon/android-chrome-512x512.png" />
     <!-- Fonts and Icons -->
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,300,0,0" />
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@24,300,0,0" />
@@ -159,7 +143,7 @@
               <div class="sub-dropdown">
                 <a href="javascript:void(0)" class="sub-dropbtn">Subtitle Track</a>
                 <div class="sub-dropdown-content" id="subtitle-track-list">
-                  Subtitle tracks will be dynamically inserted here
+                Subtitle tracks will be dynamically inserted here
                 </div>
               </div>
             </div>
@@ -216,6 +200,72 @@
             </svg>
           </button>
         </div>
+        <!-- Shutdown Timer -->
+        <!-- <div id="shutdown-timer" class="shutdown-timer">
+          <div class="shutdown-timer-content">
+            <h1 class="modal__title">Shutdown Timer</h1>
+            <div class="shutdown-timer-input">
+              <label for="shutdown-timer-input">Shutdown after (minutes):</label>
+              <input type="number" id="shutdown-timer-input" min="1" />
+            </div>
+            <button id="shutdown-timer-button" class="modal__btn">Set Shutdown Timer</button>
+          </div> -->
+          <!-- Shutdown Timer -->
+          <div class="timer-container">
+            <div class="top-bar">
+              <div class="logo">S Timer</div>
+              <div class="time-controls">     
+            <div class="delete-btn" id="resetBtn">
+              <svg viewBox="0 0 24 24">
+                <path d="M6 7h12v2H6zm1 4h10v10H7V11zm3-8h4v2h-4z" />
+              </svg>
+            </div>
+            <button id="closeTimer" aria-label="Close">
+              <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24" class="icon-md">
+                <path fill="currentColor" fill-rule="evenodd" d="M5.636 5.636a1 1 0 0 1 1.414 0l4.95 4.95 4.95-4.95a1 1 0 0 1 1.414 1.414L13.414 12l4.95 4.95a1 1 0 0 1-1.414 1.414L12 13.414l-4.95 4.95a1 1 0 0 1-1.414-1.414l4.95-4.95-4.95-4.95a1 1 0 0 1 0-1.414" clip-rule="evenodd"></path>
+              </svg>
+            </button>
+              </div>
+            </div>
+            <div class="time-display">
+              <span class="time" id="hours">00</span>
+              <span class="colon">:</span>
+              <span class="time" id="minutes">00</span>
+              <span class="colon">:</span>
+              <span class="time" id="seconds">00</span>
+            </div>
+            <div class="labels">
+              <span>HOURS</span>
+              <span>MINUTES</span>
+              <span>SECONDS</span>
+            </div>
+            <div class="play-btn" id="startBtn">
+              <svg viewBox="0 0 24 24">
+                <path d="M8 5v14l11-7z" />
+              </svg>
+            </div>
+            <div class="buttons">
+              <button class="shutdown-btn" id="shutdownBtn">SHUT DOWN</button>
+              <div class="quick-set">
+                <button onclick="setQuickTime(10)">10</button>
+                <button onclick="setQuickTime(20)">20</button>
+                <button onclick="setQuickTime(30)">30</button>
+                <button onclick="setQuickTime(40)">40</button>
+                <button onclick="setQuickTime(50)">50</button>
+                <button onclick="setQuickTime(60)">60</button>
+              </div>
+            </div>
+            <div class="shutdown-checkboxes">
+              <label for="shutdown-video-end-checkbox" class="checkbox-label">
+                <input type="checkbox" id="shutdown-video-end-checkbox" />
+                <span>Shutdown PC at the end of the current video</span>
+              </label>
+              <label for="shutdown-playlist-end-checkbox" class="checkbox-label">
+                <input type="checkbox" id="shutdown-playlist-end-checkbox" />
+                <span>Shutdown PC at the end of the playlist</span>
+              </label>
+            </div>       
+          </div>
         <!-- Context Menu -->
         <div id="contextMenu" class="context-menu">
           <ul>

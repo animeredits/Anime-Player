@@ -19,7 +19,11 @@
     "dependencies": {
         "depcheck": "^1.4.7",
         "electron-updater": "^6.3.4",
-        "trash": "^9.0.0"
+        "ffmpeg-static": "^5.2.0",
+        "fluent-ffmpeg": "^2.1.3",
+        "plyr": "^3.7.8",
+        "trash": "^9.0.0",
+        "video.js": "^8.22.0"
     },
     "devDependencies": {
         "@electron/packager": "^18.3.5",
@@ -62,7 +66,6 @@
             "runAfterFinish": true,
             "warningsAsErrors": false,
             "include": "script/installer.nsh"
-
         },
         "fileAssociations": [
             {
@@ -99,9 +102,9 @@
                 "icon": "assets/icons/icon.ico"
             },
             {
-            "ext": "",
-            "name": "Anime Player",
-            "role": "Viewer"
+                "ext": "",
+                "name": "Anime Player",
+                "role": "Viewer"
             }
         ],
         "mac": {

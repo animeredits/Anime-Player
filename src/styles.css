@@ -1097,7 +1097,7 @@ main {
 #progressBarWrapper {
   flex-grow: 1;
   height: 3px;
-  background: rgba(255, 255, 255, 0.5);
+  background-color: rgba(241, 241, 241, 0.175);
   border-radius: 4px;
   position: relative;
   z-index: 1;
@@ -1118,7 +1118,7 @@ main {
 #progressBar {
   height: 3px;
   width: 0%;
-  background: #ededed;
+  background-color: #5a5cbb;
   border-radius: 5px 0 0 5px;
   position: relative;
   transition: width 0.2s ease;
@@ -1131,7 +1131,7 @@ main {
   height: 20px;
   width: 20px;
   background: transparent;
-  border: 2px solid #ededed;
+  border: 2px solid #5a5cbb;
   border-radius: 80%;
   z-index: 3; 
   transform: translateX(-9%);
@@ -1143,12 +1143,14 @@ main {
 
 #progressHandle:active,
 #progressHandle:hover {
-  background-color: #ededed;
+  background-color: #5a5cbb;
+  opacity: 1;
   transform: translateX(-9%) scale(1.2);
 }
 
 #progressHandle:focus {
   outline: none;
+  opacity: 1;
 }
 
 #progressHandle:active {
@@ -1801,4 +1803,189 @@ video:-ms-fullscreen {
   nav ul li.nav-image img {
     height: 18px;
   }
+}
+
+.timer-container {
+  display: none ; 
+  position: relative;
+  top: 20px; 
+  right: 20px; 
+  backdrop-filter: blur(10px) saturate(180%);
+  background-color: #2f2f2fc5; 
+  border-radius: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.125);
+  width: 530px;
+  padding: 25px 30px;
+  color: white;
+  z-index: 999;
+}
+
+.top-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 25px;
+}
+
+.logo {
+  font-weight: bold;
+  color: red;
+  font-size: 20px;
+}
+
+.time-controls{
+  font-size: 18px;
+  display: flex;
+  gap: 15px;
+  color: #aaa;
+}
+
+.time-display {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  font-size: 48px;
+  font-weight: 500;
+  gap: 10px;
+  right: 10px;
+  position: relative;
+}
+
+.time-display span.time {
+  width: 60px;
+  text-align: center;
+}
+
+.colon {
+  background: none;
+  color: white;
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  font-size: 24px;
+}
+
+.labels {
+  display: flex;
+  justify-content: center;
+  margin-top: 10px;
+  font-size: 12px;
+  color: #888;
+  letter-spacing: 2px;
+  gap: 50px;
+}
+
+.buttons {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 25px;
+}
+
+.shutdown-btn {
+  background: none;
+  border: none;
+  color: white;
+  font-weight: bold;
+}
+
+.quick-set {
+  display: flex;
+  gap: 10px;
+}
+
+.quick-set button {
+  background-color: #222;
+  border: none;
+  color: #888;
+  padding: 8px 14px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: 0.3s;
+}
+
+.quick-set button:hover {
+  background-color: #333;
+  color: white;
+}
+
+.play-btn {
+  position: absolute;
+  right: 40px;
+  top: 6.5dvh;
+  width: 70px;
+  height: 70px;
+  border-radius: 50%;
+  background: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.play-btn svg {
+  fill: white;
+  width: 70px;
+  height: 70px;
+  margin-left: 2px;
+}
+
+.delete-btn {
+  position: absolute;
+  right: 60px;
+  top: 21px;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background:none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.delete-btn svg {
+  fill: white;
+  width: 18px;
+  height: 18px;
+}
+
+.shutdown-checkboxes {
+  margin-top: 20px;
+  text-align: left;
+}
+
+.checkbox-label {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 0.9rem;
+  background: none;
+  border: none;
+  color: #aaa;
+  border-radius: 8px;
+  margin-top: 12px;
+}
+
+.checkbox-label:hover {
+  color: white;
+}
+
+.checkbox-label input {
+  transform: scale(1.2);
+}
+
+/* Change label color to white when checkbox is checked */
+.checkbox-label input:checked + span {
+  color: white;
+}
+
+#closeTimer{
+  background: transparent;
+  border: none;
+  color: #fff;
+  cursor: pointer;
 }

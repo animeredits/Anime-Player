@@ -66,4 +66,14 @@ contextBridge.exposeInMainWorld('electron', {
   deleteFile: (filePath) => ipcRenderer.invoke("delete-file", filePath),
   openFolderFromContext: (callback) => ipcRenderer.on("open-folder-from-context", (_, folderPath) => callback(folderPath)),
   openFolder: (folderPath) => ipcRenderer.invoke("open-folder", folderPath),
+
+  // Shutdown Controls
+  sendShutdownRequest: () => ipcRenderer.send('shutdown-pc'),
+  setShutdownTimer: (minutes) => ipcRenderer.send('shutdown-after-time', minutes),
+
+  // Video Editing
+  trimVideo: (args) => ipcRenderer.invoke('trim-video', args),
+  cropVideo: (args) => ipcRenderer.invoke('crop-video', args),
+  onTrimProgress: (callback) => ipcRenderer.on('trim-progress', callback),
+  onCropProgress: (callback) => ipcRenderer.on('crop-progress', callback),
 });

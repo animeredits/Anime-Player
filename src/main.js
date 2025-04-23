@@ -1,6 +1,7 @@
 const { app, BrowserWindow, Tray, Menu, screen, Notification,dialog, ipcMain, globalShortcut } = require("electron");
 const { autoUpdater } = require('electron-updater');
 const path = require('path');
+const { exec } = require('child_process');
 const fs = require('fs');
 const { net } = require('electron');
 
@@ -50,6 +51,9 @@ function createWindow() {
       webSecurity: true, 
       enableHardwareAcceleration: true,
       backgroundThrottling: true,
+      webgl: true,
+      enablePreferredSizeMode: true,
+      smoothScrolling: true,
       // devTools:true
     }
   });
@@ -77,7 +81,7 @@ function createWindow() {
     win.maximize();
     createTray();
     setThumbarButtons();
-    // win.webContents.openDevTools();
+    win.webContents.openDevTools();
   });
 
   win.on("show", setThumbarButtons);
@@ -214,12 +218,8 @@ ipcMain.on('play-pause-state-thumbar', (event, state) => {
 app.on('ready', () => {
   const animePlayerPath = app.getPath('userData');
   const savePath = path.join(animePlayerPath, 'playback-time.json');
-  app.commandLine.appendSwitch('ignore-gpu-blacklist');
-  app.commandLine.appendSwitch('enable-gpu-rasterization');
-  app.commandLine.appendSwitch('enable-oop-rasterization');
-  app.commandLine.appendSwitch('enable-zero-copy');
-  app.commandLine.appendSwitch("use-gl", "desktop");
-  app.commandLine.appendSwitch("use-angle", "d3d11");
+  app.commandLine.appendSwitch('disable-backgrounding-occluded-windows');
+  app.commandLine.appendSwitch('disable-renderer-backgrounding');
   app.commandLine.appendSwitch('enable-media-playback-hinting');
   app.commandLine.appendSwitch('enable-features', 'HardwareMediaKeyHandling,MediaPlaybackHinting,HardwareVideoDecode');
   
@@ -547,7 +547,7 @@ app.on('window-all-closed', () => {
   }    
 });  
 
-if (!gotTheLock) {
+if (gotTheLock) {
   app.quit(); // Quit if another instance is running
 } else {
   app.on("second-instance", (event, commandLine) => {
@@ -633,4 +633,28 @@ ipcMain.handle("delete-file", async (event, filePath) => {
   } catch (error) {
       console.error("❌ Error deleting file:", error);
   }
+});
+
+// Function to shut down the PC
+function shutdownPC() {
+  const command = process.platform === 'win32' ? 'shutdown /s /t 0' : 'shutdown -h now';
+  exec(command, (error) => {
+      if (error) {
+          console.error('❌ Failed to shut down PC:', error);
+          dialog.showErrorBox('Shutdown Error', 'Failed to shut down the PC.');
+      }
+  });
+}
+
+// Handle shutdown requests from the renderer process
+ipcMain.on('shutdown-pc', () => {
+  shutdownPC();
+});
+
+// Handle custom shutdown timer
+ipcMain.on('shutdown-after-time', (event, timeInMinutes) => {
+  const timeInMillis = timeInMinutes * 60 * 1000;
+  setTimeout(() => {
+      shutdownPC();
+  }, timeInMillis);
 });
