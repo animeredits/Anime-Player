@@ -707,6 +707,13 @@ main {
   color: #bbb;
 }
 
+.context-menu-full-screen{
+  width: 18px;
+  height: 18px;
+  margin-right: 10px;
+  margin-left: 3px;
+}
+
 /* Main container for the playlist */
 .playlist-container {
   display: none;

@@ -43,7 +43,7 @@ const gifSearchButton = document.getElementById("gifSearchButton");
 const gifResultsContainer = document.getElementById("gifResultsContainer");
 const gifSearchContainer = document.getElementById("gifSearchContainer");
 const statusMessage = document.getElementById("statusMessage");
-
+zzz
 let currentMedia = video;
 let isFullScreen = false;
 let isRepeatMode  = false;
@@ -2644,13 +2644,27 @@ document.addEventListener("keydown", (event) => {
     }
 
 	if (event.ctrlKey && event.key.toLowerCase() === 't') {
-        event.preventDefault();
-        const container = document.querySelector('.timer-container');
-        if (container) {
-            container.style.display = container.style.display === 'none' ? 'block' : 'none';
-        }
-    }
+		event.preventDefault();
+		const container = document.querySelector('.timer-container');
+		if (container) {
+			container.style.display = container.style.display === 'none' ? 'block' : 'none';
+		}
+		// Allow playlist scrolling when mouse is over it
+		container.addEventListener("wheel", (event) => {
+			if (isMouseOver) {
+				event.stopPropagation();
+			}
+		});
 
+		// Detect mouse enter/leave events for the playlist container
+		container.addEventListener("mouseenter", () => {
+			isMouseOver = true;
+		});
+		container.addEventListener("mouseleave", () => {
+			isMouseOver = false;
+		});
+	}
+    
 	const keyActions = {
 		ArrowLeft: () => {
 			currentMedia.currentTime = Math.max(0, currentMedia.currentTime - 10);
