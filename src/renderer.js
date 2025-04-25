@@ -43,7 +43,6 @@ const gifSearchButton = document.getElementById("gifSearchButton");
 const gifResultsContainer = document.getElementById("gifResultsContainer");
 const gifSearchContainer = document.getElementById("gifSearchContainer");
 const statusMessage = document.getElementById("statusMessage");
-zzz
 let currentMedia = video;
 let isFullScreen = false;
 let isRepeatMode  = false;

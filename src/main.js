@@ -90,19 +90,20 @@ function createWindow() {
 
   appState.win.loadFile(path.join(__dirname, 'index.html'));
 
-  // Disable default keyboard shortcuts
-  appState.win.webContents.on('before-input-event', (event, input) => {
-    const disabledShortcuts = [
-      (input.control && input.key.toLowerCase() === 'r'), // Ctrl+R
-      (input.key === 'F5'),                              // F5
-      (input.key === 'F11'),                             // F11
-      (input.key === 'F12'),                             // F12
-      (input.control && input.shift && input.key.toLowerCase() === 'i') // Ctrl+Shift+I
-    ];
-    if (disabledShortcuts.some(Boolean)) {
-      event.preventDefault();
-    }
-  });
+// Disable default keyboard shortcuts
+appState.win.webContents.on('before-input-event', (event, input) => {
+  const disabledShortcuts = [
+    (input.control && input.key.toLowerCase() === 'r'), // Ctrl+R
+    (input.key === 'F5'),                              // F5
+    (input.key === 'F11'),                             // F11
+    (input.key === 'F12'),                             // F12
+    (input.control && input.shift && input.key.toLowerCase() === 'i'), // Ctrl+Shift+I
+    (input.control && input.key.toLowerCase() === 'w') // Ctrl+W
+  ];
+  if (disabledShortcuts.some(Boolean)) {
+    event.preventDefault();
+  }
+});
 
   appState.win.once("ready-to-show", () => {
     handleFileOpenFromArg();
@@ -600,16 +601,6 @@ if (!appState.gotTheLock) {
 // Global shortcut
 function setupGlobalShortcut() {
   globalShortcut.unregisterAll();
-  const ret = globalShortcut.register('Ctrl+Shift+A', () => {
-    if (appState.win) {
-      appState.win.isMinimized() ? appState.win.restore() : appState.win.show();
-      appState.win.focus();
-    }
-  });
-
-  if (!ret) {
-    console.log('Global shortcut registration failed');
-  }
 }
 
 // Shutdown functions
