@@ -108,7 +108,9 @@ appState.win.webContents.on('before-input-event', (event, input) => {
   appState.win.once("ready-to-show", () => {
     handleFileOpenFromArg();
     appState.win.maximize();
-    // appState.win.webContents.openDevTools(); // Only for development
+    appState.win.webContents.send('initial-window-state', appState.win.isFullScreen());
+    appState.win.webContents.send('initial-play-state', appState.playback.status);
+    appState.win.webContents.openDevTools(); // Only for development
     setTimeout(() => {
       createTray();
       updateThumbarButtons();
@@ -175,16 +177,17 @@ function updateWindowState(isFullscreen) {
 
 // Tray management
 function createTray() {
-  appState.tray = new Tray(path.join(__dirname, "../assets/icons/icon.ico"));
-  appState.tray.setToolTip('Anime Player');
+  // Create tray if it doesn't exist or was destroyed
+  if (!appState.tray || appState.tray.isDestroyed()) {
+    appState.tray = new Tray(path.join(__dirname, "../assets/icons/icon.ico"));
+    appState.tray.setToolTip('Anime Player');
+    appState.tray.on("click", toggleWindowVisibility);
+  }
   updateTrayMenu();
-
-  appState.tray.on("click", () => {
-    toggleWindowVisibility();
-  });
 }
-
 function updateTrayMenu() {
+  if (!appState.tray || appState.tray.isDestroyed()) return;
+
   const contextMenu = Menu.buildFromTemplate([
     { 
       label: appState.win.isVisible() ? 'Hide Anime Player' : 'Show Anime Player', 
@@ -203,12 +206,12 @@ function updateTrayMenu() {
     { label: "Mute", click: () => sendPlaybackCommand('mute') },
     { type: "separator" },
     { 
-      label: appState.playback.shuffle === 'off' ? 'Shuffle Off' : 'Shuffle On', 
-      click: () => sendPlaybackCommand('shuffle') 
+      label: `Shuffle: ${appState.playback.shuffle === 'on' ? 'On' : 'Off'}`,
+      click: () => sendPlaybackCommand('shuffle')
     },
     { 
-      label: appState.playback.repeat === 'off' ? 'Repeat Off' : 'Repeat On', 
-      click: () => sendPlaybackCommand('repeat') 
+      label: `Repeat: ${formatRepeatState(appState.playback.repeat)}`,
+      click: () => sendPlaybackCommand('repeat')
     },
     { type: "separator" },
     { label: "Quit Anime Player", click: () => app.quit() }
@@ -227,26 +230,38 @@ function toggleWindowVisibility() {
   updateTrayMenu();
 }
 
+function formatRepeatState(state) {
+  switch (state) {
+      case 'off': return 'Off';
+      case 'one': return 'One';
+      case 'all': return 'All';
+      default: return 'Off';
+  }
+}
+
 // Thumbar buttons
 function updateThumbarButtons() {
-  if (!appState.win) return;
+  if (!appState.win || process.platform !== 'win32') return;
 
   appState.win.setThumbarButtons([
-    {
-      tooltip: 'Previous',
-      icon: path.join(__dirname, '../assets/icons/back.png'),
-      click: () => sendPlaybackCommand('previous'),
-    },
-    {
-      tooltip: appState.playback.status === 'playing' ? 'Pause' : 'Play',
-      icon: path.join(__dirname, appState.playback.status === 'playing' ? '../assets/icons/pause.png' : '../assets/icons/play.png'),
-      click: () => sendPlaybackCommand('play-pause'),
-    },
-    {
-      tooltip: 'Next',
-      icon: path.join(__dirname, '../assets/icons/next.png'),
-      click: () => sendPlaybackCommand('next'),
-    },
+      {
+          tooltip: 'Previous',
+          icon: path.join(__dirname, '../assets/icons/back.png'),
+          click: () => sendPlaybackCommand('previous'),
+      },
+      {
+          tooltip: appState.playback.status === 'playing' ? 'Pause' : 'Play',
+          icon: path.join(__dirname, 
+              appState.playback.status === 'playing' 
+                  ? '../assets/icons/pause.png' 
+                  : '../assets/icons/play.png'),
+          click: () => sendPlaybackCommand('play-pause'),
+      },
+      {
+          tooltip: 'Next',
+          icon: path.join(__dirname, '../assets/icons/next.png'),
+          click: () => sendPlaybackCommand('next'),
+      },
   ]);
 }
 
@@ -313,10 +328,27 @@ function setupIPCHandlers() {
   });
 
   // Playback state updates
-  ipcMain.on('playback-state-update', (event, newState) => {
-    Object.assign(appState.playback, newState);
-    updateTrayMenu();
+  ipcMain.on('play-pause-state-tray', (event, state) => {
+    appState.playback.status = state;
+    if (appState.tray && !appState.tray.isDestroyed()) {
+      updateTrayMenu();
+    }
+  });
+  
+  ipcMain.on('play-pause-state-thumbar', (event, state) => {
+    appState.playback.status = state;
     updateThumbarButtons();
+  });
+
+  ipcMain.on('shuffle-state', (event, state) => {
+    appState.playback.shuffle = state;
+    updateTrayMenu();
+  });
+
+  // Handle repeat state changes
+  ipcMain.on('repeat-state', (event, state) => {
+    appState.playback.repeat = state;
+    updateTrayMenu();
   });
 
   // File dialogs
@@ -619,4 +651,5 @@ ipcMain.on('shutdown-pc', shutdownPC);
 ipcMain.on('shutdown-after-time', (event, timeInMinutes) => {
   const timeInMillis = timeInMinutes * 60 * 1000;
   setTimeout(shutdownPC, timeInMillis);
+
 });

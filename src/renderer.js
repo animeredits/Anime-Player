@@ -43,10 +43,10 @@ const gifSearchButton = document.getElementById("gifSearchButton");
 const gifResultsContainer = document.getElementById("gifResultsContainer");
 const gifSearchContainer = document.getElementById("gifSearchContainer");
 const statusMessage = document.getElementById("statusMessage");
+
 let currentMedia = video;
 let isFullScreen = false;
-let isRepeatMode  = false;
-let mediaFiles = [];
+let isRepeatMode = 0;let mediaFiles = [];
 let playedVideos = [];
 let currentVideoIndex = 0;
 let currentAudioIndex = 0;
@@ -67,12 +67,14 @@ let videoId;
 let hideContinueButtonTimeout;
 let hideHandleTimeout;
 let isVideoPaused = false;
-let isLeftMouseDown = false;
-let isRightMouseDown = false;
-let leftWasPausedBeforeHold = false;
-let rightWasPausedBeforeHold = false;
-let isSpeedAdjustmentHold = false;
+// let isLeftMouseDown = false;
+// let isRightMouseDown = false;
+// let leftWasPausedBeforeHold = false;
+// let rightWasPausedBeforeHold = false;
+let totalTimeInSeconds = 0;
 let isContextMenuVisible = false;
+let isSpeedAdjustmentHold = false;
+let countdownInterval = null;
 let contextMenuClick = false;
 let isShuffle = false;
 let isLooping = false;
@@ -1410,24 +1412,6 @@ document.addEventListener("keydown", function (event) {
     }
 });
 
-// ✅ Event listeners for shutdown checkboxes
-document.getElementById('shutdown-video-end-checkbox').addEventListener('change', (event) => {
-    isShutdownAtVideoEndEnabled = event.target.checked;
-});
-
-document.getElementById('shutdown-playlist-end-checkbox').addEventListener('change', (event) => {
-    isShutdownAtPlaylistEndEnabled = event.target.checked;
-});
-
-// ✅ Function to set shutdown timer
-function setShutdownTimer(minutes) {
-    if (minutes > 0 && (isShutdownAtVideoEndEnabled || isShutdownAtPlaylistEndEnabled)) {
-        window.electron.setShutdownTimer(minutes);
-        showStatusMessage(`PC will shut down in ${minutes} minutes.`);
-    } else {
-        showStatusMessage('Shutdown is disabled. Enable one of the checkboxes to use this feature.');
-    }
-}
 
 // ✅ Quick-set buttons handler
 function setQuickTime(minutes) {
@@ -1462,6 +1446,26 @@ document.querySelectorAll('.quick-set button').forEach(button => {
     });
 });
 
+
+// ✅ Event listeners for shutdown checkboxes
+document.getElementById('shutdown-video-end-checkbox').addEventListener('change', (event) => {
+    isShutdownAtVideoEndEnabled = event.target.checked;
+});
+
+document.getElementById('shutdown-playlist-end-checkbox').addEventListener('change', (event) => {
+    isShutdownAtPlaylistEndEnabled = event.target.checked;
+});
+
+// ✅ Function to set shutdown timer
+function setShutdownTimer(minutes) {
+    if (minutes > 0 && (isShutdownAtVideoEndEnabled || isShutdownAtPlaylistEndEnabled)) {
+        window.electron.setShutdownTimer(minutes);
+        showStatusMessage(`PC will shut down in ${minutes} minutes.`);
+    } else {
+        showStatusMessage('Shutdown is disabled. Enable one of the checkboxes to use this feature.');
+    }
+}
+
 // ✅ If you want a manual shutdown timer input (optional)
 const shutdownBtn = document.getElementById('shutdownBtn');
 shutdownBtn.addEventListener('click', () => {
@@ -1472,10 +1476,6 @@ shutdownBtn.addEventListener('click', () => {
         showStatusMessage('Invalid shutdown time.');
     }
 });
-
-
-let countdownInterval = null;
-let totalTimeInSeconds = 0;
 
 // Function to convert current display time to total seconds
 function getTotalTimeInSeconds() {
@@ -1530,7 +1530,7 @@ function startCountdown() {
 // Add click listener to the play button
 document.getElementById('startBtn').addEventListener('click', startCountdown);
 
-// Optional: Reset timer with the delete/reset button
+// Reset timer with the delete/reset button
 document.getElementById('resetBtn').addEventListener('click', () => {
     if (countdownInterval) clearInterval(countdownInterval);
     totalTimeInSeconds = 0;
@@ -1539,6 +1539,30 @@ document.getElementById('resetBtn').addEventListener('click', () => {
     document.getElementById('seconds').textContent = '00';
     showStatusMessage('Timer reset.');
 });
+
+// Show timer container
+function showTimerContainer() {
+	const container = document.querySelector('.timer-container');
+	if (container) {
+		container.style.display = container.style.display === 'none' ? 'block' : 'none';
+	}
+
+	// Allow timer scrolling when mouse is over it
+	container.addEventListener("wheel", (event) => {
+		if (isMouseOver) {
+			event.stopPropagation();
+		}
+	});
+
+	container.addEventListener("mouseenter", () => {
+		isMouseOver = true;
+	});
+	container.addEventListener("mouseleave", () => {
+		isMouseOver = false;
+	});
+}
+
+document.getElementById('sleep-timer').addEventListener('click', showTimerContainer);
 
 // Close button
 document.getElementById('closeTimer').addEventListener('click', () => {
@@ -1550,55 +1574,55 @@ function setPlaybackSpeed(speed) {
     video.playbackRate = speed;
 }
 
-video.addEventListener('mousedown', (e) => {
-    if (e.button === 0) { // Left mouse button
-        isLeftMouseDown = true;
-        leftWasPausedBeforeHold = video.paused;
-        if (leftWasPausedBeforeHold) video.play();
-        setPlaybackSpeed(2);
-        showStatusMessage("Fast 2x (hold)");
-        isSpeedAdjustmentHold = true;
-        e.preventDefault();
-    } 
-	// else if (e.button === 2) { // Right mouse button
-    //     isRightMouseDown = true;
-    //     rightWasPausedBeforeHold = video.paused;
-    //     if (rightWasPausedBeforeHold) video.play();
-    //     setPlaybackSpeed(1.5);
-    //     showStatusMessage("Fast 1.5x (hold)");
-    //     isSpeedAdjustmentHold = true;
-    //     e.preventDefault();
-    // }
-});
+// video.addEventListener('mousedown', (e) => {
+//     if (e.button === 0) { // Left mouse button
+//         isLeftMouseDown = true;
+//         leftWasPausedBeforeHold = video.paused;
+//         if (leftWasPausedBeforeHold) video.play();
+//         setPlaybackSpeed(2);
+//         showStatusMessage("Fast 2x (hold)");
+//         isSpeedAdjustmentHold = true;
+//         e.preventDefault();
+//     } 
+// 	// else if (e.button === 2) { // Right mouse button
+//     //     isRightMouseDown = true;
+//     //     rightWasPausedBeforeHold = video.paused;
+//     //     if (rightWasPausedBeforeHold) video.play();
+//     //     setPlaybackSpeed(1.5);
+//     //     showStatusMessage("Fast 1.5x (hold)");
+//     //     isSpeedAdjustmentHold = true;
+//     //     e.preventDefault();
+//     // }
+// });
 
-document.addEventListener('mouseup', (e) => {
-    if (e.button === 0 && isLeftMouseDown) {
-        isLeftMouseDown = false;
-        setPlaybackSpeed(1);
-        if (leftWasPausedBeforeHold) video.pause();
-        leftWasPausedBeforeHold = false;
-        isSpeedAdjustmentHold = false; // Immediate reset
-    } 
-    // else if (e.button === 2 && isRightMouseDown) {
-    //     isRightMouseDown = false;
-    //     setPlaybackSpeed(1);
-    //     if (rightWasPausedBeforeHold) video.pause();
-    //     rightWasPausedBeforeHold = false;
-    //     isSpeedAdjustmentHold = false; // Immediate reset
-    // }
-});
+// document.addEventListener('mouseup', (e) => {
+//     if (e.button === 0 && isLeftMouseDown) {
+//         isLeftMouseDown = false;
+//         setPlaybackSpeed(1);
+//         if (leftWasPausedBeforeHold) video.pause();
+//         leftWasPausedBeforeHold = false;
+//         isSpeedAdjustmentHold = false; // Immediate reset
+//     } 
+//     // else if (e.button === 2 && isRightMouseDown) {
+//     //     isRightMouseDown = false;
+//     //     setPlaybackSpeed(1);
+//     //     if (rightWasPausedBeforeHold) video.pause();
+//     //     rightWasPausedBeforeHold = false;
+//     //     isSpeedAdjustmentHold = false; // Immediate reset
+//     // }
+// });
 
-// Prevent click-triggered pause/play when releasing speed hold
-video.addEventListener('click', (e) => {
-    if (isSpeedAdjustmentHold) {
-        e.preventDefault();
-        e.stopImmediatePropagation();
-        // If video was playing before hold, resume playback
-        if (!leftWasPausedBeforeHold && !rightWasPausedBeforeHold) {
-            video.play();
-        }
-    }
-});
+// // Prevent click-triggered pause/play when releasing speed hold
+// video.addEventListener('click', (e) => {
+//     if (isSpeedAdjustmentHold) {
+//         e.preventDefault();
+//         e.stopImmediatePropagation();
+//         // If video was playing before hold, resume playback
+//         if (!leftWasPausedBeforeHold && !rightWasPausedBeforeHold) {
+//             video.play();
+//         }
+//     }
+// });
 
 // Keep your existing speed controls
 playbackSpeedLinks.forEach(link => {
@@ -2076,52 +2100,98 @@ function resetZoom() {
 	applyTransformations();
 }
 
-// Toggle shuffle mode and show status
+// Toggle shuffle mode
 function toggleShuffleMode() {
     isShuffle = !isShuffle;
-
-    if (isShuffle) {
-        shuffleButton.classList.add("active");
-        shuffleButton.src = "../assets/icons/shuffle.png"; 
-        showStatusMessage("Shuffle: On");
-        shuffleButton.title = "Shuffle off";
-        window.electron.sendShuffleState("on");
-    } else {
-        shuffleButton.classList.remove("active");
-        shuffleButton.src = "../assets/icons/no-shuffle.png"; 
-        showStatusMessage("Shuffle: Off");
-        shuffleButton.title = "Shuffle";
+    updateShuffleUI();
+	updatePlaybackState();
+    window.electron.sendShuffleState(isShuffle ? "on" : "off");
+    
+    // Clear history when turning off shuffle
+    if (!isShuffle) {
         playedVideos = [];
         navigationHistory = [];
-        window.electron.sendShuffleState("off");
     }
 }
 
-// Toggle repeat mode and show status
+function updateShuffleUI() {
+    if (isShuffle) {
+        shuffleButton.classList.add("active");
+        shuffleButton.src = "../assets/icons/shuffle.png";
+        showStatusMessage("Shuffle: On");
+        shuffleButton.title = "Shuffle off";
+    } else {
+        shuffleButton.classList.remove("active");
+        shuffleButton.src = "../assets/icons/no-shuffle.png";
+        showStatusMessage("Shuffle: Off");
+        shuffleButton.title = "Shuffle on";
+    }
+}
+
+// Toggle repeat mode
 function toggleRepeat() {
-    // 0 = Off, 1 = Loop One, 2 = Loop All
+    // Cycle through states: off → one → all → off
     isRepeatMode = (isRepeatMode + 1) % 3;
-
-    if (isRepeatMode === 0) {
-        currentMedia.loop = false;
-        showStatusMessage("Loop: Off");
-        loopBtn.src = "../assets/icons/repeat-on.png";
-        loopBtn.title = "Loop one";
-        window.electron.sendRepeatState("off");
-    } else if (isRepeatMode === 1) {
-        currentMedia.loop = true; // Loop only one video
-        showStatusMessage("Loop: One");
-        loopBtn.src = "../assets/icons/repeat-one.png";
-        loopBtn.title = "Loop All";
-        window.electron.sendRepeatState("one");
-    } else if (isRepeatMode === 2) {
-        currentMedia.loop = false; // Handled manually in playNext
-        showStatusMessage("Loop: All");
-        loopBtn.src = "../assets/icons/repeat-on.png";
-        loopBtn.title = "Loop off";
-        window.electron.sendRepeatState("all");
+    updateRepeatUI();
+	updatePlaybackState();
+    window.electron.sendRepeatState(getRepeatStateString());
+    
+    // Apply loop setting for single repeat mode
+    if (currentMedia) {
+        currentMedia.loop = isRepeatMode === 1; // Only loop for single mode
     }
 }
+
+function updateRepeatUI() {
+    switch (isRepeatMode) {
+        case 0: // Off
+            showStatusMessage("Loop: Off");
+            loopBtn.src = "../assets/icons/repeat-on.png";
+            loopBtn.title = "Loop one";
+            break;
+        case 1: // One
+            showStatusMessage("Loop: One");
+            loopBtn.src = "../assets/icons/repeat-one.png";
+            loopBtn.title = "Loop all";
+            break;
+        case 2: // All
+            showStatusMessage("Loop: All");
+            loopBtn.src = "../assets/icons/repeat-on.png";
+            loopBtn.title = "Loop off";
+            break;
+    }
+}
+
+function getRepeatStateString() {
+    switch (isRepeatMode) {
+        case 0: return "off";
+        case 1: return "one";
+        case 2: return "all";
+        default: return "off";
+    }
+}
+
+function updatePlaybackState() {
+    const state = video.paused ? 'paused' : 'playing';
+    window.electron.sendPlayPauseStateForTray(state);
+    window.electron.sendPlayPauseStateForThumbar(state);
+    
+    // Update shuffle and repeat states - use the correct variable names
+    window.electron.sendShuffleState(isShuffle ? 'on' : 'off');
+    window.electron.sendRepeatState(getRepeatStateString());
+}
+
+// Call this whenever playback state changes
+video.addEventListener('play', updatePlaybackState);
+video.addEventListener('pause', updatePlaybackState);
+video.addEventListener('ended', updatePlaybackState);
+
+
+window.electron.onInitialPlayState((state) => {
+    if (state === 'playing' && video.paused) video.play();
+    if (state === 'paused' && !video.paused) video.pause();
+    updatePlaybackState();
+});
 
 // Event listener for shuffle mode button loopbutton, switchtrack button and Full screen 
 document.getElementById("shuffleButton").addEventListener("click", toggleShuffleMode);
@@ -2143,6 +2213,9 @@ function updateFullScreenUI(isFullscreen) {
         button.title = isFullscreen ? "Exit Fullscreen" : "Enter Fullscreen";
     });
 }
+window.electron.onInitialWindowState((isFullscreen) => {
+    updateFullScreenUI(isFullscreen);
+});
 
 // Fullscreen toggle function
 function toggleFullScreen() {
@@ -2360,7 +2433,9 @@ document.addEventListener("DOMContentLoaded", function() {
 			} else if (target.closest("#contextOpenFolder")) {
 				openFolderButton.click();
 			} else if (target.closest("#contextTogglePlayPause")) {
-				togglePlayPause(); // Call the toggle function
+				togglePlayPause();
+			} else if (target.closest("#context-menu-shutdown-timer")) {
+				showTimerContainer();
 			}
 			hideContextMenu(); // Hide context menu after clicking an item
 		});
@@ -2553,7 +2628,7 @@ document.addEventListener("keydown", (event) => {
 		return;
 	}
 
-	if (event.ctrlKey && event.key === "/") {
+	if (event.key === "?" || (!event.shiftKey && event.key === "/")) {
 		event.preventDefault();
 		toggleShortcutsInfoBox();
 		return;
@@ -2644,24 +2719,7 @@ document.addEventListener("keydown", (event) => {
 
 	if (event.ctrlKey && event.key.toLowerCase() === 't') {
 		event.preventDefault();
-		const container = document.querySelector('.timer-container');
-		if (container) {
-			container.style.display = container.style.display === 'none' ? 'block' : 'none';
-		}
-		// Allow playlist scrolling when mouse is over it
-		container.addEventListener("wheel", (event) => {
-			if (isMouseOver) {
-				event.stopPropagation();
-			}
-		});
-
-		// Detect mouse enter/leave events for the playlist container
-		container.addEventListener("mouseenter", () => {
-			isMouseOver = true;
-		});
-		container.addEventListener("mouseleave", () => {
-			isMouseOver = false;
-		});
+		showTimerContainer()
 	}
     
 	const keyActions = {
@@ -2710,7 +2768,9 @@ document.addEventListener("keydown", (event) => {
 			currentMedia.play();
 		},
 		Delete: () => {
-			deleteCurrentMediaFile();		}
+			deleteCurrentMediaFile();
+			showStatusMessage("Deleted current media file.");
+		},
 	};
 
 	if (keyActions[event.key]) {
@@ -2800,22 +2860,6 @@ const btn = document.getElementById("showShortcuts");
 btn.onclick = function() {
 	toggleShortcutsInfoBox();
 };
-
-// Toggle the modal Shortcuts and Search Shortcuts
-const shortcuts = document.querySelectorAll('.shortcut');
-const keyboardTab = document.getElementById('keyboardTab');
-const voiceTab = document.getElementById('voiceTab');
-const keyboardShortcuts = document.getElementById('keyboardShortcuts');
-const voiceShortcuts = document.getElementById('voiceShortcuts');
-const searchInput = document.getElementById('shortcutSearch');
-
-// Handle tab click
-keyboardTab.addEventListener('click', () => {
-	keyboardTab.classList.add('active-tab');
-	voiceTab.classList.remove('active-tab');
-	keyboardShortcuts.style.display = 'grid';
-	voiceShortcuts.style.display = 'none';
-});
 
 // Function to apply rotation
 function applyRotation() {
@@ -3125,7 +3169,6 @@ document.querySelector("#window-close").addEventListener("click", () => {
 	savePlaybackAndQuit();
 });
 
-
 // Show loader
 function showLoader() {
     const loader = document.getElementById("loader");
@@ -3232,6 +3275,11 @@ window.electron.onMute(() => {
 });
 
 // Handle Repate action from tray
+window.electron.onShuffleState(() => {
+    toggleShuffleMode();
+});
+
+// Handle repeat action from tray
 window.electron.onRepeatState(() => {
-	toggleRepeat();
+    toggleRepeat();
 });

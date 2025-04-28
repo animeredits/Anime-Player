@@ -64,6 +64,7 @@
               <a class="">Play</a>
               <a class="nextbtn">Next</a>
               <a class="previousbtn">Previous</a>
+              <a id="sleep-timer">Sleep Timer</a>
               <a class="stopPlayback">Stop</a>
             </div>
           </li>
@@ -151,7 +152,7 @@
           <li class="dropdown">
             <a href="javascript:void(0)" class="dropbtn">Help</a>
             <div class="dropdown-content">
-              <a id="showShortcuts">Shortcuts <span class="shortcut">Ctrl + /</span>
+              <a id="showShortcuts">Shortcuts <span class="shortcut">Shift + /</span>
               </a>
             </div>
           </li>
@@ -349,6 +350,12 @@
                 <span class="text">Subtitle Track</span>
               </a>
             </li> -->
+            <li>
+              <a id="context-menu-shutdown-timer">
+                <span class="icon" >⏱️</span>
+                <span class="text">S Timer</span>
+              </a>
+            </li>
             <li id="context-menu-playlist" class="sub-dropdown">
               <a href="javascript:void(0)" class="sub-dropbtn">
                 <span class="icon">📜</span>
@@ -485,7 +492,7 @@
         <div id="shortcutsModal" class="modal">
           <div class="modal-content">
             <div class="modal-header">
-              <h2 id="keyboardTab" >Keyboard Shortcuts</h2>
+              <h2>Keyboard Shortcuts</h2>
               <button class="modalClose" aria-label="Close">
                 <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24" class="icon-md">
                   <path fill="currentColor" fill-rule="evenodd" d="M5.636 5.636a1 1 0 0 1 1.414 0l4.95 4.95 4.95-4.95a1 1 0 0 1 1.414 1.414L13.414 12l4.95 4.95a1 1 0 0 1-1.414 1.414L12 13.414l-4.95 4.95a1 1 0 0 1-1.414-1.414l4.95-4.95-4.95-4.95a1 1 0 0 1 0-1.414" clip-rule="evenodd"></path>
@@ -591,12 +598,16 @@
                   <div class="keys"><span class="key">2</span></div>
                 </div>
                 <div class="shortcut">
-                  <div class="description">Delete Video</div>
-                  <div class="keys"><span class="key">Ctrl</span><span class="key">D</span><span class="key">or</span><span class="key">Delete</span></div>
+                  <div class="description">Sleep Timer</div>
+                  <div class="keys"><span class="key">Ctrl</span><span class="key">T</span></div>
                 </div>
                 <div class="shortcut">
                   <div class="description">Pop Up Screen</div>
                   <div class="keys"><span class="key">Ctrl</span><span class="key">P</span></div>
+                </div>
+                <div class="shortcut">
+                  <div class="description">Delete Video</div>
+                  <div class="keys"><span class="key">Ctrl</span><span class="key">D</span><span class="key">or</span><span class="key">Delete</span></div>
                 </div>
                 <div class="shortcut">
                   <div class="description">Zoom Video</div>

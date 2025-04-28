@@ -606,8 +606,6 @@ nav > * {
 .timer-container {
   display: none ; 
   position: relative;
-  top: 20px; 
-  right: 20px; 
   backdrop-filter: blur(10px) saturate(180%);
   background-color: #2f2f2fc5; 
   border-radius: 16px;
@@ -1043,7 +1041,7 @@ main {
 
 /* Modal Content */
 .modal-content {
-  font-family: "Lato", sans-serif;
+  font-family: sans-serif;
   backdrop-filter: blur(30px) saturate(180%);
   background-color: #2f2f2fc5;
   border-radius: 12px;
@@ -1088,22 +1086,10 @@ main {
 }
 
 .modal-header h2 {
-  color: rgba(255, 255, 255, 0.6);
-  cursor: pointer;
+  color: #fff;
   margin-right: 20px;
   font-size: 1.125rem;
   font-weight: 200;
-  color: #fff;
-}
-
-.active-tab {
-  color: #fff;
-  border-bottom: 2px solid #fff;
-  cursor: pointer;
-}
-
-.modal-header h2:hover {
-  color: #fff;
 }
 
 #shortcutSearch {
