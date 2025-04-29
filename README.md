@@ -16,6 +16,7 @@ Anime Player is a lightweight and powerful media player designed specifically fo
 - 🗑️ **File Management** - Quickly delete videos directly from the player.
 - 🖥️ **Picture-in-Picture Mode** - Watch videos while multitasking.
 - 📋 **Playlist & Queue Management** - Easily organize and navigate media.
+- ⏲️ Sleep Timer - Automatically stop playback after a set time.
 
 ## ⌨️ Keyboard Shortcuts
 
@@ -34,6 +35,7 @@ Anime Player is a lightweight and powerful media player designed specifically fo
 | **Play Next** | `N` |
 | **Play Previous** | `P` |
 | **Shuffle on/off** | `S` |
+| **Sleep Timer on/off** | `Ctrl + S` |
 | **Repeat on/off** | `L` |
 | **Toggle Fullscreen** | `F` |
 | **Change Audio Track** | `B` |
@@ -65,8 +67,8 @@ Anime Player is a lightweight and powerful media player designed specifically fo
 
 ## 📜 License
 
-Anime Player is open-source under the [**MIT License**](https://github.com/animeredits/Anime-Player/blob/main/LICENSE.txt).
+Anime Player is open-source under the [**MIT License**](https://github.com/animeredits/Anime-Player/blob/main/LICENSE).
 
 ---
 
-👨‍💻 Developed with ❤️ by Animeredits for Anime Fans!
+👨‍💻 Developed by [**Animeredits**](https://github.com/animeredits) for Anime Fans!

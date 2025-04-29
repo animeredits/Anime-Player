@@ -439,9 +439,17 @@
               <!-- Playlist items will go here -->
           </div>
         </div>
-        <!-- progress-bar -->
-        <div class="progress">
-          <div id="progress-bar" class="progress-bar"></div>
+        <!-- Update Dialog -->
+        <div class="update-dialog" id="updateDialog">
+          <h2>
+            <img src="../assets/icons/icon.png" class="update-icon" alt="Update">
+            New Version Available
+          </h2>
+          <p>A new version of Anime Player is available. Would you like to download and install it now?</p>
+          <div class="update-dialog-buttons">
+            <button class="update-dialog-btn secondary" id="updateLaterBtn">Later</button>
+            <button class="update-dialog-btn primary" id="updateNowBtn">Install Now</button>
+          </div>
         </div>
         <!-- Status Message -->
         <div id="statusMessage" class="status-message"></div>

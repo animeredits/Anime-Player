@@ -1,0 +1,112 @@
+body {
+  margin: 0;
+  padding: 0;
+  background: #1a1a1a;
+  color: white;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  -webkit-user-drag: none;
+  -webkit-user-select: none;
+  user-select: none;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100vh;
+}
+
+.updater-container {
+  background: #1e1e1e;
+  border-radius: 20px;
+  padding: 30px;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.4);
+  width: 350px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 20px;
+  position: relative;
+}
+
+.updater-logo {
+  width: 70px;
+  height: 70px;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+.updater-status {
+  font-size: 18px;
+  color: #ccc;
+  text-align: center;
+}
+
+.progress-container {
+  width: 100%;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  overflow: hidden;
+  height: 3.5px;
+  position: relative;
+}
+
+.progress-bar {
+  height: 100%;
+  width: 0%;
+  transition: width 0.3s ease;
+  background: linear-gradient(90deg, 
+    #ff5e5e 0%, 
+    #ff9a5e 20%, 
+    #ffe75e 40%, 
+    #5eff8f 60%, 
+    #5eb3ff 80%, 
+    #9d5eff 100%);
+  background-size: 200% 100%;
+  animation: gradientShift 2s linear infinite;
+  border-radius: 8px;
+  box-shadow: 0 0 10px rgba(0, 188, 212, 0.5);
+  position: relative;
+  overflow: hidden;
+}
+
+/* Add the pulse effect when download completes */
+.progress-bar.complete {
+  animation: gradientShift 1s linear infinite, pulse 1.5s ease infinite;
+  background: linear-gradient(90deg, 
+    #00ff88 0%, 
+    #00ffcc 50%, 
+    #00ff88 100%);
+}
+
+@keyframes gradientShift {
+  0% { background-position: 0% 50%; }
+  100% { background-position: 100% 50%; }
+}
+
+@keyframes pulse {
+  0% { box-shadow: 0 0 5px rgba(0, 255, 136, 0.5); }
+  50% { box-shadow: 0 0 20px rgba(0, 255, 136, 0.8); }
+  100% { box-shadow: 0 0 5px rgba(0, 255, 136, 0.5); }
+}
+
+.progress-text {
+  position: absolute;
+  bottom: 5px;
+  font-size: 14px;
+  color: #aaa;
+  text-align: center;
+}
+
+.update-button {
+  margin-top: 15px;
+  padding: 10px 24px;
+  border: none;
+  background: #2196f3;
+  color: white;
+  font-weight: bold;
+  border-radius: 20px;
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+
+.update-button:hover {
+  background: #1976d2;
+}

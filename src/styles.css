@@ -28,18 +28,6 @@ body {
   -webkit-user-select: none;
   user-select: none;
   scroll-behavior: smooth;
-  --light: hsl(220, 50%, 90%);
-  --primary: hsl(255, 30%, 55%);
-  --focus: hsl(210, 90%, 50%);
-  --border-color: hsla(0, 0%, 100%, 0.2);
-  --global-background: hsl(220, 25%, 10%);
-  --background: linear-gradient(
-    to right,
-    hsl(210, 30%, 20%),
-    hsl(255, 30%, 25%)
-  );
-  --shadow-1: hsla(236, 50%, 50%, 0.3);
-  --shadow-2: hsla(236, 50%, 50%, 0.4);
 }
 
 .hidden {
@@ -1438,44 +1426,7 @@ span {
 }
 
 input[type="range"]::-webkit-slider-runnable-track {
-  appearance: none;
-  background: rgba(59, 173, 227, 1);
-  background: -moz-linear-gradient(
-    45deg,
-    rgba(59, 173, 227, 1) 0%,
-    rgba(87, 111, 230, 1) 25%,
-    rgba(152, 68, 183, 1) 51%,
-    rgba(255, 53, 127, 1) 100%
-  );
-  background: -webkit-gradient(
-    left bottom,
-    right top,
-    color-stop(0%, rgba(59, 173, 227, 1)),
-    color-stop(25%, rgba(87, 111, 230, 1)),
-    color-stop(51%, rgba(152, 68, 183, 1)),
-    color-stop(100%, rgba(255, 53, 127, 1))
-  );
-  background: -webkit-linear-gradient(
-    45deg,
-    rgba(59, 173, 227, 1) 0%,
-    rgba(87, 111, 230, 1) 25%,
-    rgba(152, 68, 183, 1) 51%,
-    rgba(255, 53, 127, 1) 100%
-  );
-  background: -o-linear-gradient(
-    45deg,
-    rgba(59, 173, 227, 1) 0%,
-    rgba(87, 111, 230, 1) 25%,
-    rgba(152, 68, 183, 1) 51%,
-    rgba(255, 53, 127, 1) 100%
-  );
-  background: -ms-linear-gradient(
-    45deg,
-    rgba(59, 173, 227, 1) 0%,
-    rgba(87, 111, 230, 1) 25%,
-    rgba(152, 68, 183, 1) 51%,
-    rgba(255, 53, 127, 1) 100%
-  );
+  height: 2px;
   background: linear-gradient(
     45deg,
     rgba(59, 173, 227, 1) 0%,
@@ -1483,8 +1434,6 @@ input[type="range"]::-webkit-slider-runnable-track {
     rgba(152, 68, 183, 1) 51%,
     rgba(255, 53, 127, 1) 100%
   );
-  filter: progid:DXImageTransform.Microsoft.gradient( startColorstr='#3bade3 ', endColorstr='#ff357f ', GradientType=1 );
-  height: 2px;
 }
 
 input[type="range"]:focus {
@@ -1492,44 +1441,7 @@ input[type="range"]:focus {
 }
 
 input[type="range"]::-moz-range-track {
-  -moz-appearance: none;
-  background: rgba(59, 173, 227, 1);
-  background: -moz-linear-gradient(
-    45deg,
-    rgba(59, 173, 227, 1) 0%,
-    rgba(87, 111, 230, 1) 25%,
-    rgba(152, 68, 183, 1) 51%,
-    rgba(255, 53, 127, 1) 100%
-  );
-  background: -webkit-gradient(
-    left bottom,
-    right top,
-    color-stop(0%, rgba(59, 173, 227, 1)),
-    color-stop(25%, rgba(87, 111, 230, 1)),
-    color-stop(51%, rgba(152, 68, 183, 1)),
-    color-stop(100%, rgba(255, 53, 127, 1))
-  );
-  background: -webkit-linear-gradient(
-    45deg,
-    rgba(59, 173, 227, 1) 0%,
-    rgba(87, 111, 230, 1) 25%,
-    rgba(152, 68, 183, 1) 51%,
-    rgba(255, 53, 127, 1) 100%
-  );
-  background: -o-linear-gradient(
-    45deg,
-    rgba(59, 173, 227, 1) 0%,
-    rgba(87, 111, 230, 1) 25%,
-    rgba(152, 68, 183, 1) 51%,
-    rgba(255, 53, 127, 1) 100%
-  );
-  background: -ms-linear-gradient(
-    45deg,
-    rgba(59, 173, 227, 1) 0%,
-    rgba(87, 111, 230, 1) 25%,
-    rgba(152, 68, 183, 1) 51%,
-    rgba(255, 53, 127, 1) 100%
-  );
+  height: 2px;
   background: linear-gradient(
     45deg,
     rgba(59, 173, 227, 1) 0%,
@@ -1537,78 +1449,37 @@ input[type="range"]::-moz-range-track {
     rgba(152, 68, 183, 1) 51%,
     rgba(255, 53, 127, 1) 100%
   );
-  filter: progid:DXImageTransform.Microsoft.gradient( startColorstr='#3bade3 ', endColorstr='#ff357f ', GradientType=1 );
-  height: 2px;
 }
 
 input[type="range"]::-webkit-slider-thumb {
   appearance: none;
-  border: 2px solid;
+  border: 2px solid rgb(59, 173, 227);
   border-radius: 50%;
   height: 25px;
   width: 25px;
-  max-width: 80px;
-  position: relative;
-  bottom: 11px;
   background-color: #1d1c25;
-  cursor: -webkit-grab;
-  -webkit-transition: border 1000ms ease;
+  cursor: grab;
   transition: border 1000ms ease;
+  margin-top: -11px;
 }
 
 input[type="range"]::-moz-range-thumb {
-  -moz-appearance: none;
-  border: 2px solid;
+  appearance: none;
+  border: 2px solid rgb(59, 173, 227);
   border-radius: 50%;
   height: 25px;
   width: 25px;
-  max-width: 80px;
-  position: relative;
-  bottom: 11px;
   background-color: #1d1c25;
-  cursor: -moz-grab;
-  -moz-transition: border 1000ms ease;
+  cursor: grab;
   transition: border 1000ms ease;
 }
 
-.range.blue::-webkit-slider-thumb {
-  border-color: rgb(59, 173, 227);
-}
-
-.range.ltpurple::-webkit-slider-thumb {
-  border-color: rgb(87, 111, 230);
-}
-
-.range.purple::-webkit-slider-thumb {
-  border-color: rgb(152, 68, 183);
-}
-
-.range.pink::-webkit-slider-thumb {
-  border-color: rgb(255, 53, 127);
-}
-
-.range.blue::-moz-range-thumb {
-  border-color: rgb(59, 173, 227);
-}
-
-.range.ltpurple::-moz-range-thumb {
-  border-color: rgb(87, 111, 230);
-}
-
-.range.purple::-moz-range-thumb {
-  border-color: rgb(152, 68, 183);
-}
-
-.range.pink::-moz-range-thumb {
-  border-color: rgb(255, 53, 127);
-}
-
 input[type="range"]::-webkit-slider-thumb:active {
-  cursor: -webkit-grabbing;
+  cursor: grabbing;
 }
 
 input[type="range"]::-moz-range-thumb:active {
-  cursor: -moz-grabbing;
+  cursor: grabbing;
 }
 
 /* media Controls */
@@ -1808,30 +1679,141 @@ input[type="range"]::-moz-range-thumb:active {
   background: #1a1a1a;
 }
 
-/* Update Progress bar */
-.progress {
-  display: none;
-  width: 25%;
-  height: 4px;
-  position: absolute;
-  bottom: 2vh;
+/* Update Dialog Styles */
+.update-dialog {
+  position: fixed;
+  top: 50%;
   left: 50%;
-  border-radius: 4px;
-  background: rgba(255, 255, 255, 0.5);
-  transform: translate(-50%, -50%);
-  overflow: hidden;
-  z-index: 999;
+  transform: translate(-50%, -50%) scale(0.9);
+  width: min(90%, 400px);
+  backdrop-filter: blur(30px) saturate(180%);
+  background-color: #1e1e1e;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.125);
+  padding: 25px;
+  z-index: 10000;
+  opacity: 0;
+  pointer-events: none;
+  transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  color: #e0e0e0;
+  font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
 }
 
-.progress-bar {
-  content: "";
-  width: 100%;
-  height: 4px;
-  background: white;
-  transition: width 0.2s ease;
+.update-dialog.active {
+  opacity: 1;
+  pointer-events: all;
+  transform: translate(-50%, -50%) scale(1);
 }
 
+.update-dialog h2 {
+  margin: 0 0 10px 0;
+  color: #fff;
+  font-size: 1.5rem;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
 
+.update-dialog p {
+  color: #bbb;
+  margin: 0 0 25px 0;
+  line-height: 1.5;
+  font-size: 0.95rem;
+}
+
+.update-dialog-buttons {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+}
+
+.update-dialog-btn {
+  padding: 8px 20px;
+  border-radius: 18px;
+  border: none;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-size: 0.9rem;
+  min-width: 80px;
+  text-align: center;
+}
+
+.update-dialog-btn.secondary {
+  background: rgba(255, 255, 255, 0.1);
+  color: #fff;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.update-dialog-btn.secondary:hover {
+  background: rgba(255, 255, 255, 0.15);
+  border-color: rgba(255, 255, 255, 0.3);
+}
+
+.update-dialog-btn.primary {
+  background: #2196f3;
+  color: white;
+}
+
+.update-dialog-btn.primary:hover {
+  background: #2196f5;
+  transform: translateY(-1px);
+}
+
+.update-dialog-btn:active {
+  transform: translateY(0) scale(0.98);
+}
+
+.update-icon {
+  width: 45px;
+  height: 45px;
+}
+
+/* Animation keyframes */
+@keyframes dialogEnter {
+  0% {
+    transform: translate(-50%, -50%) scale(0.9);
+    opacity: 0;
+  }
+  100% {
+    transform: translate(-50%, -50%) scale(1);
+    opacity: 1;
+  }
+}
+
+@keyframes dialogExit {
+  0% {
+    transform: translate(-50%, -50%) scale(1);
+    opacity: 1;
+  }
+  100% {
+    transform: translate(-50%, -50%) scale(0.9);
+    opacity: 0;
+  }
+}
+
+/* Responsive adjustments */
+@media (max-width: 480px) {
+  .update-dialog {
+    width: 95%;
+    padding: 20px;
+  }
+  
+  .update-dialog h2 {
+    font-size: 1.3rem;
+  }
+  
+  .update-dialog-buttons {
+    flex-direction: column-reverse;
+    gap: 8px;
+  }
+  
+  .update-dialog-btn {
+    width: 100%;
+    padding: 10px;
+  }
+}
 
 /* Video Settings */
 .video-settings {

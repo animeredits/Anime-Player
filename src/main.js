@@ -8,6 +8,8 @@ const { net } = require('electron');
 // Constants
 const MEDIA_EXTENSIONS = ['.mp4', '.webm', '.mkv', '.avi', '.mov', '.mp3', '.wav', '.aac', '.ogg', '.flac'];
 const TWO_DAYS_IN_MILLIS = 2 * 24 * 60 * 60 * 1000;
+let updaterWindow = null;
+let isUpdating = false;
 
 // App paths
 const animePlayerPath = path.join(app.getPath('appData'), 'Anime Player');
@@ -110,7 +112,7 @@ appState.win.webContents.on('before-input-event', (event, input) => {
     appState.win.maximize();
     appState.win.webContents.send('initial-window-state', appState.win.isFullScreen());
     appState.win.webContents.send('initial-play-state', appState.playback.status);
-    appState.win.webContents.openDevTools(); // Only for development
+    // appState.win.webContents.openDevTools(); // Only for development
     setTimeout(() => {
       createTray();
       updateThumbarButtons();
@@ -214,8 +216,15 @@ function updateTrayMenu() {
       click: () => sendPlaybackCommand('repeat')
     },
     { type: "separator" },
-    { label: "Quit Anime Player", click: () => app.quit() }
-  ]);
+    { 
+      label: "Quit Anime Player", 
+      click: () => {
+        appState.isQuitting = true;
+        app.quit();
+      },
+      enabled: !isUpdating
+    }
+]);
   
   appState.tray.setContextMenu(contextMenu);
 }
@@ -361,6 +370,11 @@ function setupIPCHandlers() {
   ipcMain.handle('load-playback-time', handleLoadPlaybackTime);
   ipcMain.on("delete-playback-entry", handleDeletePlaybackEntry);
 
+  // App Update
+  ipcMain.on('start-update-download', () => {
+    autoUpdater.downloadUpdate();
+  });
+
   // App lifecycle
   ipcMain.on("appClose", handleAppClose);
 }
@@ -478,15 +492,26 @@ function handleDeletePlaybackEntry(event, videoId) {
 }
 
 function handleAppClose(event, playbackTime, videoId) {
-  let playbackData = loadPlaybackTime();
-  playbackData[videoId] = { time: playbackTime, timestamp: Date.now() };
-
-  try {
-    fs.writeFileSync(savePath, JSON.stringify(playbackData, null, 2));
-  } catch (error) {
-    console.error("Error writing playback data:", error);
+  // Save playback time if needed
+  if (playbackTime && videoId) {
+    let playbackData = loadPlaybackTime();
+    playbackData[videoId] = { time: playbackTime, timestamp: Date.now() };
+    try {
+      fs.writeFileSync(savePath, JSON.stringify(playbackData, null, 2));
+    } catch (error) {
+      console.error("Error writing playback data:", error);
+    }
   }
 
+  // Don't quit if update is in progress
+  if (isUpdating) {
+    if (appState.win) {
+      appState.win.hide(); // Hide instead of destroying
+    }
+    return;
+  }
+
+  // Normal quit procedure
   if (appState.tray) appState.tray.destroy();
   if (appState.win) appState.win.destroy();
 
@@ -499,47 +524,65 @@ function handleAppClose(event, playbackTime, videoId) {
 // Auto-updater
 function setupAutoUpdater() {
   if (!net.isOnline()) {
-    dialog.showMessageBox({
-      type: 'warning',
-      title: 'No Internet Connection',
-      message: 'Could not check for updates. Please check your internet connection.',
-    });
+    appState.win?.webContents.send('show-offline-message');
     return;
   }
 
+  autoUpdater.autoDownload = false;
   autoUpdater.checkForUpdates();
 
   autoUpdater.on('update-available', () => {
-    dialog.showMessageBox({
-      type: 'info',
-      title: 'Update Available',
-      message: 'A new version is available. Would you like to update now?',
-      buttons: ['Update Now', 'Later'],
-    }).then((result) => {
-      if (result.response === 0) {
-        autoUpdater.downloadUpdate();
-        appState.win?.webContents.send('show-progress-bar');
-      }
-    });
+    appState.win?.webContents.send('update-available');
   });
 
   autoUpdater.on('download-progress', (progress) => {
-    appState.win?.webContents.send('download-progress', progress.percent);
+    isUpdating = true;
+    if (!updaterWindow) createUpdaterWindow();
+    updaterWindow.webContents.send('download-progress', progress.percent);
   });
 
   autoUpdater.on('update-downloaded', () => {
-    dialog.showMessageBox({
-      type: 'info',
-      title: 'Update Ready',
-      message: 'Update downloaded. Restart to apply?',
-      buttons: ['Restart', 'Later'],
-    }).then((result) => {
-      if (result.response === 0) {
-        appState.isQuitting = true;
-        autoUpdater.quitAndInstall();
-      }
-    });
+    isUpdating = false; // Update is ready to install
+    updaterWindow?.webContents.send('update-downloaded');
+    setTimeout(() => {
+      appState.isQuitting = true;
+      autoUpdater.quitAndInstall();
+    }, 2000);
   });
+
+  autoUpdater.on('error', (error) => {
+    console.error('Update error:', error);
+    isUpdating = false;
+    if (updaterWindow) updaterWindow.close();
+    appState.win?.webContents.send('update-error', error.message);
+    
+    // Show the main window if it was hidden due to update
+    if (appState.win && !appState.win.isVisible()) {
+      appState.win.show();
+    }
+  });
+}
+
+function createUpdaterWindow() {
+  updaterWindow = new BrowserWindow({
+    width: 350,
+    height: 200,
+    resizable: false,
+    maximizable: false,
+    closable: false,
+    minimizable: true,
+    frame: false,
+    show: false,
+    webPreferences: {
+      preload: path.join(__dirname, './update/preload-updater.js'),
+      nodeIntegration: false,
+      contextIsolation: true
+    }
+  });
+
+  updaterWindow.loadFile(path.join(__dirname, './update/updater.html'));
+  updaterWindow.on('ready-to-show', () => updaterWindow.show());
+  updaterWindow.on('closed', () => updaterWindow = null);
 }
 
 // App lifecycle
@@ -555,10 +598,12 @@ app.on('will-quit', () => {
 });
 
 app.on('before-quit', (event) => {
-  if (!appState.isQuitting) {
+  if (!appState.isQuitting && !isUpdating) {
     event.preventDefault();
     appState.isQuitting = true;
-    appState.win?.webContents.send('app-closing');
+    if (appState.win) {
+      appState.win.webContents.send('app-closing');
+    }
     setTimeout(app.quit, 500);
   }
 });

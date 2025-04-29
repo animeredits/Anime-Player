@@ -46,7 +46,8 @@ const statusMessage = document.getElementById("statusMessage");
 
 let currentMedia = video;
 let isFullScreen = false;
-let isRepeatMode = 0;let mediaFiles = [];
+let isRepeatMode = 0;
+let mediaFiles = [];
 let playedVideos = [];
 let currentVideoIndex = 0;
 let currentAudioIndex = 0;
@@ -2276,7 +2277,6 @@ document.addEventListener("DOMContentLoaded", function() {
 	const video = document.querySelector("video");
 	const navArrows = document.querySelector(".nav-arrows");
 	const winButton = document.querySelector(".win-buttons");
-	const progress = document.querySelector(".progress");
 	let hideTimeout;
 
 	// Function to hide navbar, Mediacontrols, nav arrows, and cursor
@@ -2293,9 +2293,6 @@ document.addEventListener("DOMContentLoaded", function() {
 			navArrows.classList.add("hidden");
 			winButton.classList.remove("visible");
 			winButton.classList.add("hidden");
-
-			progress.classList.remove("visible");
-			progress.classList.add("hidden");
 		}
 	}
 
@@ -2312,9 +2309,6 @@ document.addEventListener("DOMContentLoaded", function() {
 		navArrows.classList.remove("hidden");
 		winButton.classList.remove("hidden");
 		winButton.classList.add("visible")
-
-		progress.classList.remove("hidden");
-		progress.classList.add("visible");
 
 		// Clear the previous timeout and start a new one to hide controls after 1000ms
 		clearTimeout(hideTimeout);
@@ -3212,27 +3206,59 @@ window.electron.openFolderFromContext(async (folderPath) => {
     }
 });
 
+// Update Dialog Functions
+const updateDialog = {
+	init: function() {
+		this.dialog = document.getElementById('updateDialog');
+		this.updateNowBtn = document.getElementById('updateNowBtn');
+		this.updateLaterBtn = document.getElementById('updateLaterBtn');
 
-window.electron.onDownloadProgress((percent) => {
-const progressBar = document.getElementById('progress-bar');
-const progressContainer = document.querySelector('.progress');
+		this.updateNowBtn.addEventListener('click', () => {
+			window.electron.startUpdateDownload();
+			this.hide();
+		});
 
-if (progressContainer) {
-  progressContainer.style.display = 'block'; // Show progress bar
-}
+		this.updateLaterBtn.addEventListener('click', () => {
+			this.hide();
+		});
+	},
 
-if (progressBar) {
-progressBar.style.width = `${percent}%`;
-}
-});
+	show: function() {
+		this.dialog.classList.add('active');
+		// Trigger reflow to enable animation
+		void this.dialog.offsetWidth;
+		this.dialog.style.transform = 'translate(-50%, -50%) scale(1)';
+		this.dialog.style.opacity = '1';
+	},
 
-window.electron.showProgressBar = () => {
-document.querySelector('.progress').style.display = 'block';
+	hide: function() {
+		this.dialog.style.transform = 'translate(-50%, -50%) scale(0.9)';
+		this.dialog.style.opacity = '0';
+
+		// Remove active class after animation completes
+		this.dialog.addEventListener('transitionend', () => {
+			if (this.dialog.style.opacity === '0') {
+				this.dialog.classList.remove('active');
+			}
+		}, {
+			once: true
+		});
+	}
 };
 
-window.electron.hideProgressBar = () => {
-document.querySelector('.progress').style.display = 'none';
-}
+// Initialize when DOM is ready
+document.addEventListener('DOMContentLoaded', () => {
+	updateDialog.init();
+
+	window.electron.onUpdateAvailable(() => {
+		updateDialog.show();
+	});
+
+	window.electron.onUpdateError((error) => {
+		showErrorDialog(`Update failed: ${error}`);
+	});
+});
+
 
 // ✅ Handle actions from tray
 // Handle play/pause action from tray

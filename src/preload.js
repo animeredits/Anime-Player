@@ -11,12 +11,9 @@ contextBridge.exposeInMainWorld('electron', {
   onInitialWindowState: (callback) => ipcRenderer.on("initial-window-state", (_, isFullScreen) => callback(isFullScreen)),
 
   // Update Control
-  onUpdateAvailable: (callback) => ipcRenderer.on('update_available', callback),
-  onUpdateDownloaded: (callback) => ipcRenderer.on('update_downloaded', callback),
-  onDownloadProgress: (callback) => ipcRenderer.on('download-progress', (event, percent) => callback(percent)),
-  showProgressBar: () => ipcRenderer.send('show-progress-bar'),
-  hideProgressBar: () => ipcRenderer.send('hide-progress-bar'),
-  restartApp: () => ipcRenderer.send('restart_app'),
+  onUpdateAvailable: (callback) => ipcRenderer.on('update-available', callback),
+  onUpdateError: (callback) => ipcRenderer.on('update-error', callback),
+  startUpdateDownload: () => ipcRenderer.send('start-update-download'),
 
   // Media Controls
   onPlayPause: (callback) => ipcRenderer.on('play-pause', callback),
