@@ -187,6 +187,7 @@ function createTray() {
   }
   updateTrayMenu();
 }
+
 function updateTrayMenu() {
   if (!appState.tray || appState.tray.isDestroyed()) return;
 
@@ -330,11 +331,6 @@ function setupIPCHandlers() {
   // Window control
   ipcMain.on("Minimize", () => appState.win?.minimize());
   ipcMain.on("Maximize", () => appState.win?.setFullScreen(!appState.win.isFullScreen()));
-  ipcMain.on("toggle-fullscreen", (event) => {
-    const isFullscreen = !appState.win.isFullScreen();
-    appState.win.setFullScreen(isFullscreen);
-    event.sender.send("fullscreen-state-changed", isFullscreen);
-  });
 
   // Playback state updates
   ipcMain.on('play-pause-state-tray', (event, state) => {
@@ -378,6 +374,15 @@ function setupIPCHandlers() {
   // App lifecycle
   ipcMain.on("appClose", handleAppClose);
 }
+
+ipcMain.on("toggle-fullscreen", (event) => {
+  if (appState.win) {
+    const isFullscreen = !appState.win.isFullScreen();
+    appState.win.setFullScreen(isFullscreen);
+    event.sender.send("fullscreen-state-changed", isFullscreen);
+  }
+});
+
 
 async function handleOpenFileDialog() {
   try {
@@ -506,7 +511,7 @@ function handleAppClose(event, playbackTime, videoId) {
   // Don't quit if update is in progress
   if (isUpdating) {
     if (appState.win) {
-      appState.win.hide(); // Hide instead of destroying
+      appState.win.hide();
     }
     return;
   }
@@ -542,12 +547,11 @@ function setupAutoUpdater() {
   });
 
   autoUpdater.on('update-downloaded', () => {
-    isUpdating = false; // Update is ready to install
+    isUpdating = false;
     updaterWindow?.webContents.send('update-downloaded');
-    setTimeout(() => {
       appState.isQuitting = true;
       autoUpdater.quitAndInstall();
-    }, 2000);
+  
   });
 
   autoUpdater.on('error', (error) => {
@@ -622,7 +626,7 @@ app.on('window-all-closed', () => {
 
 // Single instance lock
 if (!appState.gotTheLock) {
-  app.quit(); // Exit immediately if not the first instance
+  app.quit();
 } else {
   app.whenReady().then(() => {
     initApp();

@@ -1542,25 +1542,26 @@ document.getElementById('resetBtn').addEventListener('click', () => {
 });
 
 // Show timer container
-function showTimerContainer() {
-	const container = document.querySelector('.timer-container');
-	if (container) {
-		container.style.display = container.style.display === 'none' ? 'block' : 'none';
-	}
+function showTimerContainer(show = true) {
+    const container = document.querySelector('.timer-container');
+    if (container) {
+        // Explicitly show or hide based on the parameter
+        container.style.display = show ? 'block' : 'none';
+    }
 
-	// Allow timer scrolling when mouse is over it
-	container.addEventListener("wheel", (event) => {
-		if (isMouseOver) {
-			event.stopPropagation();
-		}
-	});
+    // Allow timer scrolling when mouse is over it
+    container.addEventListener("wheel", (event) => {
+        if (isMouseOver) {
+            event.stopPropagation();
+        }
+    });
 
-	container.addEventListener("mouseenter", () => {
-		isMouseOver = true;
-	});
-	container.addEventListener("mouseleave", () => {
-		isMouseOver = false;
-	});
+    container.addEventListener("mouseenter", () => {
+        isMouseOver = true;
+    });
+    container.addEventListener("mouseleave", () => {
+        isMouseOver = false;
+    });
 }
 
 document.getElementById('sleep-timer').addEventListener('click', showTimerContainer);
@@ -2214,32 +2215,29 @@ function updateFullScreenUI(isFullscreen) {
         button.title = isFullscreen ? "Exit Fullscreen" : "Enter Fullscreen";
     });
 }
-window.electron.onInitialWindowState((isFullscreen) => {
-    updateFullScreenUI(isFullscreen);
-});
 
 // Fullscreen toggle function
 function toggleFullScreen() {
-    window.electron.toggleFullscreen(); // Notify the main process to toggle fullscreen
+    window.electron.toggleFullscreen();
 }
 
 // Add event listeners for full-screen buttons
 fullscreenButtons.forEach((element) => {
-    element.addEventListener("click", () => {
-        toggleFullScreen();
-    });
-
-    // Set initial title
-    element.title = "Enter Fullscreen";
+    element.addEventListener("click", toggleFullScreen);
+    element.title = "Enter Fullscreen"; // Set initial title
 });
 
-// Add double-click event listener to the media player
-video.addEventListener("dblclick", toggleFullScreen);
+// Add double-click event listener to the media player if video exists
+mediaPlayer.addEventListener("dblclick", toggleFullScreen);
 
-// Listen for fullscreen change events
-document.addEventListener("fullscreenchange", () => {
-	const isFullscreen = document.fullscreenElement !== null;
-	updateFullScreenUI(isFullscreen);
+// Initialize with correct state when window loads
+window.electron.onInitialWindowState((isFullscreen) => {
+    updateFullScreenUI(isFullscreen);
+});
+
+// Update UI when fullscreen state changes
+window.electron.onFullscreenStateChanged((isFullscreen) => {
+    updateFullScreenUI(isFullscreen);
 });
 
 
@@ -2429,15 +2427,12 @@ document.addEventListener("DOMContentLoaded", function() {
 			} else if (target.closest("#contextTogglePlayPause")) {
 				togglePlayPause();
 			} else if (target.closest("#context-menu-shutdown-timer")) {
-				showTimerContainer();
+				showTimerContainer(true);
 			}
 			hideContextMenu(); // Hide context menu after clicking an item
 		});
 	});
 
-	window.electron.onFullscreenStateChanged((isFullscreen) => {
-        updateFullScreenUI(isFullscreen);
-    });
 });
 
 // ✅ Format time to HH:MM:SS
@@ -3134,13 +3129,13 @@ document.addEventListener("click", () => {
 	}
 });
 
-// Electron window controls
-document.querySelector("#minimize").addEventListener("click", () => {
-	window.electron.minimize();
+// Window control buttons
+document.querySelector("#minimize")?.addEventListener("click", () => {
+    window.electron.minimize();
 });
 
-document.querySelector("#maximize").addEventListener("click", () => {
-	window.electron.maximize();
+document.querySelector("#maximize")?.addEventListener("click", () => {
+    window.electron.maximize();
 });
 
 // Function to update the maximize button icon
@@ -3153,10 +3148,8 @@ function updateMaximizeIcon(isFullScreen) {
     }
 }
 
-  // Listen for fullscreen state changes
+// Listen for window state changes
 window.electron.onWindowStateChange(updateMaximizeIcon);
-
-  // Set the correct icon when the app starts
 window.electron.onInitialWindowState(updateMaximizeIcon);
 
 document.querySelector("#window-close").addEventListener("click", () => {
