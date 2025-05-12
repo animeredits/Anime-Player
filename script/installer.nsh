@@ -1,40 +1,32 @@
 !include "MUI2.nsh"
 
-Function installRegistryKeys
-    # Add "Play with Anime Player" to all files
-    WriteRegStr HKCR "*\shell\AnimePlayer" "" "Play with Anime Player"
-    WriteRegStr HKCR "*\shell\AnimePlayer" "Icon" "$INSTDIR\Anime Player.exe,0"
-    WriteRegStr HKCR "*\shell\AnimePlayer\command" "" '"$INSTDIR\Anime Player.exe" "%1"'
+Function AddContextMenuEntries
+  ; For files (right-click on a file)
+  WriteRegStr HKCR "*\shell\AnimePlayer" "" "Open with Anime Player"
+  WriteRegStr HKCR "*\shell\AnimePlayer" "Icon" "$INSTDIR\Anime Player.exe,0"
+  WriteRegStr HKCR "*\shell\AnimePlayer\command" "" '"$INSTDIR\Anime Player.exe" "%1"'
 
-    # Add "Play with Anime Player" for folders
-    WriteRegStr HKCR "Directory\shell\AnimePlayer" "" "Play with Anime Player"
-    WriteRegStr HKCR "Directory\shell\AnimePlayer" "Icon" "$INSTDIR\Anime Player.exe,0"
-    WriteRegStr HKCR "Directory\shell\AnimePlayer\command" "" '"$INSTDIR\Anime Player.exe" "%1"'
+  ; For folders (right-click on a folder)
+  WriteRegStr HKCR "Directory\shell\AnimePlayer" "" "Open with Anime Player"
+  WriteRegStr HKCR "Directory\shell\AnimePlayer" "Icon" "$INSTDIR\Anime Player.exe,0"
+  WriteRegStr HKCR "Directory\shell\AnimePlayer\command" "" '"$INSTDIR\Anime Player.exe" "%1"'
 
-    # Add "Play with Anime Player" for folder backgrounds
-    WriteRegStr HKCR "Directory\Background\shell\AnimePlayer" "" "Play with Anime Player"
-    WriteRegStr HKCR "Directory\Background\shell\AnimePlayer" "Icon" "$INSTDIR\Anime Player.exe,0"
-    WriteRegStr HKCR "Directory\Background\shell\AnimePlayer\command" "" '"$INSTDIR\Anime Player.exe" "%V"'
+  ; For folder background (right-click in empty space)
+  WriteRegStr HKCR "Directory\Background\shell\AnimePlayer" "" "Open with Anime Player"
+  WriteRegStr HKCR "Directory\Background\shell\AnimePlayer" "Icon" "$INSTDIR\Anime Player.exe,0"
+  WriteRegStr HKCR "Directory\Background\shell\AnimePlayer\command" "" '"$INSTDIR\Anime Player.exe" "%V"'
 FunctionEnd
 
-Function un.installRegistryKeys
-    # Remove "Play with Anime Player" from all files
-    DeleteRegKey HKCR "*\shell\AnimePlayer"
-    DeleteRegKey HKCR "*\shell\AnimePlayer\command"
-
-    # Remove "Play with Anime Player" from folders
-    DeleteRegKey HKCR "Directory\shell\AnimePlayer"
-    DeleteRegKey HKCR "Directory\shell\AnimePlayer\command"
-
-    # Remove "Play with Anime Player" from folder backgrounds
-    DeleteRegKey HKCR "Directory\Background\shell\AnimePlayer"
-    DeleteRegKey HKCR "Directory\Background\shell\AnimePlayer\command"
+Function un.RemoveContextMenuEntries
+  DeleteRegKey HKCR "*\shell\AnimePlayer"
+  DeleteRegKey HKCR "Directory\shell\AnimePlayer"
+  DeleteRegKey HKCR "Directory\Background\shell\AnimePlayer"
 FunctionEnd
 
-Section "Install"
-    Call installRegistryKeys
+Section "Install Context Menu"
+  Call AddContextMenuEntries
 SectionEnd
 
-Section "Uninstall"
-    Call un.installRegistryKeys
+Section "un.Uninstall Context Menu"
+  Call un.RemoveContextMenuEntries
 SectionEnd

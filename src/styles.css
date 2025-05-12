@@ -1309,19 +1309,16 @@ main {
 }
 
 #progressHandle:active,
-#progressHandle:hover {
+#progressHandle:hover,
+#progressHandle:focus {
   background-color: rgb(87, 111, 230);
   opacity: 1;
+  outline: none;
   transform: translateX(-9%) scale(1.2);
 }
 
-#progressHandle:focus {
-  outline: none;
+#progressBarWrapper:hover #progressHandle {
   opacity: 1;
-}
-
-#progressHandle:active {
-  transform: translateX(-9%) scale(1.1);
 }
 
 #progressHandle::before {
@@ -1336,15 +1333,6 @@ main {
   transform: translate(-50%, -50%);
   pointer-events: none;
   z-index: -1;
-}
-
-#progressHandle::-webkit-slider-thumb {
-  appearance: none;
-  width: 20px;
-  height: 20px;
-  background-color: transparent;
-  border-radius: 50%;
-  border: 2px solid rgba(255, 255, 255, 0.5);
 }
 
 #currentTime {

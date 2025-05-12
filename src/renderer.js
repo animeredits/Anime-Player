@@ -122,22 +122,21 @@ document.querySelectorAll("a ,img").forEach((link) => {
 
 // ✅ Function to update logo if the audio doesn't have a thumbnail
 function updateLogo(src) {
-	if (!audioThumbnailExists()) {
-		// Check if the audio has a thumbnail
 		audioImage.src = src; // Set the logo
 		audioImage.style.display = "block"; // Show the logo
-	} else {
-		console.log("Audio already has a thumbnail; skipping logo update");
-	}
 }
 
 // Change the logo based on selection from a dropdown
-logoOptions.addEventListener("change", function() {
-	if (this.value) {
-		updateLogo(this.value);
-	} else {
-		console.error("Invalid selection: no logo source");
-	}
+document.getElementById('customLogoInput').addEventListener('change', function(e) {
+    const file = e.target.files[0];
+    if (file) {
+    const reader = new FileReader();
+    reader.onload = function(event) {
+		const src = event.target.result;
+		updateLogo(src);
+    };
+    reader.readAsDataURL(file);
+    }
 });
 
 // ✅ Trigger file input when clicking the custom logo link
@@ -2227,7 +2226,12 @@ fullscreenButtons.forEach((element) => {
     element.title = "Enter Fullscreen"; // Set initial title
 });
 
-// Add double-click event listener to the media player if video exists
+// Add event listener to prevent double-click on controls from bubbling up
+document.querySelector('.controls').addEventListener('dblclick', function(e) {
+    e.stopPropagation();
+});
+    
+// fullscreen toggle for the media player
 mediaPlayer.addEventListener("dblclick", toggleFullScreen);
 
 // Initialize with correct state when window loads
@@ -3091,20 +3095,23 @@ window.addEventListener("click", function() {
 
 // Show the sub-dropdown content on hover
 document.querySelectorAll(".sub-dropdown").forEach((subDropdown) => {
-	const subDropdownContent = subDropdown.querySelector(".sub-dropdown-content");
+    const subDropdownContent = subDropdown.querySelector(".sub-dropdown-content");
+    
+    // Skip if no content element found
+    if (!subDropdownContent) return;
 
-	// Show on hover
-	subDropdown.addEventListener("mouseover", function() {
-		subDropdownContent.style.display = "block"; // Always show if hovered
-	});
+    // Show on hover
+    subDropdown.addEventListener("mouseover", function() {
+        subDropdownContent.style.display = "block"; // Always show if hovered
+    });
 
-	// Hide on mouseout (unless it's locked by click or hovered on content)
-	subDropdown.addEventListener("mouseout", function(e) {
-		// Check if mouse is not entering the sub-dropdown content
-		if (!subDropdown.contains(document.activeElement) && !subDropdownContent.contains(e.relatedTarget)) {
-			subDropdownContent.style.display = "none"; // Hide only if mouse leaves both
-		}
-	});
+    // Hide on mouseout (unless it's locked by click or hovered on content)
+    subDropdown.addEventListener("mouseout", function(e) {
+        // Check if mouse is not entering the sub-dropdown content
+        if (!subDropdown.contains(document.activeElement) && !subDropdownContent.contains(e.relatedTarget)) {
+            subDropdownContent.style.display = "none"; // Hide only if mouse leaves both
+        }
+    });
 });
 
 // Prevent hiding when hovering over dropdown content
