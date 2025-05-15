@@ -80,7 +80,7 @@ function createWindow() {
       webSecurity: true,
       experimentalFeatures: true,
       enableHardwareAcceleration: true,
-      backgroundThrottling: true,
+      backgroundThrottling: false,
       webgl: true
     }
   });

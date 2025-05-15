@@ -134,21 +134,32 @@
                   <a>Reset</a>
                 </div>
               </div>
+              <a class="videoEffectBtn">Video Effect</a>
+              <div class="saturationModal" id="saturationModal">
+                <div class="saturation-modal-header">
+                  <div class="saturation-modal-title">Saturation Adjustment</div>
+                  <button class="saturation-reset-btn" id="saturation-resetBtn">↻</button>
+                </div>
+                <div class="slider-container">
+                  <input type="range" min="0" max="200" value="120" class="slider" id="saturationSlider">
+                  <span class="value-display" id="saturationValue">120%</span>
+                </div>
+              </div>
               <!-- <div class="sub-dropdown"><a href="javascript:void(0)" class="sub-dropbtn">Aspect Ratio / Crop</a><div class="sub-dropdown-content" id="aspect-ratio-list"><a data-aspect="default">Default</a><a data-aspect="16:10">16:10</a><a data-aspect="16:9">16:9</a><a data-aspect="4:3">4:3</a><a data-aspect="1.85:1">1.85:1</a><a data-aspect="2.21:1">2.21:1</a><a data-aspect="2.35:1">2.35:1</a><a data-aspect="2.39:1">2.39:1</a><a data-aspect="5:4">5:4</a><a data-aspect="5:1">5:1</a></div></div> -->
             </div>
           </li>
-          <!-- <li class="dropdown">
+          <li class="dropdown">
             <a href="javascript:void(0)" class="dropbtn">Subtitle</a>
             <div class="dropdown-content">
               <a class="">Add Subtitle file...</a>
               <div class="sub-dropdown">
                 <a href="javascript:void(0)" class="sub-dropbtn">Subtitle Track</a>
-                <div class="sub-dropdown-content" id="subtitle-track-list">
-                Subtitle tracks will be dynamically inserted here
+                <div class="sub-dropdown-content subtitle-track-list">
+                <!-- Subtitle tracks will be dynamically inserted here -->
                 </div>
               </div>
             </div>
-          </li> -->
+          </li>
           <li class="dropdown">
             <a href="javascript:void(0)" class="dropbtn">Help</a>
             <div class="dropdown-content">

@@ -1,5 +1,10 @@
 const video = document.getElementById("media");
 const mediaPlayer = document.getElementById("mediaPlayer");
+const videoEffectBtn = document.querySelector('.videoEffectBtn');
+const saturationModal = document.getElementById('saturationModal');
+const saturationSlider = document.getElementById('saturationSlider');
+const saturationValue = document.getElementById('saturationValue');
+const resetBtn = document.getElementById('saturation-resetBtn'); 
 const openFileButton = document.getElementById("openFileButton");
 const openFolderButton = document.getElementById("openFolderButton");
 const shuffleButton = document.getElementById("shuffleButton");
@@ -48,6 +53,7 @@ let currentMedia = video;
 let isFullScreen = false;
 let isRepeatMode = 0;
 let mediaFiles = [];
+let isFirstFileOpened = false;
 let playedVideos = [];
 let currentVideoIndex = 0;
 let currentAudioIndex = 0;
@@ -56,6 +62,8 @@ let lastPlayedStack = [];
 let navigationHistory = [];
 let autoSwitchDone = false;
 let isGifPlaying = false;
+let DEFAULT_SATURATION = 120;
+let STEP = 5;
 let debounceTimeout;
 let showRemainingTime = false;
 let lastPlaybackTime = 0;
@@ -79,21 +87,21 @@ let countdownInterval = null;
 let contextMenuClick = false;
 let isShuffle = false;
 let isLooping = false;
-const volumeStep = 0.05;
-const minFontSize = 18;
-const maxFontSize = 36;
+let volumeStep = 0.05;
+let minFontSize = 18;
+let maxFontSize = 36;
 let rotationInitiated = false;
 let isAppClosing = false;
-const defaultFontSize = 16;
+let defaultFontSize = 16;
 let scale = 1;
-const zoomLevels = [1.3, 1.5, 2, 2.5, 3, 1];
+let zoomLevels = [1.3, 1.5, 2, 2.5, 3, 1];
 let currentZoomIndex = 0;
 let panX = 0;
 let panY = 0;
 let isPanning = false;
 let startX, startY;
-const minZoom = 0.25;
-const maxZoom = 3;
+let minZoom = 0.25;
+let maxZoom = 3;
 let recognitionActive = false;
 let isMouseOver = false;
 let isShutdownAtVideoEndEnabled = false;
@@ -585,6 +593,102 @@ async function downloadAndSaveGif(gifUrl, gifName) {
 	}
 }
 
+// ✅ Function to apply saturation effect
+// Apply saturation to video
+function applySaturationToVideo(value) {
+	mediaPlayer.style.filter = `saturate(${value}%)`;
+}
+
+// Update displayed value and apply saturation
+function updateSaturation(value) {
+	saturationValue.textContent = value + '%';
+	applySaturationToVideo(value);
+}
+
+// Slider input event
+saturationSlider.addEventListener('input', function() {
+	updateSaturation(this.value);
+});
+
+// Mouse wheel adjustment on slider
+saturationSlider.addEventListener('wheel', function(e) {
+	e.preventDefault(); // Prevent page scrolling
+	let newValue = parseInt(this.value) + (e.deltaY > 0 ? -STEP : STEP);
+
+	// Clamp between min (0) and max (200)
+	newValue = Math.max(0, Math.min(200, newValue));
+
+	this.value = newValue;
+	updateSaturation(newValue);
+});
+
+
+// Allow saturationModal scrolling when mouse is over it
+saturationModal.addEventListener("wheel", (event) => {
+	if (isMouseOver) {
+		event.stopPropagation();
+	}
+});
+
+// Prevent keyboard scrolling when focused on the saturationModal
+saturationModal.addEventListener("keydown", (event) => {
+	if (isMouseOver) {
+		// List of keys that typically scroll the page
+		const scrollKeys = ['ArrowLeft', 'ArrowRight'];
+
+		if (scrollKeys.includes(event.code)) {
+			event.stopPropagation();
+		}
+	}
+});
+
+// Detect mouse enter/leave events for the saturationModal container
+saturationModal.addEventListener("mouseenter", () => {
+	isMouseOver = true;
+});
+saturationModal.addEventListener("mouseleave", () => {
+	isMouseOver = false;
+});
+
+// Also handle focus/blur for keyboard users
+saturationModal.addEventListener("focus", () => {
+	isMouseOver = true; // Treat focus like mouseover for keyboard users
+});
+saturationModal.addEventListener("blur", () => {
+	isMouseOver = false;
+});
+
+// Reset to default
+resetBtn.addEventListener('click', function() {
+	saturationSlider.value = DEFAULT_SATURATION;
+	updateSaturation(DEFAULT_SATURATION);
+});
+
+// Open modal when button is clicked
+videoEffectBtn.addEventListener('click', function() {
+    saturationModal.style.display = 'block';
+});
+
+// Close modal when clicking outside
+window.addEventListener('click', function(event) {
+    if (event.target === saturationModal) {
+        saturationModal.style.display = 'none';
+    }
+});
+
+// Show modal on hover
+videoEffectBtn.addEventListener('mouseover', function() {
+    saturationModal.style.display = 'block';
+});
+
+// Hide modal when mouse leaves the container
+// Assuming the container is the modal itself or a parent element
+const modalContainer = saturationModal; // or select the container element
+
+modalContainer.addEventListener('mouseleave', function() {
+    saturationModal.style.display = 'none';
+});
+
 // ✅ Function to load media file
 async function loadMediaFile(filePath, fileName) {
     if (!filePath) return;
@@ -692,12 +796,21 @@ function getVideoId() {
     return video?.dataset?.videoId || null;
 }
 
-// ✅ Function to play a media file
+// ✅ Modified playMediaFile to handle both initial play and playlist updates
 function playMediaFile(filePath) {
     if (!filePath) return;
-    const fileName = filePath.split(/[/\\]/).pop(); // Get the file name
-    loadMediaFile(filePath, fileName); // Load the media file
-    updateVideoTitle(fileName); // Update the title with the filename
+    const fileName = filePath.split(/[/\\]/).pop(); 
+    // If file not in playlist, add it
+    if (!mediaFiles.includes(filePath)) {
+        mediaFiles.push(filePath);
+        updatePlaylistDropdown(mediaFiles);
+        updateVideoTitle(fileName); 
+    }
+    
+    currentVideoIndex = mediaFiles.indexOf(filePath);
+    loadMediaFile(filePath, fileName);
+    highlightCurrentVideoInPlaylist(fileName);
+    updateNavigationButtons();
 }
 
 // ✅ Function to play a video by its index
@@ -733,31 +846,38 @@ video.addEventListener("ended", () => {
     }
 });
 
-// 🟢 Open file dialog (Multiple File Selection)
+// 🟢 Open file dialog (Multiple File Selection) - MODIFIED to append files
 openFileButton.addEventListener("click", async () => {
     try {
         const filePaths = await window.electron.openFileDialog();
         if (filePaths.length > 0) {
-            mediaFiles = filePaths;
-            currentVideoIndex = 0;
+            // Add new files to existing playlist (remove duplicates if needed)
+            const newFiles = filePaths.filter(file => !mediaFiles.includes(file));
+            mediaFiles = [...mediaFiles, ...newFiles];
+            
+            // Play the first newly selected file
+            currentVideoIndex = mediaFiles.indexOf(filePaths[0]);
             playMediaFile(mediaFiles[currentVideoIndex]);
+            
             updatePlaylistDropdown(mediaFiles);
+            showStatusMessage(`Added ${newFiles.length} video(s) to playlist`);
         }
     } catch (error) {
         console.error("Error opening files:", error);
     }
 });
 
-
-// 🟢 Open folder dialog (Load all media in a folder)
+// 🟢 Open folder dialog (Load all media in a folder) - Keeps existing behavior
 openFolderButton.addEventListener("click", async () => {
     try {
         const folderFiles = await window.electron.openFolderDialog();
         if (folderFiles.length > 0) {
+            // Replace entire playlist with folder contents
             mediaFiles = folderFiles;
-            currentVideoIndex = 0;
+            currentVideoIndex = 0; // Always play first video in folder
             playMediaFile(mediaFiles[currentVideoIndex]);
             updatePlaylistDropdown(mediaFiles);
+            showStatusMessage(`Loaded ${folderFiles.length} video(s) from folder`);
         }
     } catch (error) {
         console.error("Error opening folder:", error);
@@ -1186,6 +1306,7 @@ async function deleteCurrentMediaFile() {
     }
 }
 
+// ✅ Function to update the playlist dropdown with media files
 function updatePlaylistDropdown(mediaFiles) {
     if (!Array.isArray(mediaFiles) || mediaFiles.length === 0) return;
 
@@ -1378,40 +1499,39 @@ window.addEventListener("click", function (event) {
     }
 });
 
+// Main keydown event listener
 document.addEventListener("keydown", function (event) {
-    const playlistContainer = document.querySelector(".playlist-container");
-    const isPlaylistVisible = playlistContainer.classList.contains("show");
-
-    if (isPlaylistVisible) {
-        // Playlist navigation when visible
-        const playlistItems = Array.from(playlistContainer.querySelectorAll(".playlist-item"));
-        if (playlistItems.length === 0) return;
-
-        const currentIndex = playlistItems.findIndex(item => item.classList.contains("highlight"));
-
-        if (event.key === "ArrowDown") {
-            event.preventDefault();
-            const nextIndex = (currentIndex + 1) % playlistItems.length;
-            playlistItems[nextIndex].click();
-        } else if (event.key === "ArrowUp") {
-            event.preventDefault();
-            const prevIndex = (currentIndex - 1 + playlistItems.length) % playlistItems.length;
-            playlistItems[prevIndex].click();
-        }
+    if (isPlaylistVisible()) {
+        handlePlaylistNavigation(event);
     } else {
-        // Adjust volume when playlist is hidden
-        if (event.key === "ArrowUp") {
-            event.preventDefault();
-            updateVolume(gainNode.gain.value + 0.05);
-            showStatusMessage(`Volume: ${(gainNode.gain.value * 100).toFixed(0)}%`);
-        } else if (event.key === "ArrowDown") {
-            event.preventDefault();
-            updateVolume(gainNode.gain.value - 0.05);
-            showStatusMessage(`Volume: ${(gainNode.gain.value * 100).toFixed(0)}%`);
-        }
+        handleVolumeControl(event);
     }
 });
 
+// Playlist visibility check
+function isPlaylistVisible() {
+    const playlistContainer = document.querySelector(".playlist-container");
+    return playlistContainer && playlistContainer.classList.contains("show");
+}
+
+// Playlist navigation logic
+function handlePlaylistNavigation(event) {
+    const playlistContainer = document.querySelector(".playlist-container");
+    const playlistItems = Array.from(playlistContainer.querySelectorAll(".playlist-item"));
+    if (playlistItems.length === 0) return;
+
+    const currentIndex = playlistItems.findIndex(item => item.classList.contains("highlight"));
+
+    if (event.key === "ArrowDown") {
+        event.preventDefault();
+        const nextIndex = (currentIndex + 1) % playlistItems.length;
+        playlistItems[nextIndex].click();
+    } else if (event.key === "ArrowUp") {
+        event.preventDefault();
+        const prevIndex = (currentIndex - 1 + playlistItems.length) % playlistItems.length;
+        playlistItems[prevIndex].click();
+    }
+}
 
 // ✅ Quick-set buttons handler
 function setQuickTime(minutes) {
@@ -1796,22 +1916,26 @@ volumeSlider.value = gainNode.gain.value * 100; // Sync slider with volume (0-20
 // Call the loadVolumeSetting to apply saved or default volume
 loadVolumeSetting(); // Load saved volume or apply default volume (100%)
 
-// Function to update volume, slider, and tooltip (existing)
-function updateVolume(newVolume) {
-    // Ensure the volume value is within the range [0, 2]
-    newVolume = Math.max(0, Math.min(2, newVolume));
+// Update the volume update function to handle exact synchronization
+function updateVolume(newVolume, source = null) {
+    // Ensure the volume value is within the precise range [0, 2]
+    newVolume = parseFloat(Math.max(0, Math.min(2, newVolume).toFixed(2)));
 
-    // Smoothly transition to the new volume level
+    // Update the actual audio volume
     gainNode.gain.linearRampToValueAtTime(newVolume, audioContext.currentTime + 0.1);
 
-    // Update slider value and show tooltip
-    volumeSlider.value = newVolume * 100; // Sync slider with volume (0-200 range)
+    // Always update the slider to match the exact volume, except when the source is the slider
+    if (source !== 'slider') {
+        volumeSlider.value = Math.round(newVolume * 100); // Ensure integer values for the slider
+    }
+
+    // Show tooltip with precise percentage
     showTooltip(newVolume);
 
-    // Save the new volume setting to localStorage
+    // Save the exact volume setting
     saveVolumeSetting(newVolume);
 
-    // Update volume button icon and tooltip
+    // Update volume button icon
     updateVolumeIcon();
 }
 
@@ -1840,10 +1964,11 @@ function showTooltip(volume, event = null) {
     }, 1500);
 }
 
-// Attach event listener for volume updates
+// Volume slider input handler - use exact values
 volumeSlider.addEventListener("input", (event) => {
-    updateVolume(event.target.value / 100);
-    showTooltip(gainNode.gain.value , event);
+    const exactVolume = parseFloat(event.target.value) / 100;
+    updateVolume(exactVolume, 'slider');
+    showTooltip(exactVolume, event);
 });
 
 volumeSlider.addEventListener("mouseenter", () => {
@@ -1856,15 +1981,22 @@ volumeSlider.addEventListener("mouseleave", () => {
     }, 1000);
 });
 
-// Volume adjustment using mouse wheel
+window.addEventListener('load', () => {
+    // Force sync the slider with current volume on load
+    volumeSlider.value = Math.round(gainNode.gain.value * 100);
+});
+
+// Mouse wheel handler for slider - use same calculation
 volumeSlider.addEventListener("wheel", (e) => {
     e.preventDefault();
-    const direction = e.deltaY > 0 ? -0.05 : 0.05;
-    let newVolume = gainNode.gain.value + direction;
-    newVolume = Math.max(0, Math.min(newVolume, 2));
-
-    updateVolume(newVolume);
-    showTooltip(newVolume, e);
+    // Calculate exact steps (1% per wheel tick)
+    const step = e.deltaY > 0 ? -1 : 1;
+    let newValue = parseInt(volumeSlider.value) + step;
+    newValue = Math.max(0, Math.min(newValue, 200));
+    
+    const exactVolume = parseFloat(newValue / 100).toFixed(2);
+    updateVolume(exactVolume, 'wheel');
+    showTooltip(exactVolume, e);
 });
 
 // Initialize tooltip for font size
@@ -1936,22 +2068,22 @@ mediaPlayer.addEventListener("wheel", (event) => {
 		}, 1500);
 
 	} else {
-		// Adjust volume
-		if (event.deltaY < 0) {
-			updateVolume(Math.min(2, gainNode.gain.value + 0.05)); // Increase volume up to 200%
-		} else if (event.deltaY > 0) {
-			updateVolume(Math.max(0, gainNode.gain.value - 0.05)); // Decrease volume
-		}
+        // Volume adjustment with exact steps
+        const step = event.deltaY > 0 ? -0.05 : 0.05;
+        let newVolume = parseFloat((gainNode.gain.value + step).toFixed(2));
+        newVolume = Math.max(0, Math.min(2, newVolume));
+        
+        updateVolume(newVolume, 'wheel');
+        
+        tooltip.style.left = `${event.pageX}px`;
+        tooltip.style.top = `${event.pageY - 30}px`;
+        tooltip.textContent = `Volume: ${Math.round(newVolume * 100)}%`;
+        tooltip.style.display = "block";
 
-		tooltip.style.left = `${event.pageX}px`;
-		tooltip.style.top = `${event.pageY - 30}px`;
-		tooltip.textContent = `Volume: ${(gainNode.gain.value * 100).toFixed(0)}%`;
-		tooltip.style.display = "block";
-
-		setTimeout(() => {
-			tooltip.style.display = "none";
-		}, 3900);
-	}
+        setTimeout(() => {
+            tooltip.style.display = "none";
+        }, 3900);
+    }
 });
 
 // Update the volume button icon and tooltip
@@ -1968,6 +2100,19 @@ function updateVolumeIcon() {
     } else {
         volumeBtn.src = "../assets/icons/volume-high.png";
         volumeBtn.setAttribute("title", "Mute"); // Update tooltip
+    }
+}
+
+// Volume control logic
+function handleVolumeControl(event) {
+    if (event.key === "ArrowUp") {
+        event.preventDefault();
+        updateVolume(Math.min(2, gainNode.gain.value + 0.05));
+        showStatusMessage(`Volume: ${(Math.min(2, gainNode.gain.value + 0.05) * 100).toFixed(0)}%`);
+    } else if (event.key === "ArrowDown") {
+        event.preventDefault();
+        updateVolume(Math.max(0, gainNode.gain.value - 0.05));
+        showStatusMessage(`Volume: ${(Math.max(0, gainNode.gain.value - 0.05) * 100).toFixed(0)}%`);
     }
 }
 
@@ -2458,7 +2603,8 @@ function updateProgressBar() {
 	if (video && video.duration && !isNaN(video.duration)) {
 		const progress = (video.currentTime / video.duration) * 100;
 		progressBar.style.width = `${progress}%`;
-		progressHandle.style.left = '100%';
+        progressBar.style.transition = 'width 0.1s ease-out';
+        
 		currentTimeDisplay.textContent = formatTime(video.currentTime);
 		progressHandle.style.display = "block";
 	} else {
@@ -2466,7 +2612,6 @@ function updateProgressBar() {
 		currentTimeDisplay.textContent = "0:00:00";
 	}
 }
-
 // ✅ Function to update duration display
 function updateDurationDisplay() {
 	if (video && video.duration && !isNaN(video.duration)) {
@@ -2577,6 +2722,25 @@ progressBarWrapper.addEventListener("mouseleave", () => {
 // Update progress bar and current time display
 updateProgressBar();
 updateDurationDisplay();
+
+// Event listeners for all nav components
+document.querySelectorAll(".quit").forEach((element) => {
+	element.addEventListener("click", () => {
+		savePlaybackAndQuit();
+	});
+});
+
+document.querySelectorAll(".increase-volume").forEach((element) => {
+	element.addEventListener("click", () => {
+		updateVolume(gainNode.gain.value + 0.1)
+	});
+});
+
+document.querySelectorAll(".decrease-volume").forEach((element) => {
+	element.addEventListener("click", () => {
+		updateVolume(gainNode.gain.value - 0.1)
+	});
+});
 
 // Event listeners for all nav components
 document.querySelectorAll(".quit").forEach((element) => {
@@ -3175,29 +3339,55 @@ function hideLoader() {
     if (loader) loader.style.display = "none";
 }
 
-// ✅ Handle File Open from System (Double-click on a file)
-document.addEventListener("DOMContentLoaded", () => {
-    window.electron.onFileOpen((filePath) => {
-        if (filePath) {
-            loadMediaFile(filePath, filePath.split("/").pop());
+// ✅ Modified function to handle file open from system
+window.electron.onFileOpen((filePath) => {
+    if (filePath) {
+        if (!isFirstFileOpened) {
+            // First file - initialize playlist
+            mediaFiles = [filePath];
+            currentVideoIndex = 0;
+            isFirstFileOpened = true;
+            updatePlaylistDropdown(mediaFiles);
+            playMediaFile(filePath, filePath.split("/").pop());
+        } else {
+            // Subsequent files - add to playlist
+            if (!mediaFiles.includes(filePath)) {
+                mediaFiles.push(filePath);
+                updatePlaylistDropdown(mediaFiles);
+                
+                //  auto-play the new file
+                currentVideoIndex = mediaFiles.length - 1;
+                playMediaFile(filePath, filePath.split("/").pop());
+            }
         }
-    });
+    }
 });
 
-
-window.electron.openFolderFromContext(async (folderPath) => { 
-    // console.log("📂 Received folder from context menu:", folderPath);
-
+// ✅ Modified function for folder open from context menu
+window.electron.openFolderFromContext(async (folderPath) => {
     try {
         const receivedFiles = await window.electron.invoke("open-folder", folderPath);
-        // console.log("📜 Files received:", receivedFiles);
-
+        
         if (Array.isArray(receivedFiles) && receivedFiles.length > 0) {
-            mediaFiles = receivedFiles; // 🔥 Store files globally
-            currentVideoIndex = 0;
-
-            updatePlaylistDropdown(mediaFiles); 
-            playMediaFile(mediaFiles[currentVideoIndex]); 
+            if (!isFirstFileOpened) {
+                // First folder - initialize playlist
+                mediaFiles = receivedFiles;
+                currentVideoIndex = 0;
+                isFirstFileOpened = true;
+                updatePlaylistDropdown(mediaFiles);
+                playMediaFile(mediaFiles[currentVideoIndex]);
+            } else {
+                // Subsequent folder - merge files
+                const newFiles = receivedFiles.filter(file => !mediaFiles.includes(file));
+                if (newFiles.length > 0) {
+                    mediaFiles = [...mediaFiles, ...newFiles];
+                    updatePlaylistDropdown(mediaFiles);
+                    
+                    // Optionally auto-play first new file
+                    // currentVideoIndex = mediaFiles.indexOf(newFiles[0]);
+                    // playMediaFile(mediaFiles[currentVideoIndex]);
+                }
+            }
         } else {
             console.warn("⚠️ No media files found in the folder.");
         }
