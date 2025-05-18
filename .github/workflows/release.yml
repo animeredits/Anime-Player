@@ -1,4 +1,4 @@
-name: Build, Sign, and Release Anime Player
+name: Build and Release Anime Player
 
 on:
   push:
@@ -6,9 +6,6 @@ on:
       - main
     tags:
       - 'v*'  
-  release:
-    types:
-      - published
 
 jobs:
   # Build for Linux
@@ -33,19 +30,11 @@ jobs:
           GH_TOKEN: ${{ secrets.GH_TOKEN }} 
         run: npm run dist -- --linux
 
-      - name: Generate Checksums (Linux)
-        run: |
-          cd dist
-          sha256sum *.AppImage > SHA256SUMS.txt
-          sha512sum *.AppImage >> SHA256SUMS.txt
-
       - name: Upload Linux Build Artifacts
         uses: actions/upload-artifact@v4
         with:
           name: linux-build
-          path: |
-            dist/*.AppImage
-            dist/SHA256SUMS.txt
+          path: dist/*.AppImage 
 
   # Build for Windows
   build-windows:
@@ -69,64 +58,16 @@ jobs:
           GH_TOKEN: ${{ secrets.GH_TOKEN }} 
         run: npm run dist -- --win
 
-      - name: Generate Checksums (Windows)
-        run: |
-          cd dist
-          Get-FileHash -Algorithm SHA256 *.exe | Out-File -Encoding UTF8 SHA256SUMS.txt
-          Get-FileHash -Algorithm SHA512 *.exe | Out-File -Encoding UTF8 -Append SHA256SUMS.txt
-
-      - name: Sign Windows Executable (Optional)
-        if: ${{ secrets.WINDOWS_SIGNING_CERT }}
-        uses: UlrichKaiser/signcode@v1
-        with:
-          certificate: ${{ secrets.WINDOWS_SIGNING_CERT }}
-          password: ${{ secrets.WINDOWS_SIGNING_PASSWORD }}
-          description: "Anime Player"
-          descriptionUrl: "https://github.com/animeredits/Anime-Player"
-          file: dist/*.exe
-
       - name: Upload Windows Build Artifacts
         uses: actions/upload-artifact@v4
         with:
           name: windows-build
-          path: |
-            dist/*.exe
-            dist/SHA256SUMS.txt
-
-  # Security Verification
-  security-checks:
-    name: Security Verification
-    needs: [build-linux, build-windows]
-    runs-on: ubuntu-latest
-    
-    steps:
-      - name: Download Windows Artifacts
-        uses: actions/download-artifact@v4
-        with:
-          name: windows-build
-          path: windows-dist/
-
-      - name: VirusTotal Scan (Windows)
-        if: ${{ secrets.VIRUSTOTAL_API_KEY }}
-        uses: Qytera-GmbH/action-virustotal-scan@v1
-        with:
-          apiKey: ${{ secrets.VIRUSTOTAL_API_KEY }}
-          filePath: windows-dist/*.exe
-          waitForResult: true
-          comment: "Automated scan for GitHub release"
-
-      - name: Submit to Microsoft SmartScreen
-        if: ${{ secrets.MICROSOFT_SUBMISSION_TOKEN && github.event_name == 'release' }}
-        run: |
-          curl -X POST https://www.microsoft.com/en-us/wdsi/filesubmission \
-            -H "Authorization: Bearer ${{ secrets.MICROSOFT_SUBMISSION_TOKEN }}" \
-            -F "file=@windows-dist/*.exe" \
-            -F "additionalInfo=OpenSourceProject"
+          path: dist/*.exe 
 
   # Release Job
   release:
     name: Publish Release
-    needs: [build-linux, build-windows, security-checks]
+    needs: [build-linux, build-windows]
     runs-on: ubuntu-latest
     if: startsWith(github.ref, 'refs/tags/v')
 
@@ -146,50 +87,30 @@ jobs:
           name: windows-build
           path: windows-dist/
 
-      - name: Generate Release Notes
-        id: generate-notes
-        run: |
-          echo "## Verification" >> notes.md
-          echo "Verify checksums before installation:" >> notes.md
-          echo '```bash' >> notes.md
-          echo "# Linux" >> notes.md
-          cat linux-dist/SHA256SUMS.txt >> notes.md
-          echo "# Windows" >> notes.md
-          cat windows-dist/SHA256SUMS.txt >> notes.md
-          echo '```' >> notes.md
-          
-          if [ -f "security-report.json" ]; then
-            echo "## Security Scan Results" >> notes.md
-            jq '.data.attributes.last_analysis_stats' security-report.json >> notes.md
-          fi
-
-      - name: Upload Release Assets
-        env:
-          GH_TOKEN: ${{ secrets.GH_TOKEN }}
-        run: |
-          gh release create ${{ github.ref }} \
-            --title "Anime Player ${{ github.ref }}" \
-            --notes-file notes.md \
-            linux-dist/*.AppImage \
-            windows-dist/*.exe \
-            linux-dist/SHA256SUMS.txt \
-            windows-dist/SHA256SUMS.txt \
-            -p
-
-      - name: Update README with Latest Version
+      - name: Get version from tag
+        id: get_version
         run: |
           VERSION=${GITHUB_REF#refs/tags/v}
-          sed -i "s/Download version: .*/Download version: $VERSION/" README.md
-          git config --global user.name "GitHub Actions"
-          git config --global user.email "actions@github.com"
-          git add README.md
-          git commit -m "Update README for version $VERSION"
-          git push
+          echo "version=${VERSION}" >> $GITHUB_OUTPUT
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: ${{ github.ref }}
+          name: Anime Player v${{ steps.get_version.outputs.version }}
+          body: "Automated release of Anime Player v${{ steps.get_version.outputs.version }}"
+          draft: false
+          prerelease: false
+          files: |
+            linux-dist/*.AppImage
+            windows-dist/*.exe
 
   # Auto-tagging job
   tag-release:
     name: Auto Tag Release
     runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+    
     steps:
       - name: Checkout Code
         uses: actions/checkout@v3
@@ -199,16 +120,20 @@ jobs:
           git config --global user.email "actions@github.com"
           git config --global user.name "GitHub Actions"
 
+      - name: Get Package Version
+        id: package_version
+        run: |
+          VERSION=$(node -p "require('./package.json').version")
+          echo "version=v$VERSION" >> $GITHUB_OUTPUT
+
       - name: Check if Tag Exists
         id: check_tag
         run: |
-          VERSION=$(node -p "require('./package.json').version")
-          TAG_EXISTS=$(git ls-remote --tags origin "v$VERSION" | wc -l)
-          echo "VERSION=v$VERSION" >> $GITHUB_ENV
-          echo "TAG_EXISTS=$TAG_EXISTS" >> $GITHUB_ENV
+          TAG_EXISTS=$(git ls-remote --tags origin "${{ steps.package_version.outputs.version }}" | wc -l)
+          echo "tag_exists=$TAG_EXISTS" >> $GITHUB_OUTPUT
 
       - name: Create and Push Tag
-        if: env.TAG_EXISTS == '0'
+        if: steps.check_tag.outputs.tag_exists == '0'
         run: |
-          git tag -a "$VERSION" -m "Release $VERSION"
-          git push origin "$VERSION"
+          git tag -a "${{ steps.package_version.outputs.version }}" -m "Release ${{ steps.package_version.outputs.version }}"
+          git push origin "${{ steps.package_version.outputs.version }}"
