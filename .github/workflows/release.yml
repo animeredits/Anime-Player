@@ -33,7 +33,9 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: linux-build
-          path: dist/*.AppImage
+          path: |
+            dist/*.AppImage
+            dist/latest-linux.yml
 
   build-windows:
     name: Build for Windows
@@ -60,13 +62,14 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: windows-build
-          path: dist/*.exe
+          path: |
+            dist/*.exe
+            dist/latest.yml
 
   release:
     name: Publish Release
     needs: [build-linux, build-windows]
     runs-on: ubuntu-latest
-    # Changed condition to trigger on both tags and main branch
     if: github.event_name == 'push' && (startsWith(github.ref, 'refs/tags/v') || github.ref == 'refs/heads/main')
 
     steps:
@@ -105,7 +108,9 @@ jobs:
           prerelease: false
           files: |
             linux-dist/*.AppImage
+            linux-dist/latest-linux.yml
             windows-dist/*.exe
+            windows-dist/latest.yml
 
   tag-release:
     name: Auto Tag Release
@@ -115,6 +120,8 @@ jobs:
     steps:
       - name: Checkout Code
         uses: actions/checkout@v3
+        with:
+          fetch-depth: 0  # Needed to check existing tags
 
       - name: Set Git User
         run: |
