@@ -1030,10 +1030,10 @@ font-size: 11px;
 }
 
 .saturationModal {
-  display: none;
+  display: block;
   position: fixed;
   top: 30%;
-  left: 23.5%;
+  left: 36%;
   transform: translateX(50%);
   padding: 15px;
   backdrop-filter: blur(30px) saturate(180%);
