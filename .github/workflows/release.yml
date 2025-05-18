@@ -103,7 +103,13 @@ jobs:
         with:
           tag_name: v${{ steps.get_version.outputs.version }}
           name: Anime Player v${{ steps.get_version.outputs.version }}
-          body: "Automated release of Anime Player v${{ steps.get_version.outputs.version }}"
+          body: |
+            Automated release of Anime Player v${{ steps.get_version.outputs.version }}
+            ### SHA256 Checksums
+            ```
+            Linux: $(sha256sum linux-dist/*.AppImage | cut -d ' ' -f 1)
+            Windows: $(sha256sum windows-dist/*.exe | cut -d ' ' -f 1)
+            ```
           draft: false
           prerelease: false
           files: |

@@ -3462,7 +3462,7 @@ document.addEventListener('DOMContentLoaded', () => {
 	});
 
 	window.electron.onUpdateError((error) => {
-		showErrorDialog(`Update failed: ${error}`);
+		console.error(`Update failed: ${error}`);
 	});
 });
 
