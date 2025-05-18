@@ -26,7 +26,7 @@ jobs:
 
       - name: Build for Linux
         env:
-          GH_TOKEN: ${{ secrets.GH_TOKEN }} 
+          GH_TOKEN: ${{ secrets.GH_TOKEN }}
         run: npm run dist -- --linux
 
       - name: Upload Linux Build Artifacts
@@ -55,7 +55,7 @@ jobs:
 
       - name: Build for Windows
         env:
-          GH_TOKEN: ${{ secrets.GH_TOKEN }} 
+          GH_TOKEN: ${{ secrets.GH_TOKEN }}
         run: npm run dist -- --win
 
       - name: Upload Windows Build Artifacts
@@ -70,7 +70,7 @@ jobs:
     name: Publish Release
     needs: [build-linux, build-windows]
     runs-on: ubuntu-latest
-    if: github.event_name == 'push' && (startsWith(github.ref, 'refs/tags/v') || github.ref == 'refs/heads/main')
+    if: startsWith(github.ref, 'refs/tags/v')
 
     steps:
       - name: Checkout Code
@@ -80,37 +80,24 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: linux-build
-          path: linux-dist/
+          path: release-assets/
 
       - name: Download Windows Artifacts
         uses: actions/download-artifact@v4
         with:
           name: windows-build
-          path: windows-dist/
-
-      - name: Get version
-        id: get_version
-        run: |
-          if [[ "$GITHUB_REF" == refs/tags/v* ]]; then
-            VERSION=${GITHUB_REF#refs/tags/v}
-          else
-            VERSION=$(node -p "require('./package.json').version")
-          fi
-          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          path: release-assets/
 
       - name: Create Release
-        uses: softprops/action-gh-release@v1
+        uses: ncipollo/release-action@v1
         with:
-          tag_name: v${{ steps.get_version.outputs.version }}
-          name: Anime Player v${{ steps.get_version.outputs.version }}
-          body: "Automated release of Anime Player v${{ steps.get_version.outputs.version }}"
+          tag: ${{ github.ref }}
+          name: Anime Player ${{ github.ref_name }}
+          body: "Anime Player ${{ github.ref_name }}"
           draft: false
           prerelease: false
-          files: |
-            linux-dist/*.AppImage
-            linux-dist/latest-linux.yml
-            windows-dist/*.exe
-            windows-dist/latest.yml
+          artifacts: "release-assets/*"
+          token: ${{ secrets.GH_TOKEN }}
 
   tag-release:
     name: Auto Tag Release
@@ -121,7 +108,7 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v3
         with:
-          fetch-depth: 0  # Needed to check existing tags
+          fetch-depth: 0
 
       - name: Set Git User
         run: |
