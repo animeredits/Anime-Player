@@ -6,10 +6,12 @@ contextBridge.exposeInMainWorld('electron', {
   maximize: () => ipcRenderer.send('Maximize'),
   close: () => ipcRenderer.send('appClose'),
   toggleFullscreen: () => ipcRenderer.send('toggle-fullscreen'),
-  onWindowStateChange: (callback) => ipcRenderer.on("window-state-changed", (_, isFullScreen) => callback(isFullScreen)),
-  onFullscreenStateChanged: (callback) => ipcRenderer.on('fullscreen-state-changed', (_, isFullscreen) => callback(isFullscreen)),
-  onInitialWindowState: (callback) => ipcRenderer.on("initial-window-state", (_, isFullScreen) => callback(isFullScreen)),
-
+  
+  // Window state events
+  onWindowMaximizeState: (callback) => ipcRenderer.on('window-maximize-state', (_, state) => callback(state)),
+  onFullscreenStateChanged: (callback) => ipcRenderer.on('fullscreen-state-changed', (_, state) => callback(state)),
+  onInitialWindowStates: (callback) => ipcRenderer.on('initial-window-states', (_, states) => callback(states)),
+  
   // Update Control
   onUpdateAvailable: (callback) => ipcRenderer.on('update-available', callback),
   onUpdateError: (callback) => ipcRenderer.on('update-error', callback),

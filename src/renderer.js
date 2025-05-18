@@ -1,5 +1,7 @@
 const video = document.getElementById("media");
 const mediaPlayer = document.getElementById("mediaPlayer");
+const minimizeBtn = document.querySelector("#minimize");
+const maximizeBtn = document.querySelector("#maximize");
 const videoEffectBtn = document.querySelector('.videoEffectBtn');
 const saturationModal = document.getElementById('saturationModal');
 const saturationSlider = document.getElementById('saturationSlider');
@@ -7,10 +9,10 @@ const saturationValue = document.getElementById('saturationValue');
 const resetBtn = document.getElementById('saturation-resetBtn'); 
 const openFileButton = document.getElementById("openFileButton");
 const openFolderButton = document.getElementById("openFolderButton");
-const shuffleButton = document.getElementById("shuffleButton");
+const shuffleButton = document.getElementById("shuffle-button");
 const gifImageElement = document.getElementById("gifImage");
-const rewind = document.getElementById("rewind");
-const forward = document.getElementById("forward");
+const rewind = document.getElementById("rewind-button");
+const forward = document.getElementById("forward-button");
 const nextButton = document.getElementById("nextVideo");
 const prevButton = document.getElementById("prevVideo");
 const continueButton = document.getElementById("continueOverlay");
@@ -21,18 +23,18 @@ const speedOptions = {
 };
 const zoomTrackList = document.getElementById("zoom-track-list");
 const zoomOptions = zoomTrackList.querySelectorAll("a");
-const loopBtn = document.getElementById("LoopBtn");
-const playPauseBtn = document.getElementById("playPauseBtn");
-const progressBarContainer = document.getElementById("progressBarContainer");
-const progressBarWrapper = document.getElementById("progressBarWrapper");
-const progressBar = document.getElementById("progressBar");
-const progressHandle = document.getElementById("progressHandle");
-const currentTimeDisplay = document.getElementById("currentTime");
-const durationDisplay = document.getElementById("duration");
-const pipButton = document.getElementById("pip");
-const volumeBtn = document.getElementById("volumeBtn");
+const seekBarContainer = document.getElementById("seek-bar-container");
+const seekBarWrapper = document.getElementById("seek-bar-wrapper");
+const seekBar = document.getElementById("seek-bar");
+const seekBarHandle = document.getElementById("seek-bar-handle");
+const currentTimeDisplay = document.getElementById("current-time");
+const durationDisplay = document.getElementById("video-duration");
+const pipButton = document.getElementById("pip-button");
+const volumeBtn = document.getElementById("volume-button");
 const mute = document.querySelectorAll(".mute");
-const videoTitleElement = document.getElementById("videoTitle");
+const loopBtn = document.getElementById("loop-button");
+const playPauseBtn = document.getElementById("play-pause-button");
+const videoTitleElement = document.getElementById("video-title");
 const switchAudio = document.getElementById("switchAudioTrack");
 const contextMenuItems = document.querySelectorAll(".context-menu li");
 const audioImage = document.getElementById("audioImage");
@@ -50,7 +52,8 @@ const gifSearchContainer = document.getElementById("gifSearchContainer");
 const statusMessage = document.getElementById("statusMessage");
 
 let currentMedia = video;
-let isFullScreen = false;
+let isMaximized = false;
+let isFullscreen = false;
 let isRepeatMode = 0;
 let mediaFiles = [];
 let isFirstFileOpened = false;
@@ -597,12 +600,21 @@ async function downloadAndSaveGif(gifUrl, gifName) {
 // Apply saturation to video
 function applySaturationToVideo(value) {
 	mediaPlayer.style.filter = `saturate(${value}%)`;
+    localStorage.setItem("saturationValue", value); // Save to localStorage
 }
 
 // Update displayed value and apply saturation
 function updateSaturation(value) {
 	saturationValue.textContent = value + '%';
 	applySaturationToVideo(value);
+}
+
+function loadSaturationValue() {
+	const savedValue = localStorage.getItem("saturationValue");
+	if (savedValue) {
+		saturationSlider.value = savedValue;
+		updateSaturation(savedValue);
+	}
 }
 
 // Slider input event
@@ -652,7 +664,7 @@ saturationModal.addEventListener("mouseleave", () => {
 
 // Also handle focus/blur for keyboard users
 saturationModal.addEventListener("focus", () => {
-	isMouseOver = true; // Treat focus like mouseover for keyboard users
+	isMouseOver = true; 
 });
 saturationModal.addEventListener("blur", () => {
 	isMouseOver = false;
@@ -770,7 +782,7 @@ async function loadMediaFile(filePath, fileName) {
 
 // ✅ Ensure event listeners are only added once
 currentMedia.addEventListener("loadedmetadata", async () => {
-	updateProgressBar();
+	updateseekBar();
 	updateNavigationButtons();
 	updateDurationDisplay();
 	resetZoom(showStatusMessage(''));
@@ -787,7 +799,7 @@ currentMedia.addEventListener("ended", () => {
 	resetZoom();
 	stopPlayback();
 	updateNavigationButtons();
-	updateProgressBar();
+	updateseekBar();
 	updateDurationDisplay();
 });
 
@@ -1037,7 +1049,6 @@ function updateNavigationButtons() {
 
 // Function to update video title with truncation
 function updateVideoTitle(fileName) {
-    const videoTitleElement = document.getElementById("videoTitle");
 
     if (!fileName || typeof fileName !== "string") {
         console.error("Invalid fileName passed to updateVideoTitle:", fileName);
@@ -1070,10 +1081,10 @@ function stopPlayback() {
     updatePlayPauseIcon(false);
 	playedVideos = [];
 	video.currentTime = 0;
-	updateProgressBar();
+	updateseekBar();
 	currentTimeDisplay.textContent = formatTime(0);
-	progressBar.style.width = `0%`;
-	progressHandle.style.left = `0%`;
+	seekBar.style.width = `0%`;
+	seekBarHandle.style.left = `0%`;
 	audioImage.style.display = "none";
 	document.getElementById("audioLogo").style.display = "none";
 	stopGifPlayback();
@@ -2340,24 +2351,24 @@ window.electron.onInitialPlayState((state) => {
 });
 
 // Event listener for shuffle mode button loopbutton, switchtrack button and Full screen 
-document.getElementById("shuffleButton").addEventListener("click", toggleShuffleMode);
+document.getElementById("shuffle-button").addEventListener("click", toggleShuffleMode);
 loopBtn.addEventListener("click", toggleRepeat);
 
 // Select the full-screen button elements
-const fullscreenButtons = document.querySelectorAll(".fullscreenBtn");
+const fullscreenButtons = document.querySelectorAll(".fullscreen-button");
 
 // Function to update the fullscreen button UI
-function updateFullScreenUI(isFullscreen) {
-    fullscreenButtons.forEach((button) => {
-        const img = button.querySelector("img");
-        if (img) {
-            img.src = isFullscreen 
-                ? "../assets/icons/exit-full-screen.png" 
-                : "../assets/icons/full-screen.png"; 
-        }
-        // Update the tooltip (title) based on fullscreen state
-        button.title = isFullscreen ? "Exit Fullscreen" : "Enter Fullscreen";
-    });
+function updateFullscreenIcon(fullscreen) {
+	isFullscreen = fullscreen;
+	fullscreenButtons.forEach(button => {
+		const img = button.querySelector("img");
+		if (img) {
+			img.src = isFullscreen ?
+				"../assets/icons/exit-full-screen.png" :
+				"../assets/icons/full-screen.png";
+			button.title = isFullscreen ? "Exit Fullscreen" : "Enter Fullscreen";
+		}
+	});
 }
 
 // Fullscreen toggle function
@@ -2365,28 +2376,23 @@ function toggleFullScreen() {
     window.electron.toggleFullscreen();
 }
 
-// Add event listeners for full-screen buttons
-fullscreenButtons.forEach((element) => {
-    element.addEventListener("click", toggleFullScreen);
-    element.title = "Enter Fullscreen"; // Set initial title
+// Handle fullscreen button click
+fullscreenButtons.forEach(btn => {
+    btn.addEventListener("click", toggleFullScreen);
 });
 
-// Add event listener to prevent double-click on controls from bubbling up
-document.querySelector('.controls').addEventListener('dblclick', function(e) {
+
+// Prevent double-click on controls from bubbling up
+document.querySelector('.video-controls-container')?.addEventListener('dblclick', function(e) {
     e.stopPropagation();
 });
-    
-// fullscreen toggle for the media player
-mediaPlayer.addEventListener("dblclick", toggleFullScreen);
 
-// Initialize with correct state when window loads
-window.electron.onInitialWindowState((isFullscreen) => {
-    updateFullScreenUI(isFullscreen);
-});
+// Fullscreen toggle for media player
+mediaPlayer?.addEventListener("dblclick", toggleFullScreen);
 
-// Update UI when fullscreen state changes
+// Listen for fullscreen state changes
 window.electron.onFullscreenStateChanged((isFullscreen) => {
-    updateFullScreenUI(isFullscreen);
+    updateFullscreenIcon(isFullscreen);
 });
 
 
@@ -2420,7 +2426,7 @@ pipButton.title = "Enter Picture-in-Picture";
 
 document.addEventListener("DOMContentLoaded", function() {
 	const navbar = document.querySelector("nav");
-	const Mediacontrols = document.querySelector(".controls");
+	const Mediacontrols = document.querySelector(".video-controls-container");
 	const video = document.querySelector("video");
 	const navArrows = document.querySelector(".nav-arrows");
 	const winButton = document.querySelector(".win-buttons");
@@ -2581,7 +2587,7 @@ document.addEventListener("DOMContentLoaded", function() {
 			hideContextMenu(); // Hide context menu after clicking an item
 		});
 	});
-
+    loadSaturationValue();
 });
 
 // ✅ Format time to HH:MM:SS
@@ -2599,19 +2605,20 @@ function formatTime(time) {
 }
 
 // ✅ Update the progress bar and handle position
-function updateProgressBar() {
+function updateseekBar() {
 	if (video && video.duration && !isNaN(video.duration)) {
 		const progress = (video.currentTime / video.duration) * 100;
-		progressBar.style.width = `${progress}%`;
-        progressBar.style.transition = 'width 0.1s ease-out';
+		seekBar.style.width = `${progress}%`;
+        seekBar.style.transition = 'width 0.1s ease-out';
         
 		currentTimeDisplay.textContent = formatTime(video.currentTime);
-		progressHandle.style.display = "block";
+		seekBarHandle.style.display = "block";
 	} else {
-		progressHandle.style.display = "none";
+		seekBarHandle.style.display = "none";
 		currentTimeDisplay.textContent = "0:00:00";
 	}
 }
+
 // ✅ Function to update duration display
 function updateDurationDisplay() {
 	if (video && video.duration && !isNaN(video.duration)) {
@@ -2628,7 +2635,7 @@ function updateDurationDisplay() {
 
 // Sync the progress bar and duration display when the video is playing
 video.addEventListener("timeupdate", () => {
-	updateProgressBar();
+	updateseekBar();
 	updateDurationDisplay();
 });
 
@@ -2637,12 +2644,12 @@ durationDisplay.addEventListener("click", () => {
 	updateDurationDisplay();
 });
 
-progressBarWrapper.addEventListener("click", (e) => {
-    const rect = progressBarWrapper.getBoundingClientRect();
+seekBarWrapper.addEventListener("click", (e) => {
+    const rect = seekBarWrapper.getBoundingClientRect();
     const posX = e.clientX - rect.left;
     const percentage = posX / rect.width;
     video.currentTime = percentage * video.duration;
-    updateProgressBar();
+    updateseekBar();
 });
 
 // Handle dragging for smoother seeking
@@ -2651,13 +2658,13 @@ let temporaryTime = 0;
 
 function updateDragging(e) {
     if (isDragging) {
-        const rect = progressBarWrapper.getBoundingClientRect();
+        const rect = seekBarWrapper.getBoundingClientRect();
         const posX = e.clientX - rect.left;
         const percentage = Math.min(Math.max(posX / rect.width, 0), 1); // Ensure percentage is between 0 and 1
 
         // Update both progress bar and handle position continuously
-        progressBar.style.width = `${percentage * 100}%`;
-        progressHandle.style.left = `${percentage * 100}%`;
+        seekBar.style.width = `${percentage * 100}%`;
+        seekBarHandle.style.left = `${percentage * 100}%`;
 
         // Update temporary time for display only (don't update video time yet)
         temporaryTime = percentage * video.duration;
@@ -2665,7 +2672,7 @@ function updateDragging(e) {
     }
 }
 
-progressHandle.addEventListener("mousedown", (e) => {
+seekBarHandle.addEventListener("mousedown", (e) => {
     e.preventDefault();
     isDragging = true;
     video.pause(); // Pause video while seeking to prevent buffering
@@ -2688,12 +2695,12 @@ document.addEventListener("mouseup", () => {
         }
 
         hideHandleTimeout = setTimeout(() => {
-            progressHandle.style.opacity = "0";
+            seekBarHandle.style.opacity = "0";
         }, 2000);
     }
 });
 
-progressBarWrapper.addEventListener("wheel", (e) => {
+seekBarWrapper.addEventListener("wheel", (e) => {
 	e.preventDefault();
 	if (video && video.duration && !isNaN(video.duration)) {
 		const step = 10;
@@ -2704,23 +2711,23 @@ progressBarWrapper.addEventListener("wheel", (e) => {
 	}
 });
 
-// ✅ Allow progressBarWrapper scrolling when mouse is over it
-progressBarWrapper.addEventListener("wheel", (event) => {
+// ✅ Allow seekBarWrapper scrolling when mouse is over it
+seekBarWrapper.addEventListener("wheel", (event) => {
 	if (isMouseOver) {
 		event.stopPropagation();
 	}
 });
 
-// Detect mouse enter/leave events for the progressBarWrapper container
-progressBarWrapper.addEventListener("mouseenter", () => {
+// Detect mouse enter/leave events for the seekBarWrapper container
+seekBarWrapper.addEventListener("mouseenter", () => {
 	isMouseOver = true;
 });
-progressBarWrapper.addEventListener("mouseleave", () => {
+seekBarWrapper.addEventListener("mouseleave", () => {
 	isMouseOver = false;
 });
 
 // Update progress bar and current time display
-updateProgressBar();
+updateseekBar();
 updateDurationDisplay();
 
 // Event listeners for all nav components
@@ -2878,6 +2885,26 @@ document.addEventListener("keydown", (event) => {
 		event.preventDefault();
 		showTimerContainer()
 	}
+
+    if (event.key === "+") {
+		// Increase speed
+		if (video.playbackRate < 2) { // Limit max speed to 2
+			const newSpeed = video.playbackRate + 0.25;
+			setPlaybackSpeed(newSpeed);
+			showStatusMessage(newSpeed === 1 ? "Normal Speed" : `Speed: ${newSpeed}x`);
+		}
+	} else if (event.key === "-") {
+		// Decrease speed
+		if (video.playbackRate > 0.25) { // Limit min speed to 0.25
+			const newSpeed = video.playbackRate - 0.25;
+			setPlaybackSpeed(newSpeed);
+			showStatusMessage(newSpeed === 1 ? "Normal Speed" : `Speed: ${newSpeed}x`);
+		}
+	} else if (event.key === "=") {
+		// Reset speed to normal
+		setPlaybackSpeed(1);
+		showStatusMessage("Normal Speed");
+	}
     
 	const keyActions = {
 		ArrowLeft: () => {
@@ -2933,25 +2960,7 @@ document.addEventListener("keydown", (event) => {
 	if (keyActions[event.key]) {
 		keyActions[event.key]();
 	}
-	if (event.key === "+") {
-		// Increase speed
-		if (video.playbackRate < 2) { // Limit max speed to 2
-			const newSpeed = video.playbackRate + 0.25;
-			setPlaybackSpeed(newSpeed);
-			showStatusMessage(newSpeed === 1 ? "Normal Speed" : `Speed: ${newSpeed}x`);
-		}
-	} else if (event.key === "-") {
-		// Decrease speed
-		if (video.playbackRate > 0.25) { // Limit min speed to 0.25
-			const newSpeed = video.playbackRate - 0.25;
-			setPlaybackSpeed(newSpeed);
-			showStatusMessage(newSpeed === 1 ? "Normal Speed" : `Speed: ${newSpeed}x`);
-		}
-	} else if (event.key === "=") {
-		// Reset speed to normal
-		setPlaybackSpeed(1);
-		showStatusMessage("Normal Speed");
-	}	
+	
 });
 
 // Function to handle zoom menu clicks
@@ -3301,27 +3310,35 @@ document.addEventListener("click", () => {
 });
 
 // Window control buttons
-document.querySelector("#minimize")?.addEventListener("click", () => {
-    window.electron.minimize();
-});
 
-document.querySelector("#maximize")?.addEventListener("click", () => {
-    window.electron.maximize();
-});
-
-// Function to update the maximize button icon
-function updateMaximizeIcon(isFullScreen) {
-    const maximizeIcon = document.querySelector("#maximize img");
-    if (maximizeIcon) {
-        maximizeIcon.src = isFullScreen
-            ? "../assets/icons/win/restore-maximize.png"
-            : "../assets/icons/win/maximize.png";
-    }
+if (maximizeBtn) {
+    maximizeBtn.addEventListener("click", () => window.electron.maximize());
+}
+if (minimizeBtn) {
+    minimizeBtn.addEventListener("click", () => window.electron.minimize());
 }
 
+// Function to update the maximize button icon
+function updateMaximizeIcon(maximized) {
+	isMaximized = maximized;
+	const maximizeIcon = document.querySelector("#maximize img");
+	if (maximizeIcon) {
+		maximizeIcon.src = isMaximized ?
+			"../assets/icons/win/restore-maximize.png" :
+			"../assets/icons/win/maximize.png";
+		maximizeIcon.parentElement.title = isMaximized ? "Restore Down" : "Maximize";
+	}
+}
+
+// Initialize window states
+window.electron.onInitialWindowStates(({isMaximized, isFullscreen}) => {
+    updateMaximizeIcon(isMaximized);
+    updateFullscreenIcon(isFullscreen);
+});
+
 // Listen for window state changes
-window.electron.onWindowStateChange(updateMaximizeIcon);
-window.electron.onInitialWindowState(updateMaximizeIcon);
+window.electron.onWindowMaximizeState(updateMaximizeIcon);
+window.electron.onFullscreenStateChanged(updateFullscreenIcon);
 
 document.querySelector("#window-close").addEventListener("click", () => {
 	savePlaybackAndQuit();

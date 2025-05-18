@@ -1035,13 +1035,13 @@ font-size: 11px;
   top: 30%;
   left: 23.5%;
   transform: translateX(50%);
-  padding: 20px;
+  padding: 15px;
   backdrop-filter: blur(30px) saturate(180%);
   background-color: #2f2f2fc5;
   border-radius: 12px;
   border: 1px solid rgba(255, 255, 255, 0.125);
   z-index: 100;
-  width: 300px;
+  width: 250px;
 }
 
 .saturation-modal-header {
@@ -1052,15 +1052,14 @@ font-size: 11px;
 }
 
 .saturation-modal-title {
-  font-size: 18px;
+  font-size: 14px;
   letter-spacing: 0.5px;
 }
 
 .saturation-reset-btn {
   background: none;
   border: none;
-  font-size: 18px;
-  cursor: pointer;
+  font-size: 15px;
   color: #fff;
 }
 
@@ -1263,7 +1262,7 @@ font-size: 11px;
 }
 
 /* Media Player Controls */
-.controls {
+.video-controls-container {
   color: #fff;
   text-align: center;
   position: fixed;
@@ -1281,7 +1280,7 @@ font-size: 11px;
 }
 
 /* Pseudo-element for hover effect */
-.controls::before {
+.video-controls-container::before {
   content: "";
   position: absolute;
   bottom: 0;
@@ -1292,14 +1291,14 @@ font-size: 11px;
   pointer-events: none;
 }
 
-#videoTitle {
+#video-title {
   display: none; /* Update to block or inline-block to show the element as needed */
   position: absolute;
   text-align: start; /* Align text to start (left) */
   font-weight: 300;
   left: 15px;
   bottom: 100%;
-  color: white; /* Text color */
+  color: white;
   font-size: 24px;
   padding: 10px;
   z-index: 10; /* Set a higher value for the text to appear on top */
@@ -1309,7 +1308,7 @@ font-size: 11px;
   text-overflow: ellipsis; /* Adds "..." if the text overflows */
 }
 
-#videoTitle::before {
+#video-title::before {
   content: "";
   position: absolute;
   bottom: 0;
@@ -1320,101 +1319,84 @@ font-size: 11px;
   pointer-events: none;
 }
 
-#progressBarContainer {
+/* Progress Bar Container */
+#seek-bar-container {
   display: flex;
   align-items: center;
   width: 98%;
   gap: 10px;
   margin-bottom: 0px;
+  position: relative;
 }
 
-#progressBarWrapper {
+#seek-bar-wrapper {
   flex-grow: 1;
   height: 3px;
-  background-color: rgba(241, 241, 241, 0.175);
+  background-color: rgba(241, 241, 241, 0.3);
   border-radius: 4px;
   position: relative;
   z-index: 1;
   overflow: visible;
+  transition: all 0.3s ease;
 }
 
-#progressBarWrapper::before {
-  content: "";
-  position: absolute;
-  top: -20px; /* Extend the clickable area above the progress bar */
-  left: -10px;
-  width: calc(100% + 20px); /* Extend the clickable area to the sides */
-  height: 32px; /* Total height of the clickable area */
-  background: transparent; /* Changed from 'none' to 'transparent' for better visibility */
-  z-index: 2;
-}
-
-#progressBar {
+#seek-bar {
   height: 100%;
   width: 0%;
   background-color: rgb(87, 111, 230);
   border-radius: 5px;
   position: relative;
-  transition: width 0.1s ease;
+  transition: width 0.1s ease, background-color 0.5s;
 }
 
-#progressHandle {
-  position: absolute;
-  top: 50%;
-  right: 0; 
-  height: 16px;
-  width: 16px;
-  background-color: rgb(87, 111, 230);
-  border: 2px solid rgb(87, 111, 230);
-  border-radius: 50%;
-  transform: translate(50%, -50%); 
-  transition: opacity 0.3s ease, transform 0.2s;
-  opacity: 0;
-  pointer-events: auto;
-  z-index: 10;
+#seek-bar-handle {
+    position: absolute;
+    top: 50%;
+    left: 0%; 
+    height: 15px;
+    width: 15px;
+    background-color: rgb(87, 111, 230);
+    border: 2px solid rgb(87, 111, 230);
+    border-radius: 50%;
+    transform: translate(-50%, -50%);
+    opacity: 0;
+    z-index: 10;
 }
 
-#progressBarWrapper:hover #progressHandle,
-#progressBarWrapper:active #progressHandle {
-  background-color: rgb(87, 111, 230);
-  opacity: 1;
-  outline: none;
-
+#seek-bar-container.dragging #seekBar {
+    transition: none;
 }
 
-#progressHandle::before {
-  content: "";
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  width: 15px;
-  height: 3px;
-  background-color: transparent;
-  border-radius: 50%;
-  transform: translate(-50%, -50%);
-  pointer-events: none;
-  z-index: -1;
+/* Show handle when container is hovered or focused */
+#seek-bar-container:hover #seek-bar-handle,
+#seek-bar-container:focus-within #seek-bar-handle,
+#seek-bar-container.show-progress #seek-bar-handle {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1.2);
 }
 
-#currentTime {
+#current-time, #video-duration {
   color: #fff;
-  font-size: 0.7rem;
-  position: absolute;
-  left: 28px;
-  top: 28px;
+  font-size: 0.8rem;
+  min-width: 40px;
+  text-align: center;
 }
 
-#duration {
-  color: #fff;
-  font-size: 0.7rem;
-  position: absolute;
-  right: 28px;
-  top: 28px;
-  z-index: 1000;
+/* Time display animation */
+@keyframes pulseTime {
+  0% { opacity: 1; }
+  50% { opacity: 0.7; }
+  100% { opacity: 1; }
+}
+
+#seek-bar-container.show-progress #current-time,
+#seek-bar-container.show-progress #video-duration {
+  font-weight: bold;
+  animation: pulseTime 1s 2;
 }
 
 /* Volume Rendom Container */
-.volume-rendom {
+.audio-controls {
   display: flex;
   align-items: center;
   justify-content: space-around;
@@ -1426,7 +1408,7 @@ font-size: 11px;
 }
 
 /* Card Styles */
-.volume-rendom .card {
+.audio-controls .card {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1436,26 +1418,26 @@ font-size: 11px;
   transition: transform 0.3s ease-in-out;
 }
 
-.volume-rendom .card i,
+.audio-controls .card i,
 span {
   z-index: 999;
 }
 
 /* Icon Styles */
-.volume-rendom .card:hover {
+.audio-controls .card:hover {
   transform: scale(1.2);
 }
 
 /* Button Spacing */
-#volumeBtn,
+#volume-button,
 #switchAudioTrack,
-#repeatBtn {
+#repeat-button {
   padding: 8px;
 }
 
 /* Additional Icon Sizing */
-#LoopBtn,
-#shuffleBtn {
+#loop-button,
+#shuffle-button {
   padding: 18px;
 }
 
@@ -1528,7 +1510,7 @@ input[type="range"]::-moz-range-thumb:active {
 }
 
 /* media Controls */
-.media-controls {
+.playback-controls {
   display: flex;
   position: absolute;
   align-items: center;
@@ -1541,7 +1523,7 @@ input[type="range"]::-moz-range-thumb:active {
   z-index: 999;
 }
 
-.media-controls .card {
+.playback-controls .card {
   display: flex;
   justify-content: center;
   align-items: center;
@@ -1552,20 +1534,20 @@ input[type="range"]::-moz-range-thumb:active {
   transition: transform 0.3s ease-in-out;
 }
 
-.media-controls .card i {
+.playback-controls .card i {
   z-index: 1;
 }
 
-.media-controls .card img {
+.playback-controls .card img {
   height: 25px;
   z-index: 1;
 }
 
-.media-controls .card:hover {
+.playback-controls .card:hover {
   transform: scale(1.2);
 }
 
-#playPauseBtn {
+#play-pause-button {
   width: 20px;
   height: 20px;
 }
@@ -1857,7 +1839,7 @@ input[type="range"]::-moz-range-thumb:active {
 }
 
 /* Video Settings */
-.video-settings {
+.display-controls {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -1868,7 +1850,7 @@ input[type="range"]::-moz-range-thumb:active {
 }
 
 /* Card Styles */
-.video-settings .card {
+.display-controls .card {
   position: relative;
   padding: 6px;
   margin: 0.5px;
@@ -1881,12 +1863,12 @@ input[type="range"]::-moz-range-thumb:active {
   align-items: center;
 }
 
-.video-settings .card:hover {
+.display-controls .card:hover {
   transform: scale(1.2);
 }
 
 /* Icon Styles */
-.video-settings span.material-symbols-outlined {
+.display-controls span.material-symbols-outlined {
   font-size: 23px;
   display: inline-block;
   z-index: 1;

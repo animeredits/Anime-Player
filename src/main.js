@@ -39,6 +39,10 @@ const appState = {
     volume: 100,
     muted: false,
     currentFile: null
+  },
+    windowState: {
+    isMaximized: false,
+    isFullscreen: false
   }
 };
 
@@ -108,15 +112,20 @@ appState.win.webContents.on('before-input-event', (event, input) => {
 });
 
   appState.win.once("ready-to-show", () => {
-    handleFileOpenFromArg();
-    appState.win.maximize();
-    appState.win.webContents.send('initial-window-state', appState.win.isFullScreen());
-    appState.win.webContents.send('initial-play-state', appState.playback.status);
-    // appState.win.webContents.openDevTools(); // Only for development
-    setTimeout(() => {
+      handleFileOpenFromArg();
+  	  // Initialize window states
+      appState.windowState.isMaximized = appState.win.isMaximized();
+      appState.windowState.isFullscreen = appState.win.isFullScreen();
+      appState.win.webContents.send('initial-window-states', {
+      isMaximized: appState.windowState.isMaximized,
+      isFullscreen: appState.windowState.isFullscreen
+      });
+      appState.win.webContents.send('initial-play-state', appState.playback.status);
+      // appState.win.webContents.openDevTools(); // Only for development
+      setTimeout(() => {
       createTray();
       updateThumbarButtons();
-    }, 500);
+      }, 500);
   });
 
   setupWindowEvents();
@@ -147,22 +156,29 @@ if (process.argv.length > 1) {
 function setupWindowEvents() {
   appState.win.on("show", updateThumbarButtons);
   
-  appState.win.on("minimize", (event) => {
-    event.preventDefault();
-    appState.win.minimize();
-  });
+appState.win.on('maximize', () => {
+    appState.windowState.isMaximized = true;
+  appState.win.webContents.send('window-maximize-state', true);
+});
+
+appState.win.on('unmaximize', () => {
+    appState.windowState.isMaximized = false;
+  appState.win.webContents.send('window-maximize-state', false);
+});
 
   appState.win.on("closed", () => {
     cleanupWindow();
   });
 
-  appState.win.on('enter-full-screen', () => {
-    updateWindowState(true);
-  });
+appState.win.on('enter-full-screen', () => {
+    appState.windowState.isFullscreen = true;
+  appState.win.webContents.send('fullscreen-state-changed', true);
+});
 
-  appState.win.on('leave-full-screen', () => {
-    updateWindowState(false);
-  });
+appState.win.on('leave-full-screen', () => {
+    appState.windowState.isFullscreen = false;
+  appState.win.webContents.send('fullscreen-state-changed', false);
+});
 }
 
 function cleanupWindow() {
@@ -330,7 +346,25 @@ function loadPlaybackTime() {
 function setupIPCHandlers() {
   // Window control
   ipcMain.on("Minimize", () => appState.win?.minimize());
-  ipcMain.on("Maximize", () => appState.win?.setFullScreen(!appState.win.isFullScreen()));
+  ipcMain.on("Maximize", () => {
+	if (appState.win.isFullScreen()) {
+		appState.win.setFullScreen(false);
+		appState.windowState.isFullscreen = false;
+		// Wait for fullscreen to exit before maximizing
+		setTimeout(() => {
+			appState.win.maximize();
+			appState.windowState.isMaximized = true;
+		}, 100);
+	} else {
+		if (appState.win.isMaximized()) {
+			appState.win.unmaximize();
+			appState.windowState.isMaximized = false;
+		} else {
+			appState.win.maximize();
+			appState.windowState.isMaximized = true;
+		}
+	}
+  });
 
   // Playback state updates
   ipcMain.on('play-pause-state-tray', (event, state) => {
@@ -375,12 +409,17 @@ function setupIPCHandlers() {
   ipcMain.on("appClose", handleAppClose);
 }
 
-ipcMain.on("toggle-fullscreen", (event) => {
-  if (appState.win) {
-    const isFullscreen = !appState.win.isFullScreen();
-    appState.win.setFullScreen(isFullscreen);
-    event.sender.send("fullscreen-state-changed", isFullscreen);
-  }
+ipcMain.on("toggle-fullscreen", () => {
+	const willBeFullscreen = !appState.win.isFullScreen();
+	appState.win.setFullScreen(willBeFullscreen);
+	appState.windowState.isFullscreen = willBeFullscreen;
+
+	// If exiting fullscreen and window was maximized before, restore that state
+	if (!willBeFullscreen && appState.windowState.isMaximized) {
+		setTimeout(() => {
+			appState.win.maximize();
+		}, 100);
+	}
 });
 
 // Save custom logo to a user directory "Visualization" in this folder

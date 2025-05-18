@@ -122,7 +122,7 @@
           <li class="dropdown">
             <a href="javascript:void(0)" class="dropbtn">Video</a>
             <div class="dropdown-content">
-              <a class="fullscreenBtn">Full Screen</a>
+              <a class="fullscreen-button">Full Screen</a>
               <div class="sub-dropdown">
                 <a href="javascript:void(0)" class="sub-dropbtn">Zoom</a>
                 <div class="sub-dropdown-content" id="zoom-track-list">
@@ -148,18 +148,18 @@
               <!-- <div class="sub-dropdown"><a href="javascript:void(0)" class="sub-dropbtn">Aspect Ratio / Crop</a><div class="sub-dropdown-content" id="aspect-ratio-list"><a data-aspect="default">Default</a><a data-aspect="16:10">16:10</a><a data-aspect="16:9">16:9</a><a data-aspect="4:3">4:3</a><a data-aspect="1.85:1">1.85:1</a><a data-aspect="2.21:1">2.21:1</a><a data-aspect="2.35:1">2.35:1</a><a data-aspect="2.39:1">2.39:1</a><a data-aspect="5:4">5:4</a><a data-aspect="5:1">5:1</a></div></div> -->
             </div>
           </li>
-          <li class="dropdown">
+          <!-- <li class="dropdown">
             <a href="javascript:void(0)" class="dropbtn">Subtitle</a>
             <div class="dropdown-content">
               <a class="">Add Subtitle file...</a>
               <div class="sub-dropdown">
                 <a href="javascript:void(0)" class="sub-dropbtn">Subtitle Track</a>
                 <div class="sub-dropdown-content subtitle-track-list">
-                <!-- Subtitle tracks will be dynamically inserted here -->
+                Subtitle tracks will be dynamically inserted here 
                 </div>
               </div>
             </div>
-          </li>
+          </li> -->
           <li class="dropdown">
             <a href="javascript:void(0)" class="dropbtn">Help</a>
             <div class="dropdown-content">
@@ -351,7 +351,7 @@
                     <a><span class="icon">&#128270;</span> 3x</a>
                     <a><span class="icon">&#8634;</span> Reset</a> 
                   </div>
-                  <a class="fullscreenBtn" >
+                  <a class="fullscreen-button" >
                     <img class="context-menu-full-screen" src="../assets/icons/full-screen.png" alt="Fullscreen"> Full Screen </a>                </div>
               </div>
             </li>     
@@ -465,45 +465,45 @@
         <!-- Status Message -->
         <div id="statusMessage" class="status-message"></div>
         <!-- media player controls -->
-        <div class="controls">
-          <div id="videoTitle" style="display: none;"></div>
-          <div id="progressBarContainer">
-            <span id="currentTime">0:00</span>
-            <div id="progressBarWrapper" role="slider" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" aria-label="Video progress">
-              <div id="progressBar">
-                <div id="progressHandle" tabindex="0"></div>
+        <div class="video-controls-container">
+          <div id="video-title" style="display: none;"></div>
+          <div id="seek-bar-container">
+            <span id="current-time">0:00</span>
+            <div id="seek-bar-wrapper" role="slider" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" aria-label="Seek bar">
+              <div id="seek-bar">
+                <div id="seek-bar-handle" tabindex="0"></div>
               </div>
             </div>
-            <span id="duration">0:00</span>
+            <span id="video-duration">0:00</span>
           </div>
-          <div class="volume-rendom">
+          <div class="audio-controls">
             <div class="card">
-              <img id="volumeBtn" src="../assets/icons/volume.png" alt="Volume Control" />
+              <img id="volume-button" src="../assets/icons/volume.png" alt="Volume Control" />
             </div>
             <div class="card">
-              <img id="LoopBtn" src="../assets/icons/repeat-on.png" alt="Repeat" />
+              <img id="loop-button" src="../assets/icons/repeat-on.png" alt="Repeat" />
             </div>
             <div class="card">
-              <img id="shuffleButton"  src="../assets/icons/no-shuffle.png" alt="Shuffle"/>
+              <img id="shuffle-button"  src="../assets/icons/no-shuffle.png" alt="Shuffle"/>
             </div>
             <input type="range" class="range blue" id="volume-slider" min="0" max="200" value="100" step="1">
           </div>
-          <div class="media-controls">
-            <div id="rewind" class="card">
+          <div class="playback-controls">
+            <div id="rewind-button" class="card">
               <img src="../assets/icons/skip-15-seconds-back.png" alt="Rewind 10 seconds">
             </div>
             <div class="play-pause card">
-              <img id="playPauseBtn" src="../assets/icons/play-.png" alt="Play/Pause">
+              <img id="play-pause-button" src="../assets/icons/play-.png" alt="Play/Pause">
             </div>
-            <div id="forward" class="card">
-              <img src="../assets/icons/skip-15-seconds-next.png" alt="Forward 10 seconds">
+            <div id="forward-button" class="card">
+              <img src="../assets/icons/skip-15-seconds-next.png" alt="forward-button 10 seconds">
             </div>
           </div>
-          <div class="video-settings">
-            <div class="card fullscreenBtn">
+          <div class="display-controls">
+            <div class="card fullscreen-button">
               <img src="../assets/icons/full-screen.png" alt="Fullscreen">
             </div>
-            <div id="pip" class="card">
+            <div id="pip-button" class="card">
               <img src="../assets/icons/picture-in-picture.png" alt="Picture in Picture"> </div>
           </div>       
         </div>
@@ -529,7 +529,7 @@
                   <div class="keys"><span class="key">Left Arrow</span></div>
                 </div>
                 <div class="shortcut">
-                  <div class="description">Forward (10s)</div>
+                  <div class="description">forward-button (10s)</div>
                   <div class="keys"><span class="key">Right Arrow</span></div>
                 </div>
                 <div class="shortcut">
@@ -537,7 +537,7 @@
                   <div class="keys"><span class="key">Shift</span><span class="key">Left Arrow</span></div>
                 </div>
                 <div class="shortcut">
-                  <div class="description">Forward (5s)</div>
+                  <div class="description">forward-button (5s)</div>
                   <div class="keys"><span class="key">Shift</span><span class="key">Right Arrow</span></div>
                 </div>
                 <div class="shortcut">
@@ -545,7 +545,7 @@
                   <div class="keys"><span class="key">Ctrl</span><span class="key">Left Arrow</span></div>
                 </div>
                 <div class="shortcut">
-                  <div class="description">Forward (60s)</div>
+                  <div class="description">forward-button (60s)</div>
                   <div class="keys"><span class="key">Ctrl</span><span class="key">Right Arrow</span></div>
                 </div>
                 <div class="shortcut">
