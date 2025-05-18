@@ -603,22 +603,6 @@ function handleAppClose(event, playbackTime, videoId) {
 }
 
 // Auto-updater
-async function getLatestReleaseInfo() {
-  try {
-    const response = await fetch('https://api.github.com/repos/animeredits/Anime-Player/releases/latest');
-    if (!response.ok) throw new Error('Failed to fetch release info');
-    const data = await response.json();
-    return {
-      name: data.name,
-      version: data.tag_name,
-      body: data.body
-    };
-  } catch (error) {
-    console.error('Error fetching release info:', error);
-    return null;
-  }
-}
-
 function setupAutoUpdater() {
   if (!net.isOnline()) {
     appState.win?.webContents.send('show-offline-message');
@@ -628,14 +612,8 @@ function setupAutoUpdater() {
   autoUpdater.autoDownload = false;
   autoUpdater.checkForUpdates();
 
-  autoUpdater.on('update-available', async () => {
-    const releaseInfo = await getLatestReleaseInfo();
-    appState.win?.webContents.send('update-available', {
-      version: autoUpdater.currentVersion, // current version
-      updateVersion: releaseInfo?.version || 'latest',
-      updateName: releaseInfo?.name || 'New update available',
-      releaseNotes: releaseInfo?.body || ''
-    });
+  autoUpdater.on('update-available', () => {
+    appState.win?.webContents.send('update-available');
   });
 
   autoUpdater.on('download-progress', (progress) => {
@@ -644,15 +622,12 @@ function setupAutoUpdater() {
     updaterWindow.webContents.send('download-progress', progress.percent);
   });
 
-  autoUpdater.on('update-downloaded', async () => {
+  autoUpdater.on('update-downloaded', () => {
     isUpdating = false;
-    const releaseInfo = await getLatestReleaseInfo();
-    updaterWindow?.webContents.send('update-downloaded', {
-      updateName: releaseInfo?.name || 'New version',
-      releaseNotes: releaseInfo?.body || ''
-    });
-    appState.isQuitting = true;
-    autoUpdater.quitAndInstall();
+    updaterWindow?.webContents.send('update-downloaded');
+      appState.isQuitting = true;
+      autoUpdater.quitAndInstall();
+  
   });
 
   autoUpdater.on('error', (error) => {
@@ -661,11 +636,13 @@ function setupAutoUpdater() {
     if (updaterWindow) updaterWindow.close();
     appState.win?.webContents.send('update-error', error.message);
     
+    // Show the main window if it was hidden due to update
     if (appState.win && !appState.win.isVisible()) {
       appState.win.show();
     }
   });
 }
+
 function createUpdaterWindow() {
   updaterWindow = new BrowserWindow({
     width: 350,

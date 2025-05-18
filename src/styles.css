@@ -1331,13 +1331,24 @@ font-size: 11px;
 
 #seek-bar-wrapper {
   flex-grow: 1;
-  height: 3px;
+  height: 5px;
   background-color: rgba(241, 241, 241, 0.3);
   border-radius: 4px;
   position: relative;
   z-index: 1;
   overflow: visible;
   transition: all 0.3s ease;
+}
+
+#seek-bar-wrapper::before {
+  content: "";
+  position: absolute;
+  top: -20px; /* Extend the clickable area above the progress bar */
+  left: -10px;
+  width: calc(100% + 20px); /* Extend the clickable area to the sides */
+  height: 32px; /* Total height of the clickable area */
+  background: transparent; /* Changed from 'none' to 'transparent' for better visibility */
+  z-index: 2;
 }
 
 #seek-bar {

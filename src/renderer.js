@@ -782,7 +782,7 @@ async function loadMediaFile(filePath, fileName) {
 
 // ✅ Ensure event listeners are only added once
 currentMedia.addEventListener("loadedmetadata", async () => {
-	updateseekBar();
+	updateSeekBar();
 	updateNavigationButtons();
 	updateDurationDisplay();
 	resetZoom(showStatusMessage(''));
@@ -799,7 +799,7 @@ currentMedia.addEventListener("ended", () => {
 	resetZoom();
 	stopPlayback();
 	updateNavigationButtons();
-	updateseekBar();
+	updateSeekBar();
 	updateDurationDisplay();
 });
 
@@ -1081,7 +1081,7 @@ function stopPlayback() {
     updatePlayPauseIcon(false);
 	playedVideos = [];
 	video.currentTime = 0;
-	updateseekBar();
+	updateSeekBar();
 	currentTimeDisplay.textContent = formatTime(0);
 	seekBar.style.width = `0%`;
 	seekBarHandle.style.left = `0%`;
@@ -2604,13 +2604,12 @@ function formatTime(time) {
 	return `${formattedHours}${formattedMinutes}:${seconds}`;
 }
 
-// ✅ Update the progress bar and handle position
-function updateseekBar() {
+// ✅ Update the seek bar and handle position
+function updateSeekBar() {
 	if (video && video.duration && !isNaN(video.duration)) {
 		const progress = (video.currentTime / video.duration) * 100;
 		seekBar.style.width = `${progress}%`;
-        seekBar.style.transition = 'width 0.1s ease-out';
-        
+		seekBarHandle.style.left = '100%';
 		currentTimeDisplay.textContent = formatTime(video.currentTime);
 		seekBarHandle.style.display = "block";
 	} else {
@@ -2633,9 +2632,9 @@ function updateDurationDisplay() {
 	}
 }
 
-// Sync the progress bar and duration display when the video is playing
+// Sync the seek bar and duration display when the video is playing
 video.addEventListener("timeupdate", () => {
-	updateseekBar();
+	updateSeekBar();
 	updateDurationDisplay();
 });
 
@@ -2649,7 +2648,7 @@ seekBarWrapper.addEventListener("click", (e) => {
     const posX = e.clientX - rect.left;
     const percentage = posX / rect.width;
     video.currentTime = percentage * video.duration;
-    updateseekBar();
+    updateSeekBar();
 });
 
 // Handle dragging for smoother seeking
@@ -2662,7 +2661,7 @@ function updateDragging(e) {
         const posX = e.clientX - rect.left;
         const percentage = Math.min(Math.max(posX / rect.width, 0), 1); // Ensure percentage is between 0 and 1
 
-        // Update both progress bar and handle position continuously
+        // Update both seek bar and handle position continuously
         seekBar.style.width = `${percentage * 100}%`;
         seekBarHandle.style.left = `${percentage * 100}%`;
 
@@ -2726,9 +2725,10 @@ seekBarWrapper.addEventListener("mouseleave", () => {
 	isMouseOver = false;
 });
 
-// Update progress bar and current time display
-updateseekBar();
+// Update seek bar and current time display
+updateSeekBar();
 updateDurationDisplay();
+
 
 // Event listeners for all nav components
 document.querySelectorAll(".quit").forEach((element) => {
