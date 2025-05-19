@@ -3400,9 +3400,9 @@ window.electron.openFolderFromContext(async (folderPath) => {
                     mediaFiles = [...mediaFiles, ...newFiles];
                     updatePlaylistDropdown(mediaFiles);
                     
-                    // Optionally auto-play first new file
-                    // currentVideoIndex = mediaFiles.indexOf(newFiles[0]);
-                    // playMediaFile(mediaFiles[currentVideoIndex]);
+                    // auto-play first new file
+                    currentVideoIndex = mediaFiles.indexOf(newFiles[0]);
+                    playMediaFile(mediaFiles[currentVideoIndex]);
                 }
             }
         } else {

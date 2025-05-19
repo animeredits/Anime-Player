@@ -121,7 +121,7 @@ appState.win.webContents.on('before-input-event', (event, input) => {
       isFullscreen: appState.windowState.isFullscreen
       });
       appState.win.webContents.send('initial-play-state', appState.playback.status);
-      appState.win.webContents.openDevTools(); // Only for development
+      // appState.win.webContents.openDevTools(); // Only for development
       setTimeout(() => {
       createTray();
       updateThumbarButtons();
@@ -617,64 +617,34 @@ function setupAutoUpdater() {
     return;
   }
 
-  // Configure auto-updater (will automatically use package.json publish config)
   autoUpdater.autoDownload = false;
-  autoUpdater.allowPrerelease = false;
-  autoUpdater.allowDowngrade = false;
-  autoUpdater.fullChangelog = true;
-
-  // Check for updates (initial check)
   autoUpdater.checkForUpdates();
 
-  // Event handlers
-  autoUpdater.on('update-available', ({ version, releaseNotes }) => {
-    appState.win?.webContents.send('update-available', {
-      version,
-      releaseNotes: releaseNotes || 'No release notes provided',
-      date: new Date().toISOString()
-    });
-  });
-
-  autoUpdater.on('update-not-available', () => {
-    appState.win?.webContents.send('update-not-available');
+  autoUpdater.on('update-available', () => {
+    appState.win?.webContents.send('update-available');
   });
 
   autoUpdater.on('download-progress', (progress) => {
     isUpdating = true;
     if (!updaterWindow) createUpdaterWindow();
-    updaterWindow?.webContents.send('download-progress', {
-      percent: progress.percent,
-      bytesPerSecond: progress.bytesPerSecond,
-      total: progress.total,
-      transferred: progress.transferred
-    });
+    updaterWindow.webContents.send('download-progress', progress.percent);
   });
 
-  autoUpdater.on('update-downloaded', ({ version, releaseNotes, releaseDate }) => {
+  autoUpdater.on('update-downloaded', () => {
     isUpdating = false;
-    updaterWindow?.webContents.send('update-downloaded', {
-      version,
-      releaseNotes: releaseNotes || 'No release notes provided',
-      releaseDate: releaseDate || new Date().toISOString()
-    });
-    
-    appState.pendingUpdate = {
-      version,
-      readyToInstall: true
-    };
+    updaterWindow?.webContents.send('update-downloaded');
+      appState.isQuitting = true;
+      autoUpdater.quitAndInstall();
+  
   });
 
   autoUpdater.on('error', (error) => {
     console.error('Update error:', error);
     isUpdating = false;
-    updaterWindow?.close();
+    if (updaterWindow) updaterWindow.close();
+    appState.win?.webContents.send('update-error', error.message);
     
-    appState.win?.webContents.send('update-error', {
-      message: error.message,
-      stack: error.stack,
-      code: error.code || 'UNKNOWN'
-    });
-    
+    // Show the main window if it was hidden due to update
     if (appState.win && !appState.win.isVisible()) {
       appState.win.show();
     }
@@ -682,46 +652,25 @@ function setupAutoUpdater() {
 }
 
 function createUpdaterWindow() {
-  if (updaterWindow && !updaterWindow.isDestroyed()) {
-    updaterWindow.focus();
-    return;
-  }
-
   updaterWindow = new BrowserWindow({
-    width: 400,
-    height: 250,
+    width: 350,
+    height: 200,
     resizable: false,
     maximizable: false,
-    closable: true,
+    closable: false,
     minimizable: true,
     frame: false,
     show: false,
-    modal: true,
-    parent: appState.win,
     webPreferences: {
       preload: path.join(__dirname, './update/preload-updater.js'),
       nodeIntegration: false,
-      contextIsolation: true,
-      sandbox: true
+      contextIsolation: true
     }
   });
 
   updaterWindow.loadFile(path.join(__dirname, './update/updater.html'));
-  
-  updaterWindow.on('ready-to-show', () => {
-    updaterWindow.show();
-    if (appState.win) {
-      updaterWindow.setPosition(
-        appState.win.getPosition()[0] + (appState.win.getSize()[0] - 400) / 2,
-        appState.win.getPosition()[1] + (appState.win.getSize()[1] - 250) / 2
-      );
-    }
-  });
-
-  updaterWindow.on('closed', () => {
-    updaterWindow = null;
-    isUpdating = false;
-  });
+  updaterWindow.on('ready-to-show', () => updaterWindow.show());
+  updaterWindow.on('closed', () => updaterWindow = null);
 }
 
 // App lifecycle
