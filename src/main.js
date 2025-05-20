@@ -401,17 +401,14 @@ function setupIPCHandlers() {
   ipcMain.on("delete-playback-entry", handleDeletePlaybackEntry);
 
   // App Update
-ipcMain.on('start-update-download', () => {
-  appState.updateRequested = true;
-  autoUpdater.downloadUpdate();
-});
+  ipcMain.on('start-update-download', () => {
+    autoUpdater.downloadUpdate();
+  });
 
-ipcMain.on('install-update', () => {
-  if (appState.pendingUpdate?.readyToInstall) {
-    appState.isQuitting = true;
-    autoUpdater.quitAndInstall();
-  }
-});
+  // App Update
+  ipcMain.on('start-update-download', () => {
+    autoUpdater.downloadUpdate();
+  });
 
   // App lifecycle
   ipcMain.on("appClose", handleAppClose);
