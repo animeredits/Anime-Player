@@ -121,7 +121,7 @@ appState.win.webContents.on('before-input-event', (event, input) => {
       isFullscreen: appState.windowState.isFullscreen
       });
       appState.win.webContents.send('initial-play-state', appState.playback.status);
-      // appState.win.webContents.openDevTools(); // Only for development
+      appState.win.webContents.openDevTools(); // Only for development
       setTimeout(() => {
       createTray();
       updateThumbarButtons();
@@ -465,6 +465,7 @@ ipcMain.handle('delete-logo', async (event, fileName) => {
   }
 });
 
+// Open file dialog to select media files or folders
 async function handleOpenFileDialog() {
   try {
     const result = await dialog.showOpenDialog({
@@ -473,7 +474,31 @@ async function handleOpenFileDialog() {
     });
 
     if (result.canceled) return null;
-    return result.filePaths.map(filePath => path.normalize(filePath)); 
+    
+    const filePaths = result.filePaths.map(filePath => path.normalize(filePath));
+    
+    // If only one file was selected, check its folder for siblings and sort them
+    if (filePaths.length === 1) {
+      const folderPath = path.dirname(filePaths[0]);
+      const files = await fs.promises.readdir(folderPath, { withFileTypes: true });
+      
+      const siblingFiles = files
+        .filter(file => file.isFile() && MEDIA_EXTENSIONS.includes(path.extname(file.name).toLowerCase()))
+        .map(file => path.join(folderPath, file.name))
+        .sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
+      
+      return {
+        singleFile: true,
+        currentFile: filePaths[0],
+        siblingFiles
+      };
+    }
+    
+    // For multiple selected files, return them in the original selection order
+    return {
+      singleFile: false,
+      files: filePaths // Maintain original order
+    };
   } catch (error) {
     console.error("Error opening file dialog:", error);
     return null;

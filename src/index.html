@@ -134,18 +134,21 @@
                   <a>Reset</a>
                 </div>
               </div>
-              <a class="videoEffectBtn">Video Effect</a>
-              <div class="saturationModal" id="saturationModal">
-                <div class="saturation-modal-header">
-                  <div class="saturation-modal-title">Saturation Adjustment</div>
-                  <button class="saturation-reset-btn" id="saturation-resetBtn">↻</button>
+              <!-- <div class="sub-dropdown">
+                <a href="javascript:void(0)" class="sub-dropbtn">Aspect Ratio / Crop</a>
+                <div class="sub-dropdown-content" id="aspect-ratio-list">
+                  <a data-aspect="default">Default</a>
+                  <a data-aspect="16:10">16:10</a>
+                  <a data-aspect="16:9">16:9</a>
+                  <a data-aspect="4:3">4:3</a>
+                  <a data-aspect="1.85:1">1.85:1</a>
+                  <a data-aspect="2.21:1">2.21:1</a>
+                  <a data-aspect="2.35:1">2.35:1</a>
+                  <a data-aspect="2.39:1">2.39:1</a>
+                  <a data-aspect="5:4">5:4</a>
+                  <a data-aspect="5:1">5:1</a>
                 </div>
-                <div class="slider-container">
-                  <input type="range" min="0" max="200" value="120" class="slider" id="saturationSlider">
-                  <span class="value-display" id="saturationValue">120%</span>
-                </div>
-              </div>
-              <!-- <div class="sub-dropdown"><a href="javascript:void(0)" class="sub-dropbtn">Aspect Ratio / Crop</a><div class="sub-dropdown-content" id="aspect-ratio-list"><a data-aspect="default">Default</a><a data-aspect="16:10">16:10</a><a data-aspect="16:9">16:9</a><a data-aspect="4:3">4:3</a><a data-aspect="1.85:1">1.85:1</a><a data-aspect="2.21:1">2.21:1</a><a data-aspect="2.35:1">2.35:1</a><a data-aspect="2.39:1">2.39:1</a><a data-aspect="5:4">5:4</a><a data-aspect="5:1">5:1</a></div></div> -->
+              </div> -->
             </div>
           </li>
           <!-- <li class="dropdown">
@@ -160,6 +163,33 @@
               </div>
             </div>
           </li> -->
+          <li class="dropdown">
+            <a href="javascript:void(0)" class="dropbtn">Tools</a>
+            <div class="dropdown-content">
+              <div class="sub-dropdown">
+                <a href="javascript:void(0)" class="sub-dropbtn">Audio Effects</a>
+                <div class="sub-dropdown-content">
+                  <a href="javascript:void(0)" id="bassTrebleToggle">Bass & Treble</a>
+                  <a href="javascript:void(0)" id="spatialAudioToggle">Spatial Audio</a>
+                </div>
+              </div>
+              <div class="sub-dropdown">
+                <a href="javascript:void(0)" class="videoEffectBtn sub-dropbtn">Video Effect</a>
+                <div class="sub-dropdown-content">
+                  <div class="saturationModal" id="saturationModal">
+                    <div class="saturation-modal-header">
+                      <div class="saturation-modal-title">Saturation Adjustment</div>
+                      <button class="saturation-reset-btn" id="saturation-resetBtn">↻</button>
+                    </div>
+                    <div class="slider-container">
+                      <input type="range" min="0" max="200" value="120" class="slider" id="saturationSlider">
+                      <span class="value-display" id="saturationValue">120%</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </li>
           <li class="dropdown">
             <a href="javascript:void(0)" class="dropbtn">Help</a>
             <div class="dropdown-content">
@@ -403,10 +433,13 @@
           </ul>
         </div>
         <!-- Media -->
-        <video id="media" preload="auto" style="display: none;">
+        <video id="media" preload="auto">
           <source id="videoSource" />
           <source id="audioSource" />
         </video>
+        <div id="noMediaLogo">
+            <img src="../assets/icons/icon.ico" alt="No Media"/>
+        </div>
         <img id="gifImage" style="display: none; max-width: 100%; max-height: 100%;" alt="GIF Animation" />
         <div id="audioLogo">
           <img id="audioImage" src="../assets/icons/icon.ico" alt="Visualization" style="display: none;" />
@@ -432,10 +465,10 @@
         </div>
         <!-- Navigation Arrows -->
         <div class="nav-arrows">
-          <button id="prevVideo" class="card arrow-button left-arrow ">
+          <button id="prevVideo" class="card arrow-button left-arrow tooltip-btn" data-tooltip="Previous Video">
             <span class="left-arrow">&#10092;</span>
           </button>
-          <button id="nextVideo" class="card arrow-button right-arrow ">
+          <button id="nextVideo" class="card arrow-button right-arrow tooltip-btn" data-tooltip="Next Video">
             <span class="right-arrow">&#10093; </span>
           </button>
         </div>
@@ -468,43 +501,47 @@
         <div class="video-controls-container">
           <div id="video-title" style="display: none;"></div>
           <div id="seek-bar-container">
-            <span id="current-time">0:00</span>
+            <span id="current-time" class="tooltip-btn" data-tooltip="Current Time">0:00</span>
             <div id="seek-bar-wrapper" role="slider" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" aria-label="Seek bar">
               <div id="seek-bar">
                 <div id="seek-bar-handle" tabindex="0"></div>
               </div>
             </div>
-            <span id="video-duration">0:00</span>
+            <span id="video-duration" class="tooltip-btn" data-tooltip="Duration">0:00</span>
           </div>
           <div class="audio-controls">
-            <div class="card">
+            <div id="volume-control" class="card tooltip-btn" data-tooltip="Volume Control">
               <img id="volume-button" src="../assets/icons/volume.png" alt="Volume Control" />
             </div>
-            <div class="card">
-              <img id="loop-button" src="../assets/icons/repeat-on.png" alt="Repeat" />
+            <div class="card" >
+              <div class="icon-container off tooltip-btn" data-tooltip="Loop off">
+                <img id="loop-button" src="../assets/icons/repeat-on.png" alt="Loop" />
+                <div class="off-indicator"></div>
+              </div>
             </div>
-            <div class="card">
+            <div class="card tooltip-btn" data-tooltip="Shuffle">
               <img id="shuffle-button"  src="../assets/icons/no-shuffle.png" alt="Shuffle"/>
             </div>
             <input type="range" class="range blue" id="volume-slider" min="0" max="200" value="100" step="1">
           </div>
           <div class="playback-controls">
-            <div id="rewind-button" class="card">
+            <div id="rewind-button" class="card tooltip-btn" data-tooltip="Rewind 10 seconds">
               <img src="../assets/icons/skip-15-seconds-back.png" alt="Rewind 10 seconds">
             </div>
-            <div class="play-pause card">
-              <img id="play-pause-button" src="../assets/icons/play-.png" alt="Play/Pause">
+            <div class="play-pause card tooltip-btn" id="playPauseWrapper" data-tooltip="Play/Pause">
+              <img id="play-pause-button" src="../assets/icons/play-.png" alt="Play">
             </div>
-            <div id="forward-button" class="card">
+            <div id="forward-button" class="card tooltip-btn" data-tooltip="Forward 10 seconds">
               <img src="../assets/icons/skip-15-seconds-next.png" alt="forward-button 10 seconds">
             </div>
           </div>
           <div class="display-controls">
-            <div class="card fullscreen-button">
+            <div class="card fullscreen-button tooltip-btn" data-tooltip="Fullscreen">
               <img src="../assets/icons/full-screen.png" alt="Fullscreen">
             </div>
-            <div id="pip-button" class="card">
-              <img src="../assets/icons/picture-in-picture.png" alt="Picture in Picture"> </div>
+            <div id="pip-button" class="card tooltip-btn" data-tooltip="Picture in Picture">
+              <img src="../assets/icons/picture-in-picture.png" alt="Picture in Picture"> 
+            </div>
           </div>       
         </div>
         <!-- Shortcut Modal  -->

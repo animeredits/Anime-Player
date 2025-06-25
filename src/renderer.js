@@ -33,6 +33,8 @@ const pipButton = document.getElementById("pip-button");
 const volumeBtn = document.getElementById("volume-button");
 const mute = document.querySelectorAll(".mute");
 const loopBtn = document.getElementById("loop-button");
+const iconContainer = loopBtn.parentElement;
+const playPauseWrapper = document.getElementById("playPauseWrapper");
 const playPauseBtn = document.getElementById("play-pause-button");
 const videoTitleElement = document.getElementById("video-title");
 const switchAudio = document.getElementById("switchAudioTrack");
@@ -111,14 +113,11 @@ let isShutdownAtVideoEndEnabled = false;
 let isShutdownAtPlaylistEndEnabled = false;
 
 
-// Set tooltips for buttons
-shuffleButton.title = "Shuffle";
-loopBtn.title = "Repeat";
-
 // ✅ Function to show the temporary status message
 function showStatusMessage(text) {
 	statusMessage.innerText = text;
 	statusMessage.style.opacity = '1';
+    statusMessage.style.transition = "font-size 0.15s ease-out";
 
 	// Hide the message after 1.5 seconds
 	setTimeout(() => {
@@ -597,9 +596,8 @@ async function downloadAndSaveGif(gifUrl, gifName) {
 }
 
 // ✅ Function to apply saturation effect
-// Apply saturation to video
 function applySaturationToVideo(value) {
-	mediaPlayer.style.filter = `saturate(${value}%)`;
+	video.style.filter = `saturate(${value}%)`;
     localStorage.setItem("saturationValue", value); // Save to localStorage
 }
 
@@ -703,8 +701,18 @@ modalContainer.addEventListener('mouseleave', function() {
 
 // ✅ Function to load media file
 async function loadMediaFile(filePath, fileName) {
-    if (!filePath) return;
-    try {
+    if (!filePath) {
+        // No file: hide video and audio logo, show placeholder
+        video.style.display = "none";
+        document.getElementById("noMediaLogo").style.display = "block";
+        audioImage.style.display = "none";
+        document.getElementById("audioLogo").style.display = "none";
+        return;
+    }    try {
+         // Hide "no media" logo, show video
+        document.getElementById("noMediaLogo").style.display = "none";
+        video.style.display = "block";
+
         // Normalize path and extract filename
         let fixedPath = filePath.replace(/\\/g, "/");
         const filename = fixedPath.substring(fixedPath.lastIndexOf("/") + 1);
@@ -776,6 +784,8 @@ async function loadMediaFile(filePath, fileName) {
         applyRotation();
     } catch (error) {
         console.error("❌ Error loading media file:", error);
+        video.style.display = "none";
+        document.getElementById("noMediaLogo").style.display = "block";
         return;
     }
 }
@@ -789,7 +799,6 @@ currentMedia.addEventListener("loadedmetadata", async () => {
 	updateVideoTitle(video.dataset.videoId);
 	populateAudioTracks();
 	highlightCurrentVideoInPlaylist(video.dataset.videoId);
-	// Start from 0 unless "Continue Watching" button is pressed
 	video.currentTime = 0;
 	video.play().catch(console.error);
 });
@@ -861,19 +870,27 @@ video.addEventListener("ended", () => {
 // 🟢 Open file dialog (Multiple File Selection) - MODIFIED to append files
 openFileButton.addEventListener("click", async () => {
     try {
-        const filePaths = await window.electron.openFileDialog();
-        if (filePaths.length > 0) {
-            // Add new files to existing playlist (remove duplicates if needed)
-            const newFiles = filePaths.filter(file => !mediaFiles.includes(file));
+        const result = await window.electron.openFileDialog();
+        if (!result) return;
+        
+        if (result.singleFile) {
+            mediaFiles = result.siblingFiles;
+            currentVideoIndex = mediaFiles.indexOf(result.currentFile);
+            if (currentVideoIndex === -1) {
+                // Shouldn't happen, but fallback
+                mediaFiles = [result.currentFile];
+                currentVideoIndex = 0;
+            }
+        } else {
+            // Multiple files selected - existing behavior
+            const newFiles = result.files.filter(file => !mediaFiles.includes(file));
             mediaFiles = [...mediaFiles, ...newFiles];
-            
-            // Play the first newly selected file
-            currentVideoIndex = mediaFiles.indexOf(filePaths[0]);
-            playMediaFile(mediaFiles[currentVideoIndex]);
-            
-            updatePlaylistDropdown(mediaFiles);
-            showStatusMessage(`Added ${newFiles.length} video(s) to playlist`);
+            currentVideoIndex = mediaFiles.indexOf(result.files[0]);
         }
+        
+        playMediaFile(mediaFiles[currentVideoIndex]);
+        updatePlaylistDropdown(mediaFiles);
+        showStatusMessage(`Loaded ${mediaFiles.length} video(s)`);
     } catch (error) {
         console.error("Error opening files:", error);
     }
@@ -898,11 +915,14 @@ openFolderButton.addEventListener("click", async () => {
 
 // Functions to toggle play/pause icon
 function updatePlayPauseIcon(isPlaying) {
-    playPauseBtn.src = isPlaying ? "../assets/icons/pause-.png" : "../assets/icons/play-.png";
-    playPauseBtn.setAttribute("alt", isPlaying ? "Pause" : "Play");
-    playPauseBtn.setAttribute("title", isPlaying ? "Pause" : "Play");
-}
+    const iconSrc = isPlaying ? "../assets/icons/pause-.png" : "../assets/icons/play-.png";
+    const label = isPlaying ? "Pause" : "Play";
 
+    playPauseBtn.src = iconSrc;
+    playPauseBtn.setAttribute("alt", label);
+    playPauseWrapper.setAttribute("data-tooltip", label);
+}
+    
 function togglePlayPause() {
 	if (video.readyState < 3) {
 		return;
@@ -910,6 +930,7 @@ function togglePlayPause() {
 		if (video.paused) {
 			video.play();
 			hideVideoTitle();
+            video.style.display = "block";
 			window.electron.sendPlayPauseStateForTray("playing");
 			window.electron.sendPlayPauseStateForThumbar("playing");
 		} else {
@@ -925,7 +946,6 @@ function togglePlayPause() {
 // Event listeners for play/pause button
 playPauseBtn.addEventListener("click", (e) => {
         togglePlayPause();
-    
 });
 
 video.addEventListener("play", () => updatePlayPauseIcon(true));
@@ -1067,16 +1087,19 @@ function updateVideoTitle(fileName) {
 // Function to show video title when video is paused
 function showVideoTitle() {
 	videoTitleElement.style.display = "block";
+    videoTitleElement.style.transition = "font-size 0.15s ease-out"
 }
 
 // Function to hide video title when video is playing
 function hideVideoTitle() {
 	videoTitleElement.style.display = "none";
+    videoTitleElement.style.transition = "font-size 0.15s ease-out";
 }
 
 // Function to stop playback and reset the media player
 function stopPlayback() {
 	video.pause();
+    video.style.display = "none"; 
     updateVideoTitle(video.dataset.videoId);
     updatePlayPauseIcon(false);
 	playedVideos = [];
@@ -1124,18 +1147,12 @@ rewind.addEventListener("click", () => {
 	);
 });
 
-// Add tooltip for rewind button
-rewind.setAttribute("title", "Rewind 10 seconds");
-
 forward.addEventListener("click", () => {
     currentMedia.currentTime = Math.min(currentMedia.duration, currentMedia.currentTime + 10);
 	showStatusMessage(
 		`${formatTime(currentMedia.currentTime)} / ${formatTime(currentMedia.duration)}`
 	);
 });
-
-// Add tooltip for forward button
-forward.setAttribute("title", "Forward 10 seconds");
 
 // Double click on video for rewind/forward (YouTube-like)
 // video.addEventListener('dblclick', (e) => {
@@ -1353,7 +1370,7 @@ function updatePlaylistDropdown(mediaFiles) {
 
             fileLink.addEventListener("click", () => {
                 playVideoByIndex(index);
-                highlightCurrentVideo(fileLink);
+                highlightCurrentVideo(fileLink, true); // Instant scroll when clicking
             });
 
             playlistContainer.appendChild(fileLink);
@@ -1406,8 +1423,8 @@ function filterPlaylistItems(event) {
     });
 }
 
-// ✅ Function to highlight the currently playing video and scroll to it
-function highlightCurrentVideo(selectedLink) {
+// ✅ Function to highlight the currently playing video with optional instant scroll
+function highlightCurrentVideo(selectedLink, instant = false) {
     if (!selectedLink) return;
 
     // Get the text of the selected item to use as reference
@@ -1423,10 +1440,10 @@ function highlightCurrentVideo(selectedLink) {
         if (item.textContent.trim() === selectedText) {
             item.classList.add("highlight");
 
-            // Auto-scroll to the highlighted item if the user isn't scrolling
+            // Scroll behavior based on the instant parameter
             if (!isUserScrolling) {
                 item.scrollIntoView({
-                    behavior: "smooth",
+                    behavior: instant ? "instant" : "smooth",
                     block: "center",
                 });
             }
@@ -1438,7 +1455,7 @@ function highlightCurrentVideo(selectedLink) {
 function highlightCurrentVideoInPlaylist(fileName) {
     document.querySelectorAll(".play-list .playlist-item").forEach((item) => {
         if (item.textContent === fileName) {
-            highlightCurrentVideo(item);
+            highlightCurrentVideo(item, true); // Instant scroll for video changes
         }
     });
 }
@@ -2016,7 +2033,9 @@ fontSizeTooltip.style.position = "absolute";
 fontSizeTooltip.style.top = "60px";
 fontSizeTooltip.style.right = "25px";
 fontSizeTooltip.style.color = "white";
+fontSizeTooltip.style.textShadow ="1px 1px 2px rgba(0, 0, 0, 0.863), -1px -1px 2px rgba(0, 0, 0, 0.733), 1px -1px 2px rgba(0, 0, 0, 0.707),-1px 1px 2px black";
 fontSizeTooltip.style.padding = "5px 10px";
+fontSizeTooltip.style.transition = "opacity 0.3s";
 fontSizeTooltip.style.borderRadius = "5px";
 fontSizeTooltip.style.zIndex = "1000";
 fontSizeTooltip.style.display = "none"; // Initially hidden
@@ -2161,7 +2180,6 @@ mute.forEach((muteButton) => {
 
 
 // Zoom functionality (CTRL + Shift + Mouse Wheel)
-// Handle zoom separately
 mediaPlayer.addEventListener("wheel", (event) => {
 	// Prevent default behavior
 	event.preventDefault();
@@ -2299,23 +2317,31 @@ function toggleRepeat() {
     }
 }
 
-function updateRepeatUI() {
+function updateRepeatUI() {    
     switch (isRepeatMode) {
-        case 0: // Off
+        case 0:
             showStatusMessage("Loop: Off");
             loopBtn.src = "../assets/icons/repeat-on.png";
-            loopBtn.title = "Loop one";
+            iconContainer.classList.add('off');
+            loopBtn.parentElement.setAttribute('data-tooltip', 'Loop off');
             break;
-        case 1: // One
+        case 1:
             showStatusMessage("Loop: One");
             loopBtn.src = "../assets/icons/repeat-one.png";
-            loopBtn.title = "Loop all";
+            iconContainer.classList.remove('off');
+            loopBtn.parentElement.setAttribute('data-tooltip', 'Loop one');
             break;
-        case 2: // All
+        case 2:
             showStatusMessage("Loop: All");
             loopBtn.src = "../assets/icons/repeat-on.png";
-            loopBtn.title = "Loop off";
+            iconContainer.classList.remove('off');
+            loopBtn.parentElement.setAttribute('data-tooltip', 'Loop All');
             break;
+        default:
+            loopBtn.src = "../assets/icons/repeat-on.png";
+            iconContainer.classList.add('off');
+            loopBtn.parentElement.setAttribute('data-tooltip', 'Loop off');
+            break;    
     }
 }
 
@@ -2366,7 +2392,6 @@ function updateFullscreenIcon(fullscreen) {
 			img.src = isFullscreen ?
 				"../assets/icons/exit-full-screen.png" :
 				"../assets/icons/full-screen.png";
-			button.title = isFullscreen ? "Exit Fullscreen" : "Enter Fullscreen";
 		}
 	});
 }
@@ -2384,6 +2409,21 @@ fullscreenButtons.forEach(btn => {
 
 // Prevent double-click on controls from bubbling up
 document.querySelector('.video-controls-container')?.addEventListener('dblclick', function(e) {
+    e.stopPropagation();
+});
+
+// Prevent double-click on left arrow
+document.querySelector('.left-arrow')?.addEventListener('dblclick', function(e) {
+    e.stopPropagation();
+});
+
+// Prevent double-click on right arrow
+document.querySelector('.right-arrow')?.addEventListener('dblclick', function(e) {
+    e.stopPropagation();
+});
+
+// Prevent double-click on nav element
+document.querySelector('nav')?.addEventListener('dblclick', function(e) {
     e.stopPropagation();
 });
 
@@ -2420,9 +2460,6 @@ function togglePiPMode() {
 
 // Event listener for PiP mode button
 pipButton.addEventListener("click", togglePiPMode);
-
-// Set initial tooltip
-pipButton.title = "Enter Picture-in-Picture";
 
 document.addEventListener("DOMContentLoaded", function() {
 	const navbar = document.querySelector("nav");
