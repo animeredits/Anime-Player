@@ -49,23 +49,29 @@
                 </div>
               </div>
               <div class="sub-dropdown">
-                <a href="javascript:void(0)" class="sub-dropbtn">Playback Speed</a>
-                <div class="sub-dropdown-content" id="Playback-Speed">
-                  <a href="javascript:void(0)" data-speed="0.25">0.25</a>
-                  <a href="javascript:void(0)" data-speed="0.5">0.5</a>
-                  <a href="javascript:void(0)" data-speed="0.75">0.75</a>
-                  <a href="javascript:void(0)" data-speed="1" class="selected">Normal</a>
-                  <a href="javascript:void(0)" data-speed="1.25">1.25</a>
-                  <a href="javascript:void(0)" data-speed="1.5">1.5</a>
-                  <a href="javascript:void(0)" data-speed="1.75">1.75</a>
-                  <a href="javascript:void(0)" data-speed="2">2</a>
+                <a href="javascript:void(0)" class="sub-dropbtn">Sort By</a>
+                <div class="sub-dropdown-content sort-dropdown">
+                  <a href="javascript:void(0)" data-sort="name" class="sort-option active">
+                    <span class="sort-icon">📝</span> Name <span class="sort-shortcut">Alt+N</span>
+                  </a>
+                  <a href="javascript:void(0)" data-sort="date" class="sort-option">
+                    <span class="sort-icon">📅</span> Date <span class="sort-shortcut">Alt+D</span>
+                  </a>
+                  <div class="sort-divider"></div>
+                  <a href="javascript:void(0)" data-sort="ascending" class="sort-order">
+                    <span class="sort-icon">⬆️</span> Ascending </a>
+                  <a href="javascript:void(0)" data-sort="descending" class="sort-order">
+                    <span class="sort-icon">⬇️</span> Descending </a>
+                  <a href="javascript:void(0)" class="toggle-sort-order">
+                    <span class="sort-icon">🔄</span> Toggle Order <span class="sort-shortcut">Alt+O</span>
+                  </a>
                 </div>
               </div>
-              <a class="">Play</a>
-              <a class="nextbtn">Next</a>
-              <a class="previousbtn">Previous</a>
-              <a id="sleep-timer">Sleep Timer</a>
-              <a class="stopPlayback">Stop</a>
+              <a href="javascript:void(0)" class="">Play</a>
+              <a href="javascript:void(0)" class="nextbtn">Next</a>
+              <a href="javascript:void(0)" class="previousbtn">Previous</a>
+              <a href="javascript:void(0)" class="stopPlayback">Stop</a>
+              <a href="javascript:void(0)" id="sleep-timer">Sleep Timer</a>
             </div>
           </li>
           <li class="dropdown">
@@ -134,43 +140,23 @@
                   <a>Reset</a>
                 </div>
               </div>
-              <!-- <div class="sub-dropdown">
-                <a href="javascript:void(0)" class="sub-dropbtn">Aspect Ratio / Crop</a>
-                <div class="sub-dropdown-content" id="aspect-ratio-list">
-                  <a data-aspect="default">Default</a>
-                  <a data-aspect="16:10">16:10</a>
-                  <a data-aspect="16:9">16:9</a>
-                  <a data-aspect="4:3">4:3</a>
-                  <a data-aspect="1.85:1">1.85:1</a>
-                  <a data-aspect="2.21:1">2.21:1</a>
-                  <a data-aspect="2.35:1">2.35:1</a>
-                  <a data-aspect="2.39:1">2.39:1</a>
-                  <a data-aspect="5:4">5:4</a>
-                  <a data-aspect="5:1">5:1</a>
-                </div>
-              </div> -->
+              <!-- <div class="sub-dropdown"><a href="javascript:void(0)" class="sub-dropbtn">Aspect Ratio / Crop</a><div class="sub-dropdown-content" id="aspect-ratio-list"><a data-aspect="default">Default</a><a data-aspect="16:10">16:10</a><a data-aspect="16:9">16:9</a><a data-aspect="4:3">4:3</a><a data-aspect="1.85:1">1.85:1</a><a data-aspect="2.21:1">2.21:1</a><a data-aspect="2.35:1">2.35:1</a><a data-aspect="2.39:1">2.39:1</a><a data-aspect="5:4">5:4</a><a data-aspect="5:1">5:1</a></div></div> -->
             </div>
           </li>
-          <!-- <li class="dropdown">
-            <a href="javascript:void(0)" class="dropbtn">Subtitle</a>
-            <div class="dropdown-content">
-              <a class="">Add Subtitle file...</a>
-              <div class="sub-dropdown">
-                <a href="javascript:void(0)" class="sub-dropbtn">Subtitle Track</a>
-                <div class="sub-dropdown-content subtitle-track-list">
+          <!-- <li class="dropdown"><a href="javascript:void(0)" class="dropbtn">Subtitle</a><div class="dropdown-content"><a class="">Add Subtitle file...</a><div class="sub-dropdown"><a href="javascript:void(0)" class="sub-dropbtn">Subtitle Track</a><div class="sub-dropdown-content subtitle-track-list">
                 Subtitle tracks will be dynamically inserted here 
-                </div>
-              </div>
-            </div>
-          </li> -->
+                </div></div></div></li> -->
           <li class="dropdown">
             <a href="javascript:void(0)" class="dropbtn">Tools</a>
             <div class="dropdown-content">
               <div class="sub-dropdown">
                 <a href="javascript:void(0)" class="sub-dropbtn">Audio Effects</a>
                 <div class="sub-dropdown-content">
-                  <a href="javascript:void(0)" id="bassTrebleToggle">Bass & Treble</a>
-                  <a href="javascript:void(0)" id="spatialAudioToggle">Spatial Audio</a>
+                  <a href="javascript:void(0)" id="AutoToggle">Auto</a>
+                  <a href="javascript:void(0)" id="CodingAudioToggle">Coding</a>
+                  <a href="javascript:void(0)" id="MovieAudioToggle">Movie</a>
+                  <a href="javascript:void(0)" id="MusicAudioToggle">Music</a>
+                  <a href="javascript:void(0)" id="comfortModeToggle">Comfort</a>
                 </div>
               </div>
               <div class="sub-dropdown">
@@ -201,7 +187,7 @@
           <div id="gifSearchContainer">
             <div class="search-box">
               <button class="btn-search" id="gifSearchButton">
-                <img src="../assets//icons//search.png" alt="Search Icon"/>
+                <img src="../assets//icons//search.png" alt="Search Icon" />
               </button>
               <input type="text" class="input-search" id="gifSearchInput" placeholder="Search GIFs...">
             </div>
@@ -221,8 +207,7 @@
                 <svg width="18px" height="15px" viewBox="0 0 18 18">
                   <path d="M1,9 L1,3.5 C1,2 2,1 3.5,1 L14.5,1 C16,1 17,2 17,3.5 L17,14.5 C17,16 16,17 14.5,17 L3.5,17 C2,17 1,16 1,14.5 L1,9 Z"></path>
                   <polyline points="1 9 7 14 15 4"></polyline>
-                </svg>Automatically save logo without asking
-              </label>
+                </svg>Automatically save logo without asking </label>
             </div>
             <button id="confirmButton" class="modal__btn">Yes</button>
             <button id="cancelButton" class="modal__btn">No</button>
@@ -231,7 +216,7 @@
         <!-- Window Controls -->
         <div class="win-buttons">
           <button id="minimize">
-            <img src="../assets/icons/win/minimize.png" alt="Minimize Icon" aria-label="Minimize Window" >
+            <img src="../assets/icons/win/minimize.png" alt="Minimize Icon" aria-label="Minimize Window">
           </button>
           <button id="maximize">
             <img src="../assets/icons/win/maximize.png" alt="Maximize Icon" aria-label="Maximize Window" role="button">
@@ -242,62 +227,62 @@
             </svg>
           </button>
         </div>
-          <!-- Shutdown Timer -->
-          <div class="timer-container">
-            <div class="top-bar">
-              <div class="logo">S Timer</div>
-              <div class="time-controls">     
-            <div class="delete-btn" id="resetBtn">
-              <svg viewBox="0 0 24 24">
-                <path d="M6 7h12v2H6zm1 4h10v10H7V11zm3-8h4v2h-4z" />
-              </svg>
-            </div>
-            <button id="closeTimer" aria-label="Close">
-              <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24" class="icon-md">
-                <path fill="currentColor" fill-rule="evenodd" d="M5.636 5.636a1 1 0 0 1 1.414 0l4.95 4.95 4.95-4.95a1 1 0 0 1 1.414 1.414L13.414 12l4.95 4.95a1 1 0 0 1-1.414 1.414L12 13.414l-4.95 4.95a1 1 0 0 1-1.414-1.414l4.95-4.95-4.95-4.95a1 1 0 0 1 0-1.414" clip-rule="evenodd"></path>
-              </svg>
-            </button>
+        <!-- Shutdown Timer -->
+        <div class="timer-container">
+          <div class="top-bar">
+            <div class="logo">S Timer</div>
+            <div class="time-controls">
+              <div class="delete-btn" id="resetBtn">
+                <svg viewBox="0 0 24 24">
+                  <path d="M6 7h12v2H6zm1 4h10v10H7V11zm3-8h4v2h-4z" />
+                </svg>
               </div>
+              <button id="closeTimer" aria-label="Close">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24" class="icon-md">
+                  <path fill="currentColor" fill-rule="evenodd" d="M5.636 5.636a1 1 0 0 1 1.414 0l4.95 4.95 4.95-4.95a1 1 0 0 1 1.414 1.414L13.414 12l4.95 4.95a1 1 0 0 1-1.414 1.414L12 13.414l-4.95 4.95a1 1 0 0 1-1.414-1.414l4.95-4.95-4.95-4.95a1 1 0 0 1 0-1.414" clip-rule="evenodd"></path>
+                </svg>
+              </button>
             </div>
-            <div class="time-display">
-              <span class="time" id="hours">00</span>
-              <span class="colon">:</span>
-              <span class="time" id="minutes">00</span>
-              <span class="colon">:</span>
-              <span class="time" id="seconds">00</span>
-            </div>
-            <div class="labels">
-              <span>HOURS</span>
-              <span>MINUTES</span>
-              <span>SECONDS</span>
-            </div>
-            <div class="play-btn" id="startBtn">
-              <svg viewBox="0 0 24 24">
-                <path d="M8 5v14l11-7z" />
-              </svg>
-            </div>
-            <div class="buttons">
-              <button class="shutdown-btn" id="shutdownBtn">SHUT DOWN</button>
-              <div class="quick-set">
-                <button onclick="setQuickTime(10)">10</button>
-                <button onclick="setQuickTime(20)">20</button>
-                <button onclick="setQuickTime(30)">30</button>
-                <button onclick="setQuickTime(40)">40</button>
-                <button onclick="setQuickTime(50)">50</button>
-                <button onclick="setQuickTime(60)">60</button>
-              </div>
-            </div>
-            <div class="shutdown-checkboxes">
-              <label for="shutdown-video-end-checkbox" class="checkbox-label">
-                <input type="checkbox" id="shutdown-video-end-checkbox" />
-                <span>Shutdown PC at the end of the current video</span>
-              </label>
-              <label for="shutdown-playlist-end-checkbox" class="checkbox-label">
-                <input type="checkbox" id="shutdown-playlist-end-checkbox" />
-                <span>Shutdown PC at the end of the playlist</span>
-              </label>
-            </div>       
           </div>
+          <div class="time-display">
+            <span class="time" id="hours">00</span>
+            <span class="colon">:</span>
+            <span class="time" id="minutes">00</span>
+            <span class="colon">:</span>
+            <span class="time" id="seconds">00</span>
+          </div>
+          <div class="labels">
+            <span>HOURS</span>
+            <span>MINUTES</span>
+            <span>SECONDS</span>
+          </div>
+          <div class="play-btn" id="startBtn">
+            <svg viewBox="0 0 24 24">
+              <path d="M8 5v14l11-7z" />
+            </svg>
+          </div>
+          <div class="buttons">
+            <button class="shutdown-btn" id="shutdownBtn">SHUT DOWN</button>
+            <div class="quick-set">
+              <button onclick="setQuickTime(10)">10</button>
+              <button onclick="setQuickTime(20)">20</button>
+              <button onclick="setQuickTime(30)">30</button>
+              <button onclick="setQuickTime(40)">40</button>
+              <button onclick="setQuickTime(50)">50</button>
+              <button onclick="setQuickTime(60)">60</button>
+            </div>
+          </div>
+          <div class="shutdown-checkboxes">
+            <label for="shutdown-video-end-checkbox" class="checkbox-label">
+              <input type="checkbox" id="shutdown-video-end-checkbox" />
+              <span>Shutdown PC at the end of the current video</span>
+            </label>
+            <label for="shutdown-playlist-end-checkbox" class="checkbox-label">
+              <input type="checkbox" id="shutdown-playlist-end-checkbox" />
+              <span>Shutdown PC at the end of the playlist</span>
+            </label>
+          </div>
+        </div>
         <!-- Context Menu -->
         <div id="contextMenu" class="context-menu">
           <ul>
@@ -333,7 +318,7 @@
               <div class="sub-dropdown-content">
                 <div class="sub-dropdown">
                   <a href="javascript:void(0)" class="sub-dropbtn">
-                    <span class="icon">🎧</span> 
+                    <span class="icon">🎧</span>
                     <span class="text">Audio Track</span>
                   </a>
                   <div class="sub-dropdown-content audio-track-list">
@@ -341,59 +326,83 @@
                   </div>
                 </div>
                 <a class="increase-volume">
-                  <span class="icon">&#128266;</span> <!-- Speaker icon -->
+                  <span class="icon">&#128266;</span>
+                  <!-- Speaker icon -->
                   <span class="text">increase Volume</span>
                 </a>
-                
                 <a class="decrease-volume">
-                  <span class="icon">&#128265;</span> <!-- Lower volume icon -->
+                  <span class="icon">&#128265;</span>
+                  <!-- Lower volume icon -->
                   <span class="text">Decrease Volume</span>
                 </a>
-                
-                <!-- <a id="mic-access-button">
-                  <span class="icon">&#127908;</span>
-                  <span class="text">Start Voice Recognition</span>
-                </a> -->
-                
+                <!-- <a id="mic-access-button"><span class="icon">&#127908;</span><span class="text">Start Voice Recognition</span></a> -->
                 <a class="mute">
-                  <span class="icon">&#128263;</span> <!-- Mute icon -->
+                  <span class="icon">&#128263;</span>
+                  <!-- Mute icon -->
                   <span class="text">Mute</span>
                 </a>
-                
               </div>
             </li>
             <li class="sub-dropdown">
               <a href="javascript:void(0)" class="sub-dropbtn">
-                <span class="icon">&#127909;</span> <!-- Video camera icon -->
+                <span class="icon">&#127909;</span>
+                <!-- Video camera icon -->
                 <span class="text">Video</span>
               </a>
               <div class="sub-dropdown-content">
                 <div class="sub-dropdown">
                   <a href="javascript:void(0)" class="sub-dropbtn">
-                    <span class="icon">&#128269;</span> <!-- Zoom icon -->
+                    <span class="icon">&#128269;</span>
+                    <!-- Zoom icon -->
                     <span class="text">Zoom</span>
                   </a>
                   <div class="sub-dropdown-content" id="zoom-track-list">
-                    <a><span class="icon">&#128270;</span> 1.3x</a>
-                    <a><span class="icon">&#128270;</span> 1.5x</a>
-                    <a><span class="icon">&#128270;</span> 2x</a>
-                    <a><span class="icon">&#128270;</span> 2.5x</a>
-                    <a><span class="icon">&#128270;</span> 3x</a>
-                    <a><span class="icon">&#8634;</span> Reset</a> 
+                    <a>
+                      <span class="icon">&#128270;</span> 1.3x </a>
+                    <a>
+                      <span class="icon">&#128270;</span> 1.5x </a>
+                    <a>
+                      <span class="icon">&#128270;</span> 2x </a>
+                    <a>
+                      <span class="icon">&#128270;</span> 2.5x </a>
+                    <a>
+                      <span class="icon">&#128270;</span> 3x </a>
+                    <a>
+                      <span class="icon">&#8634;</span> Reset </a>
                   </div>
-                  <a class="fullscreen-button" >
-                    <img class="context-menu-full-screen" src="../assets/icons/full-screen.png" alt="Fullscreen"> Full Screen </a>                </div>
+                  <a class="fullscreen-button">
+                    <img class="context-menu-full-screen" src="../assets/icons/full-screen.png" alt="Fullscreen"> Full Screen </a>
+                </div>
               </div>
-            </li>     
-            <!-- <li>
-              <a>
-                <span class="icon">&#128250;</span>
-                <span class="text">Subtitle Track</span>
+            </li>
+            <!-- <li><a><span class="icon">&#128250;</span><span class="text">Subtitle Track</span></a></li> -->
+            <li class="sub-dropdown">
+              <a href="javascript:void(0)" class="sub-dropbtn">
+                <span class="icon">🔀</span>
+                <span class="text">Sort By</span>
               </a>
-            </li> -->
+              <div class="sub-dropdown-content">
+                <a href="javascript:void(0)" data-sort="name">
+                  <span class="icon">📝</span>
+                  <span class="text">Name</span>
+                </a>
+                <a href="javascript:void(0)" data-sort="date">
+                  <span class="icon">📅</span>
+                  <span class="text">Date</span>
+                </a>
+                <a href="javascript:void(0)" data-sort="ascending">
+                  <span class="icon">⬆️</span>
+                  <span class="text">Ascending</span>
+                </a>
+                <a href="javascript:void(0)" data-sort="descending">
+                  <span class="icon">⬇️</span>
+                  <span class="text">Descending</span>
+                </a>
+              </div>
+            </li>
             <li>
               <a id="context-menu-shutdown-timer">
-                <span class="icon" >⏱️</span>
+                <span class="icon">⏱️</span>
                 <span class="text">S Timer</span>
               </a>
             </li>
@@ -438,7 +447,7 @@
           <source id="audioSource" />
         </video>
         <div id="noMediaLogo">
-            <img src="../assets/icons/icon.ico" alt="No Media"/>
+          <img src="../assets/icons/icon.ico" alt="No Media" />
         </div>
         <img id="gifImage" style="display: none; max-width: 100%; max-height: 100%;" alt="GIF Animation" />
         <div id="audioLogo">
@@ -480,14 +489,13 @@
         <!-- playlist-container -->
         <div class="playlist-container">
           <div class="play-list">
-              <!-- Playlist items will go here -->
+            <!-- Playlist items will go here -->
           </div>
         </div>
         <!-- Update Dialog -->
         <div class="update-dialog" id="updateDialog">
           <h2>
-            <img src="../assets/icons/icon.png" class="update-icon" alt="Update">
-            New Version Available
+            <img src="../assets/icons/icon.png" class="update-icon" alt="Update"> New Version Available
           </h2>
           <p>A new version of Anime Player is available. Would you like to download and install it now?</p>
           <div class="update-dialog-buttons">
@@ -513,14 +521,14 @@
             <div id="volume-control" class="card tooltip-btn" data-tooltip="Volume Control">
               <img id="volume-button" src="../assets/icons/volume.png" alt="Volume Control" />
             </div>
-            <div class="card" >
+            <div class="card">
               <div class="icon-container off tooltip-btn" data-tooltip="Loop off">
                 <img id="loop-button" src="../assets/icons/repeat-on.png" alt="Loop" />
                 <div class="off-indicator"></div>
               </div>
             </div>
             <div class="card tooltip-btn" data-tooltip="Shuffle">
-              <img id="shuffle-button"  src="../assets/icons/no-shuffle.png" alt="Shuffle"/>
+              <img id="shuffle-button" src="../assets/icons/no-shuffle.png" alt="Shuffle" />
             </div>
             <input type="range" class="range blue" id="volume-slider" min="0" max="200" value="100" step="1">
           </div>
@@ -540,9 +548,9 @@
               <img src="../assets/icons/full-screen.png" alt="Fullscreen">
             </div>
             <div id="pip-button" class="card tooltip-btn" data-tooltip="Picture in Picture">
-              <img src="../assets/icons/picture-in-picture.png" alt="Picture in Picture"> 
+              <img src="../assets/icons/picture-in-picture.png" alt="Picture in Picture">
             </div>
-          </div>       
+          </div>
         </div>
         <!-- Shortcut Modal  -->
         <div id="shortcutsModal" class="modal">
@@ -559,123 +567,201 @@
               <div id="keyboardShortcuts" class="shortcut-list">
                 <div class="shortcut">
                   <div class="description">Play/Pause</div>
-                  <div class="keys"><span class="key">Space</span></div>
+                  <div class="keys">
+                    <span class="key">Space</span>
+                  </div>
                 </div>
                 <div class="shortcut">
                   <div class="description">Rewind (10s)</div>
-                  <div class="keys"><span class="key">Left Arrow</span></div>
+                  <div class="keys">
+                    <span class="key">Left Arrow</span>
+                  </div>
                 </div>
                 <div class="shortcut">
                   <div class="description">forward-button (10s)</div>
-                  <div class="keys"><span class="key">Right Arrow</span></div>
+                  <div class="keys">
+                    <span class="key">Right Arrow</span>
+                  </div>
                 </div>
                 <div class="shortcut">
                   <div class="description">Rewind (5s)</div>
-                  <div class="keys"><span class="key">Shift</span><span class="key">Left Arrow</span></div>
+                  <div class="keys">
+                    <span class="key">Shift</span>
+                    <span class="key">Left Arrow</span>
+                  </div>
                 </div>
                 <div class="shortcut">
                   <div class="description">forward-button (5s)</div>
-                  <div class="keys"><span class="key">Shift</span><span class="key">Right Arrow</span></div>
+                  <div class="keys">
+                    <span class="key">Shift</span>
+                    <span class="key">Right Arrow</span>
+                  </div>
                 </div>
                 <div class="shortcut">
                   <div class="description">Rewind (60s)</div>
-                  <div class="keys"><span class="key">Ctrl</span><span class="key">Left Arrow</span></div>
+                  <div class="keys">
+                    <span class="key">Ctrl</span>
+                    <span class="key">Left Arrow</span>
+                  </div>
                 </div>
                 <div class="shortcut">
                   <div class="description">forward-button (60s)</div>
-                  <div class="keys"><span class="key">Ctrl</span><span class="key">Right Arrow</span></div>
+                  <div class="keys">
+                    <span class="key">Ctrl</span>
+                    <span class="key">Right Arrow</span>
+                  </div>
                 </div>
                 <div class="shortcut">
                   <div class="description">Increase Volume</div>
-                  <div class="keys"><span class="key">Up Arrow</span></div>
+                  <div class="keys">
+                    <span class="key">Up Arrow</span>
+                  </div>
                 </div>
                 <div class="shortcut">
                   <div class="description">Decrease Volume</div>
-                  <div class="keys"><span class="key">Down Arrow</span></div>
+                  <div class="keys">
+                    <span class="key">Down Arrow</span>
+                  </div>
                 </div>
                 <div class="shortcut">
                   <div class="description">Mute/Unmute</div>
-                  <div class="keys"><span class="key">M</span></div>
+                  <div class="keys">
+                    <span class="key">M</span>
+                  </div>
                 </div>
                 <div class="shortcut">
                   <div class="description">Play Next</div>
-                  <div class="keys"><span class="key">N</span></div>
+                  <div class="keys">
+                    <span class="key">N</span>
+                  </div>
                 </div>
                 <div class="shortcut">
                   <div class="description">Play Previous</div>
-                  <div class="keys"><span class="key">P</span></div>
+                  <div class="keys">
+                    <span class="key">P</span>
+                  </div>
                 </div>
                 <div class="shortcut">
                   <div class="description"> Shuffle on / off</div>
-                  <div class="keys"><span class="key">S</span></div>
+                  <div class="keys">
+                    <span class="key">S</span>
+                  </div>
                 </div>
                 <div class="shortcut">
                   <div class="description"> Repeat on / off</div>
-                  <div class="keys"><span class="key">L</span></div>
+                  <div class="keys">
+                    <span class="key">L</span>
+                  </div>
                 </div>
                 <div class="shortcut">
                   <div class="description">Toggle Fullscreen</div>
-                  <div class="keys"><span class="key">F</span></div>
+                  <div class="keys">
+                    <span class="key">F</span>
+                  </div>
                 </div>
                 <div class="shortcut">
                   <div class="description">Change Audio Track</div>
-                  <div class="keys"><span class="key">B</span></div>
+                  <div class="keys">
+                    <span class="key">B</span>
+                  </div>
                 </div>
                 <div class="shortcut">
                   <div class="description">Open Files</div>
-                  <div class="keys"><span class="key">Ctrl</span><span class="key">O</span></div>
+                  <div class="keys">
+                    <span class="key">Ctrl</span>
+                    <span class="key">O</span>
+                  </div>
                 </div>
                 <div class="shortcut">
                   <div class="description">Open Folder</div>
-                  <div class="keys"><span class="key">Ctrl</span><span class="key">F</span></div>
+                  <div class="keys">
+                    <span class="key">Ctrl</span>
+                    <span class="key">F</span>
+                  </div>
                 </div>
                 <div class="shortcut">
                   <div class="description">Playlist</div>
-                  <div class="keys"><span class="key">Ctrl</span><span class="key">;</span></div>
+                  <div class="keys">
+                    <span class="key">Ctrl</span>
+                    <span class="key">;</span>
+                  </div>
                 </div>
                 <div class="shortcut">
                   <div class="description">Close Media</div>
-                  <div class="keys"><span class="key">Ctrl</span><span class="key">Q</span></div>
+                  <div class="keys">
+                    <span class="key">Ctrl</span>
+                    <span class="key">Q</span>
+                  </div>
                 </div>
                 <div class="shortcut">
                   <div class="description">Rotate 0°</div>
-                  <div class="keys"><span class="key">8</span></div>
+                  <div class="keys">
+                    <span class="key">8</span>
+                  </div>
                 </div>
                 <div class="shortcut">
                   <div class="description">Rotate 90°</div>
-                  <div class="keys"><span class="key">6</span></div>
+                  <div class="keys">
+                    <span class="key">6</span>
+                  </div>
                 </div>
                 <div class="shortcut">
                   <div class="description">Rotate -90°</div>
-                  <div class="keys"><span class="key">4</span></div>
+                  <div class="keys">
+                    <span class="key">4</span>
+                  </div>
                 </div>
                 <div class="shortcut">
                   <div class="description">Rotate 180°</div>
-                  <div class="keys"><span class="key">2</span></div>
+                  <div class="keys">
+                    <span class="key">2</span>
+                  </div>
                 </div>
                 <div class="shortcut">
                   <div class="description">Sleep Timer</div>
-                  <div class="keys"><span class="key">Ctrl</span><span class="key">T</span></div>
+                  <div class="keys">
+                    <span class="key">Ctrl</span>
+                    <span class="key">T</span>
+                  </div>
                 </div>
                 <div class="shortcut">
                   <div class="description">Pop Up Screen</div>
-                  <div class="keys"><span class="key">Ctrl</span><span class="key">P</span></div>
+                  <div class="keys">
+                    <span class="key">Ctrl</span>
+                    <span class="key">P</span>
+                  </div>
                 </div>
                 <div class="shortcut">
                   <div class="description">Delete Video</div>
-                  <div class="keys"><span class="key">Ctrl</span><span class="key">D</span><span class="key">or</span><span class="key">Delete</span></div>
+                  <div class="keys">
+                    <span class="key">Ctrl</span>
+                    <span class="key">D</span>
+                    <span class="key">or</span>
+                    <span class="key">Delete</span>
+                  </div>
                 </div>
                 <div class="shortcut">
                   <div class="description">Zoom Video</div>
-                  <div class="keys"><span class="key">Ctrl</span><span class="key">&#8679;</span><span class="key">Mouse Wheel</span></div>
+                  <div class="keys">
+                    <span class="key">Ctrl</span>
+                    <span class="key">&#8679;</span>
+                    <span class="key">Mouse Wheel</span>
+                  </div>
                 </div>
                 <div class="shortcut">
                   <div class="description">Video Move</div>
-                  <div class="keys"><span class="key">Ctrl</span><span class="key">&#8679;</span><span class="key">Mouse Left Button</span></div>
+                  <div class="keys">
+                    <span class="key">Ctrl</span>
+                    <span class="key">&#8679;</span>
+                    <span class="key">Mouse Left Button</span>
+                  </div>
                 </div>
                 <div class="shortcut">
                   <div class="description">Minimize</div>
-                  <div class="keys"><span class="key">Ctrl</span><span class="key">`</span></div>
+                  <div class="keys">
+                    <span class="key">Ctrl</span>
+                    <span class="key">`</span>
+                  </div>
                 </div>
               </div>
             </div>

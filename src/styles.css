@@ -810,11 +810,12 @@ main {
   position: absolute;
   object-fit: cover;
   transition: transform 0.3s ease-out;
-  /* filter: saturate(120%); */
 }
 
 #noMediaLogo{
   display: block;
+  display: flex;
+  justify-content: center;
 }
 
 #noMediaLogo img {

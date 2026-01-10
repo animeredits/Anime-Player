@@ -62,6 +62,7 @@ contextBridge.exposeInMainWorld('electron', {
   openFileDialog: () => ipcRenderer.invoke("open-file-dialog"),
   openFolderDialog: () => ipcRenderer.invoke("open-folder-dialog"),
   deleteFile: (filePath) => ipcRenderer.invoke("delete-file", filePath),
+  onFileOpenWithName: (callback) => ipcRenderer.on("open-file-with-name", (event, data) => callback(data)),
   onFileOpen: (callback) => ipcRenderer.on("open-file", (event, filePath) => callback(filePath)),
   openFolderFromContext: (callback) => ipcRenderer.on("open-folder-from-context", (_, folderPath) => callback(folderPath)),
   openFolder: (folderPath) => ipcRenderer.invoke("open-folder", folderPath),

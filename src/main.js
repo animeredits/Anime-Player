@@ -50,15 +50,11 @@ const appState = {
 function initApp() {
   ensureDirectories();
   app.setPath('userData', animePlayerPath);
-  
-  // Command line switches for performance
-  app.commandLine.appendSwitch('ignore-gpu-blacklist');
-  app.commandLine.appendSwitch('enable-gpu-rasterization');
-  app.commandLine.appendSwitch('enable-oop-rasterization');
-  app.commandLine.appendSwitch('enable-zero-copy');
-  app.commandLine.appendSwitch("use-gl", "desktop");
-  app.commandLine.appendSwitch("use-angle", "d3d11");
+  app.commandLine.appendSwitch('autoplay-policy', 'no-user-gesture-required');
   app.commandLine.appendSwitch('enable-media-playback-hinting');
+  app.commandLine.appendSwitch('enable-zero-copy');
+  app.commandLine.appendSwitch('enable-gpu-rasterization');
+  app.commandLine.appendSwitch('--enable-features', 'PlatformHEVCDecoderSupport');
   app.commandLine.appendSwitch('enable-features', 'HardwareMediaKeyHandling,MediaPlaybackHinting,HardwareVideoDecode');
 }
 
@@ -121,7 +117,7 @@ appState.win.webContents.on('before-input-event', (event, input) => {
       isFullscreen: appState.windowState.isFullscreen
       });
       appState.win.webContents.send('initial-play-state', appState.playback.status);
-      // appState.win.webContents.openDevTools(); // Only for development
+      appState.win.webContents.openDevTools(); // Only for development
       setTimeout(() => {
       createTray();
       updateThumbarButtons();
