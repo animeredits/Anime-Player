@@ -2,7 +2,7 @@
 
 @font-face {
   font-family: "Fira Sans";
-  src: url(../assets/Font/FiraSans-Regular.ttf);
+  src: url(../assets/font/FiraSans-Regular.ttf);
 }
 
 /* Global Styles */
@@ -601,189 +601,182 @@ nav > * {
 }
 
 /* Shutdown Timer */
-.timer-container {
-  display: none;
-  position: relative;
-  backdrop-filter: blur(10px) saturate(180%);
-  background-color: #2f2f2fc5; 
-  border-radius: 16px;
+    .timer-container {
+      display: none;
+      position: absolute;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+      width: 100%;
+      max-width: 672px;
+  backdrop-filter: blur(30px) saturate(180%);
+  background-color: #2f2f2fc5;
+  border-radius: 24px;
+      padding: 24px;
   border: 1px solid rgba(255, 255, 255, 0.125);
-  width: 530px;
-  padding: 25px 30px;
-  color: white;
-  z-index: 999;
-}
+      z-index: 999;
+    }
 
-.top-bar {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 25px;
-}
+    .header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 32px;
+    }
 
-.logo {
-  font-weight: bold;
-  color: red;
-  font-size: 20px;
-}
+    .header-left {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
 
-.time-controls{
-  font-size: 18px;
-  display: flex;
-  gap: 15px;
-  color: #aaa;
-}
+    .header-title {
+      font-size: 20px;
+      font-weight: 600;
+      color: #e5e5e5;
+    }
 
-.time-display {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  font-size: 48px;
-  font-weight: 500;
-  gap: 10px;
-  right: 10px;
-  position: relative;
-}
+    .header-right {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
 
-.time-display span.time {
-  width: 60px;
-  text-align: center;
-}
+    .icon-btn {
+      background: none;
+      border: none;
+      color: #737373;
+      cursor: pointer;
+      padding: 4px;
+      transition: color 0.2s;
+    }
 
-.colon {
-  background: none;
-  color: white;
-  width: 28px;
-  height: 28px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 50%;
-  font-size: 24px;
-}
+    .icon-btn:hover {
+      color: #e5e5e5;
+    }
 
-.labels {
-  display: flex;
-  justify-content: center;
-  margin-top: 10px;
-  font-size: 12px;
-  color: #888;
-  letter-spacing: 2px;
-  gap: 50px;
-}
+    .icon {
+      width: 20px;
+      height: 20px;
+    }
 
-.buttons {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-top: 25px;
-}
+    .icon-accent {
+      width: 24px;
+      height: 24px;
+      color: #dc2626;
+    }
 
-.shutdown-btn {
-  background: none;
-  border: none;
-  color: white;
-  font-weight: bold;
-}
+    .timer-display {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 16px;
+      margin-bottom: 32px;
+    }
 
-.quick-set {
-  display: flex;
-  gap: 10px;
-}
+    .time-unit {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
 
-.quick-set button {
-  background-color: #222;
-  border: none;
-  color: #888;
-  padding: 8px 14px;
-  border-radius: 6px;
-  cursor: pointer;
-  transition: 0.3s;
-}
+    .time-value {
+      font-size: 96px;
+      font-weight: 700;
+      letter-spacing: -0.05em;
+      color: #e5e5e5;
+      line-height: 1;
+      z-index: 99;
+    }
 
-.quick-set button:hover {
-  background-color: #333;
-  color: white;
-}
+    .time-label {
+      margin-top: 8px;
+      font-size: 12px;
+      font-weight: 500;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: #737373;
+    }
 
-.play-btn {
-  position: absolute;
-  right: 40px;
-  top: 6.5dvh;
-  width: 70px;
-  height: 70px;
-  border-radius: 50%;
-  background: none;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-}
+    .colon {
+      font-size: 64px;
+      font-weight: 700;
+      color: #dc2626;
+      padding-bottom: 32px;
+    }
 
-.play-btn svg {
-  fill: white;
-  width: 70px;
-  height: 70px;
-  margin-left: 2px;
-}
+    .play-btn {
+      margin-left: 24px;
+      background-color: #262626;
+      border: none;
+      border-radius: 12px;
+      padding: 16px;
+      color: #737373;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
 
-.delete-btn {
-  position: absolute;
-  right: 60px;
-  top: 21px;
-  width: 32px;
-  height: 32px;
-  border-radius: 50%;
-  background:none;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-}
+    .play-btn:hover {
+      background-color: rgba(115, 115, 115, 0.2);
+      color: #e5e5e5;
+    }
 
-.delete-btn svg {
-  fill: white;
-  width: 18px;
-  height: 18px;
-}
+    .play-icon {
+      width: 32px;
+      height: 32px;
+    }
 
-.shutdown-checkboxes {
-  margin-top: 20px;
-  text-align: left;
-}
+    .bottom-controls {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
 
-.checkbox-label {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  font-size: 0.9rem;
-  background: none;
-  border: none;
-  color: #aaa;
-  border-radius: 8px;
-  margin-top: 12px;
-}
+    .shutdown-label {
+      font-size: 14px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: #e5e5e5;
+    }
 
-.checkbox-label:hover {
-  color: white;
-}
+    .preset-buttons {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
 
-.checkbox-label input {
-  transform: scale(1.2);
-}
+    .preset-btn {
+      width: 40px;
+      height: 40px;
+      background-color: #262626;
+      border: none;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 500;
+      color: #737373;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
 
-/* Change label color to white when checkbox is checked */
-.checkbox-label input:checked + span {
-  color: white;
-}
+    .preset-btn:hover {
+      background-color: rgba(115, 115, 115, 0.2);
+      color: #e5e5e5;
+    }
 
-#closeTimer{
-  background: transparent;
-  border: none;
-  color: #fff;
-  cursor: pointer;
-}
-
+    @media (max-width: 640px) {
+      .time-value {
+        font-size: 64px;
+      }
+      
+      .colon {
+        font-size: 48px;
+      }
+      
+      .preset-btn {
+        width: 36px;
+        height: 36px;
+        font-size: 12px;
+      }
+    }
 /* Main Section */
 main {
   flex: 1;
@@ -828,7 +821,7 @@ main {
 /* Context Menu */
 .context-menu {
   display: none;
-  position: absolute;
+  position: fixed;
   backdrop-filter: blur(30px) saturate(180%);
   background-color: #2f2f2f99;
   border: 1px solid rgba(255, 255, 255, 0.125);

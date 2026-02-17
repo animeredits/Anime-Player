@@ -1,2 +1,34 @@
-node_modules
-dist
+# Build outputs
+/dist/
+/out/
+/release/
+/build/
+
+# Electron Forge
+/.cache/
+/anime-player-*/
+
+# Dependencies
+/node_modules/
+/node_modules.bak/
+
+# Environment
+.env
+.env.local
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Logs
+*.log
+logs/
+
+# Temporary files
+*.tmp
+*.temp

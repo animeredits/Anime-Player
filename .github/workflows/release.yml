@@ -1,129 +1,207 @@
-name: Build and Release Anime Player
+name: Build and Release
 
 on:
   push:
-    branches:
-      - main
-    tags:
-      - 'v*'  
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
   release:
-    types:
-      - published
+    types: [created]
+
+permissions:
+  contents: write
+  packages: write
 
 jobs:
   # Build for Linux
   build-linux:
-    name: Build for Linux
+    name: Build Linux
     runs-on: ubuntu-latest
-
+    if: github.event_name != 'release' || github.event.release.prerelease == false
+    
     steps:
-      - name: Checkout Code
-        uses: actions/checkout@v3
+      - name: Checkout repository
+        uses: actions/checkout@v4
 
       - name: Setup Node.js
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@v4
         with:
-          node-version: 18
+          node-version: '20'
+          cache: 'npm'
 
-      - name: Install Dependencies
-        run: npm ci
+      - name: Install dependencies
+        run: |
+          npm ci --ignore-scripts
+          npm run postinstall
 
       - name: Build for Linux
+        run: npm run build -- --linux
         env:
-          GH_TOKEN: ${{ secrets.GH_TOKEN }} 
-        run: npm run dist -- --linux
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Upload Linux Build Artifacts
+      - name: Upload Linux artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: linux-build
-          path: dist/*.AppImage 
+          name: linux-builds
+          path: |
+            dist/*.AppImage
+            dist/*.deb
+            dist/*.rpm
+            dist/*.tar.gz
+            dist/*.zip
 
   # Build for Windows
   build-windows:
-    name: Build for Windows
+    name: Build Windows
     runs-on: windows-latest
-
+    if: github.event_name != 'release' || github.event.release.prerelease == false
+    
     steps:
-      - name: Checkout Code
-        uses: actions/checkout@v3
+      - name: Checkout repository
+        uses: actions/checkout@v4
 
       - name: Setup Node.js
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@v4
         with:
-          node-version: 18
+          node-version: '20'
+          cache: 'npm'
 
-      - name: Install Dependencies
-        run: npm ci
+      - name: Install dependencies
+        run: |
+          npm ci --ignore-scripts
+          npm run postinstall
 
       - name: Build for Windows
+        run: npm run build -- --win --x64
         env:
-          GH_TOKEN: ${{ secrets.GH_TOKEN }} 
-        run: npm run dist -- --win
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Upload Windows Build Artifacts
+      - name: Upload Windows artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: windows-build
-          path: dist/*.exe 
+          name: windows-builds
+          path: |
+            dist/*.exe
+            dist/*.zip
+            dist/*.nsis.*
 
-# Release Job
-  release:
-    name: Publish Release
-    needs: [build-linux, build-windows]
-    runs-on: ubuntu-latest
-    if: startsWith(github.ref, 'refs/tags/v')
-
+  # Build for macOS
+  build-macos:
+    name: Build macOS
+    runs-on: macos-latest
+    if: github.event_name != 'release' || github.event.release.prerelease == false
+    
     steps:
-      - name: Checkout Code
-        uses: actions/checkout@v3
+      - name: Checkout repository
+        uses: actions/checkout@v4
 
-      - name: Download Linux Artifacts
-        uses: actions/download-artifact@v4
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
         with:
-          name: linux-build
-          path: linux-dist/
+          node-version: '20'
+          cache: 'npm'
 
-      - name: Download Windows Artifacts
-        uses: actions/download-artifact@v4
-        with:
-          name: windows-build
-          path: windows-dist/
+      - name: Install dependencies
+        run: |
+          npm ci --ignore-scripts
+          npm run postinstall
 
-      - name: Upload Release Assets using `gh release`
+      - name: Build for macOS
+        run: npm run build -- --mac --x64 --arm64
         env:
-          GH_TOKEN: ${{ secrets.GH_TOKEN }}
-        run: |
-          gh release create ${{ github.ref }} \
-            --title "Anime Player ${{ github.ref }}" \
-            --notes "New release of Anime Player" \
-            linux-dist/*.AppImage \
-            windows-dist/*.exe \
-            -p
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          CSC_LINK: ${{ secrets.MACOS_CERTIFICATE }}
+          CSC_KEY_PASSWORD: ${{ secrets.MACOS_CERTIFICATE_PASSWORD }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_ID_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
+          TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
 
-  # Auto-tagging job
-  tag-release:
-    name: Auto Tag Release
+      - name: Upload macOS artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: macos-builds
+          path: |
+            dist/*.dmg
+            dist/*.zip
+            dist/*.pkg
+
+  # Create Release
+  create-release:
+    name: Create Release
     runs-on: ubuntu-latest
+    needs: [build-linux, build-windows, build-macos]
+    if: startsWith(github.ref, 'refs/tags/v')
+    
     steps:
-      - name: Checkout Code
-        uses: actions/checkout@v3
+      - name: Checkout repository
+        uses: actions/checkout@v4
 
-      - name: Set Git User
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Display structure of downloaded files
+        run: ls -R artifacts/
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v1
+        with:
+          name: Release ${{ github.ref_name }}
+          draft: false
+          prerelease: false
+          generate_release_notes: true
+          files: |
+            artifacts/**/*.exe
+            artifacts/**/*.AppImage
+            artifacts/**/*.deb
+            artifacts/**/*.rpm
+            artifacts/**/*.dmg
+            artifacts/**/*.zip
+            artifacts/**/*.tar.gz
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  # Auto-tagging
+  tag-version:
+    name: Auto Tag Version
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Git user
         run: |
-          git config --global user.email "actions@github.com"
-          git config --global user.name "GitHub Actions"
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
 
-      - name: Check if Tag Exists
-        id: check_tag
+      - name: Get version from package.json
+        id: version
         run: |
           VERSION=$(node -p "require('./package.json').version")
-          TAG_EXISTS=$(git ls-remote --tags origin "v$VERSION" | wc -l)
-          echo "VERSION=v$VERSION" >> $GITHUB_ENV
-          echo "TAG_EXISTS=$TAG_EXISTS" >> $GITHUB_ENV
+          echo "VERSION=$VERSION" >> $GITHUB_ENV
+          echo "TAG=v$VERSION" >> $GITHUB_ENV
 
-      - name: Create and Push Tag
-        if: env.TAG_EXISTS == '0'
+      - name: Check if tag exists
+        id: check-tag
         run: |
-          git tag -a "$VERSION" -m "Release $VERSION"
-          git push origin "$VERSION"  
+          git fetch --tags
+          if git rev-parse "$TAG" >/dev/null 2>&1; then
+            echo "Tag $TAG already exists"
+            echo "exists=true" >> $GITHUB_OUTPUT
+          else
+            echo "Tag $TAG does not exist"
+            echo "exists=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Create and push tag
+        if: steps.check-tag.outputs.exists == 'false'
+        run: |
+          git tag -a "$TAG" -m "Release $TAG"
+          git push origin "$TAG"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

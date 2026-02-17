@@ -12,7 +12,9 @@ let updaterWindow = null;
 let isUpdating = false;
 
 // App paths
+app.setName('Anime Player');
 const animePlayerPath = path.join(app.getPath('appData'), 'Anime Player');
+app.setPath('userData', animePlayerPath);
 const visualizationPath = path.join(animePlayerPath, 'Visualization');
 const savePath = path.join(animePlayerPath, 'playback-time.json');
 
@@ -117,7 +119,7 @@ appState.win.webContents.on('before-input-event', (event, input) => {
       isFullscreen: appState.windowState.isFullscreen
       });
       appState.win.webContents.send('initial-play-state', appState.playback.status);
-      appState.win.webContents.openDevTools(); // Only for development
+      // appState.win.webContents.openDevTools(); // Only for development
       setTimeout(() => {
       createTray();
       updateThumbarButtons();
@@ -125,6 +127,18 @@ appState.win.webContents.on('before-input-event', (event, input) => {
   });
 
   setupWindowEvents();
+
+
+  if (!app.isPackaged) {
+  try {
+    require('electron-reload')(__dirname, {
+      electron: path.join(__dirname, '..', 'node_modules', '.bin', 'electron'),
+      hardResetMethod: 'exit'
+    });
+  } catch (e) {
+    console.log('electron-reload not available');
+  }
+}
 
 // Handle file/folder open from context menu
   ipcMain.handle("open-folder", async (event, folderPath) => {
@@ -691,14 +705,6 @@ function createUpdaterWindow() {
   updaterWindow.on('closed', () => updaterWindow = null);
 }
 
-// App lifecycle
-app.on('ready', () => {
-  initApp();
-  setupIPCHandlers();
-  setupAutoUpdater();
-  setupGlobalShortcut();
-});
-
 app.on('will-quit', () => {
   globalShortcut.unregisterAll();
 });
@@ -804,3 +810,4 @@ ipcMain.on('shutdown-after-time', (event, timeInMinutes) => {
   setTimeout(shutdownPC, timeInMillis);
 
 });
+

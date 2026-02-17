@@ -86,9 +86,11 @@ let isVideoPaused = false;
 // let leftWasPausedBeforeHold = false;
 // let rightWasPausedBeforeHold = false;
 let totalTimeInSeconds = 0;
+let countdownInterval = null;
+let remainingTimeOnPause = 0;
+let isPaused = false;
 let isContextMenuVisible = false;
 let isSpeedAdjustmentHold = false;
-let countdownInterval = null;
 let contextMenuClick = false;
 let isShuffle = false;
 let isLooping = false;
@@ -1566,10 +1568,7 @@ function scrollToHighlighted(playlistContainer) {
     }
 }
 
-// ============================================
-// KEYBOARD NAVIGATION
-// ============================================
-
+// KEYBOARD NAVIGATION for playlist
 document.addEventListener("keydown", function(event) {
     const playlistContainer = document.querySelector(".playlist-container");
     
@@ -1599,162 +1598,322 @@ window.addEventListener("click", function(event) {
     }
 });
 
-// ✅ Quick-set buttons handler
-function setQuickTime(minutes) {
-	document.getElementById('hours').textContent = '00';
-	document.getElementById('minutes').textContent = minutes.toString().padStart(2, '0');
-	document.getElementById('seconds').textContent = '00';
+// ✅ Add time function - adds minutes to current timer
+function addTime(minutes) {
+    // Get current time in seconds
+    const currentHours = parseInt(document.getElementById('hours').textContent, 10);
+    const currentMinutes = parseInt(document.getElementById('minutes').textContent, 10);
+    const currentSeconds = parseInt(document.getElementById('seconds').textContent, 10);
+    
+    let currentTotalSeconds = currentHours * 3600 + currentMinutes * 60 + currentSeconds;
+    
+    // Add new minutes
+    currentTotalSeconds += minutes * 60;
+    
+    // Calculate new time
+    const hours = Math.floor(currentTotalSeconds / 3600);
+    const mins = Math.floor((currentTotalSeconds % 3600) / 60);
+    const secs = currentTotalSeconds % 60;
+    
+    // Update display
+    updateDisplay(hours, mins, secs);
+    
+    // Update countdown if running
+    if (countdownInterval && !isPaused) {
+        totalTimeInSeconds = currentTotalSeconds;
+    }
+    
+    // Enable play button if time > 0
+    updatePlayButtonState(currentTotalSeconds > 0);
+    
+    showStatusMessage(`Added ${minutes} minutes`);
 }
+
+// ✅ Update display function
+function updateDisplay(hours, minutes, seconds) {
+    document.getElementById('hours').textContent = hours.toString().padStart(2, '0');
+    document.getElementById('minutes').textContent = minutes.toString().padStart(2, '0');
+    document.getElementById('seconds').textContent = seconds.toString().padStart(2, '0');
+}
+
+// ✅ Update play button state (enable/disable)
+function updatePlayButtonState(enable) {
+    const playBtn = document.querySelector('.play-btn');
+    if (enable) {
+        playBtn.disabled = false;
+        playBtn.style.opacity = '1';
+        playBtn.style.cursor = 'pointer';
+    } else {
+        playBtn.disabled = true;
+        playBtn.style.opacity = '0.5';
+        playBtn.style.cursor = 'not-allowed';
+        
+        // Ensure it shows play icon when disabled
+        playBtn.innerHTML = `
+            <svg class="play-icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <polygon points="5 3 19 12 5 21 5 3"/>
+            </svg>
+        `;
+    }
+}
+
+// ✅ Quick-set buttons handler - adds time instead of setting
+document.querySelectorAll('.preset-btn').forEach(button => {
+    button.addEventListener('click', function() {
+        let minutes = parseInt(button.textContent);
+        addTime(minutes);
+    });
+});
 
 // ✅ Mouse wheel scroll for time unit adjustments
 document.querySelectorAll('#hours, #minutes, #seconds').forEach(unit => {
-	unit.classList.add('time-unit');
-	let max = unit.id === 'hours' ? 23 : 59;
+    let max = unit.id === 'hours' ? 23 : 59;
 
-	unit.addEventListener('wheel', function(event) {
-		event.preventDefault();
-		let delta = event.deltaY > 0 ? -1 : 1;
-		let newValue = parseInt(unit.textContent) + delta;
+    unit.addEventListener('wheel', function(event) {
+        event.preventDefault();
+        let delta = event.deltaY > 0 ? -1 : 1;
+        let newValue = parseInt(unit.textContent) + delta;
 
-		if (newValue < 0) newValue = max;
-		if (newValue > max) newValue = 0;
+        if (newValue < 0) newValue = max;
+        if (newValue > max) newValue = 0;
 
-		unit.textContent = newValue.toString().padStart(2, '0');
-	});
-});
-
-// ✅ Add .quick-time class to quick-set buttons and attach event
-document.querySelectorAll('.quick-set button').forEach(button => {
-	button.classList.add('quick-time');
-	button.addEventListener('click', function() {
-		let minutes = parseInt(button.textContent);
-		setQuickTime(minutes);
-	});
-});
-
-
-// ✅ Event listeners for shutdown checkboxes
-document.getElementById('shutdown-video-end-checkbox').addEventListener('change', (event) => {
-	isShutdownAtVideoEndEnabled = event.target.checked;
-});
-
-document.getElementById('shutdown-playlist-end-checkbox').addEventListener('change', (event) => {
-	isShutdownAtPlaylistEndEnabled = event.target.checked;
-});
-
-// ✅ Function to set shutdown timer
-function setShutdownTimer(minutes) {
-	if (minutes > 0 && (isShutdownAtVideoEndEnabled || isShutdownAtPlaylistEndEnabled)) {
-		window.electron.setShutdownTimer(minutes);
-		showStatusMessage(`PC will shut down in ${minutes} minutes.`);
-	} else {
-		showStatusMessage('Shutdown is disabled. Enable one of the checkboxes to use this feature.');
-	}
-}
-
-// ✅ If you want a manual shutdown timer input (optional)
-const shutdownBtn = document.getElementById('shutdownBtn');
-shutdownBtn.addEventListener('click', () => {
-	const minutes = parseInt(prompt("Enter shutdown time in minutes:"), 10);
-	if (!isNaN(minutes)) {
-		setShutdownTimer(minutes);
-	} else {
-		showStatusMessage('Invalid shutdown time.');
-	}
+        unit.textContent = newValue.toString().padStart(2, '0');
+        
+        // Check if total time > 0 to enable play button
+        const totalSeconds = getTotalTimeInSeconds();
+        updatePlayButtonState(totalSeconds > 0);
+        
+        // Update countdown if running
+        if (countdownInterval && !isPaused) {
+            totalTimeInSeconds = totalSeconds;
+        }
+    });
 });
 
 // Function to convert current display time to total seconds
 function getTotalTimeInSeconds() {
-	const hours = parseInt(document.getElementById('hours').textContent, 10);
-	const minutes = parseInt(document.getElementById('minutes').textContent, 10);
-	const seconds = parseInt(document.getElementById('seconds').textContent, 10);
-	return hours * 3600 + minutes * 60 + seconds;
+    const hours = parseInt(document.getElementById('hours').textContent, 10);
+    const minutes = parseInt(document.getElementById('minutes').textContent, 10);
+    const seconds = parseInt(document.getElementById('seconds').textContent, 10);
+    return hours * 3600 + minutes * 60 + seconds;
+}
+
+// ✅ Start countdown function
+function startCountdown() {
+    // Get current display time
+    if (!isPaused) {
+        totalTimeInSeconds = getTotalTimeInSeconds();
+    } else {
+        // Resume from paused time
+        totalTimeInSeconds = remainingTimeOnPause;
+        isPaused = false;
+    }
+
+    if (totalTimeInSeconds <= 0) {
+        showStatusMessage('Please set a valid timer.');
+        return;
+    }
+
+    // Clear any existing interval
+    if (countdownInterval) {
+        clearInterval(countdownInterval);
+    }
+
+    // Start countdown
+    countdownInterval = setInterval(() => {
+        if (totalTimeInSeconds <= 0) {
+            clearInterval(countdownInterval);
+            countdownInterval = null;
+            
+            // Update play button to disabled
+            updatePlayButtonState(false);
+            
+            // Show play icon
+            document.querySelector('.play-btn').innerHTML = `
+                <svg class="play-icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <polygon points="5 3 19 12 5 21 5 3"/>
+                </svg>
+            `;
+            
+            showStatusMessage('Time is up! Shutting down...');
+
+            // Shut down the PC using Electron
+            if (window.electron && typeof window.electron.sendShutdownRequest === 'function') {
+                window.electron.sendShutdownRequest();
+            } else {
+                console.warn('Electron shutdown function not found.');
+            }
+            return;
+        }
+        
+        totalTimeInSeconds--;
+        updateTimeDisplay(totalTimeInSeconds);
+    }, 1000);
+    
+    showStatusMessage('Countdown started');
+}
+
+// ✅ Pause countdown function
+function pauseCountdown() {
+    if (countdownInterval) {
+        clearInterval(countdownInterval);
+        countdownInterval = null;
+        isPaused = true;
+        remainingTimeOnPause = totalTimeInSeconds;
+        showStatusMessage('Timer paused');
+    }
 }
 
 // Function to update time display from total seconds
 function updateTimeDisplay(totalSeconds) {
-	const hours = Math.floor(totalSeconds / 3600);
-	const minutes = Math.floor((totalSeconds % 3600) / 60);
-	const seconds = totalSeconds % 60;
+    const hours = Math.floor(totalSeconds / 3600);
+    const minutes = Math.floor((totalSeconds % 3600) / 60);
+    const seconds = totalSeconds % 60;
 
-	document.getElementById('hours').textContent = hours.toString().padStart(2, '0');
-	document.getElementById('minutes').textContent = minutes.toString().padStart(2, '0');
-	document.getElementById('seconds').textContent = seconds.toString().padStart(2, '0');
+    updateDisplay(hours, minutes, seconds);
 }
 
-// Function to start the countdown
-function startCountdown() {
-	totalTimeInSeconds = getTotalTimeInSeconds();
-
-	if (totalTimeInSeconds <= 0) {
-		showStatusMessage('Please set a valid timer.');
-		return;
-	}
-
-	// Prevent multiple intervals
-	if (countdownInterval) clearInterval(countdownInterval);
-
-	countdownInterval = setInterval(() => {
-		totalTimeInSeconds--;
-
-		updateTimeDisplay(totalTimeInSeconds);
-
-		if (totalTimeInSeconds <= 0) {
-			clearInterval(countdownInterval);
-			showStatusMessage('Time is up! Shutting down...');
-
-			// Shut down the PC using Electron
-			if (window.electron && typeof window.electron.sendShutdownRequest === 'function') {
-				window.electron.sendShutdownRequest(); // Send shutdown request to main process
-			} else {
-				console.warn('Electron shutdown function not found.');
-			}
-		}
-	}, 1000);
+// ✅ Reset timer function - resets to 00:00:00 without stopping
+function resetTimer() {
+    if (countdownInterval) {
+        // If timer is running, stop it and reset
+        clearInterval(countdownInterval);
+        countdownInterval = null;
+        isPaused = false;
+    }
+    
+    // Reset display
+    updateDisplay(0, 0, 0);
+    
+    // Disable play button
+    updatePlayButtonState(false);
+    
+    // Reset state variables
+    totalTimeInSeconds = 0;
+    remainingTimeOnPause = 0;
+    
+    // Ensure play icon is shown
+    document.querySelector('.play-btn').innerHTML = `
+        <svg class="play-icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <polygon points="5 3 19 12 5 21 5 3"/>
+        </svg>
+    `;
+    
+    showStatusMessage('Timer reset');
 }
 
-// Add click listener to the play button
-document.getElementById('startBtn').addEventListener('click', startCountdown);
+// ✅ Delete timer function - stops timer and hides container
+function deleteTimer() {
+    // Stop any running timer
+    if (countdownInterval) {
+        clearInterval(countdownInterval);
+        countdownInterval = null;
+    }
+    
+    // Reset all states
+    isPaused = false;
+    totalTimeInSeconds = 0;
+    remainingTimeOnPause = 0;
+    
+    // Reset display
+    updateDisplay(0, 0, 0);
+    
+    // Hide timer container
+    const container = document.querySelector('.timer-container');
+    if (container) {
+        container.style.display = 'none';
+    }
+    }
 
-// Reset timer with the delete/reset button
-document.getElementById('resetBtn').addEventListener('click', () => {
-	if (countdownInterval) clearInterval(countdownInterval);
-	totalTimeInSeconds = 0;
-	document.getElementById('hours').textContent = '00';
-	document.getElementById('minutes').textContent = '00';
-	document.getElementById('seconds').textContent = '00';
-	showStatusMessage('Timer reset.');
+// ✅ Play/Pause button click handler
+document.querySelector('.play-btn').addEventListener('click', function() {
+    const totalSeconds = getTotalTimeInSeconds();
+    
+    // If timer is 00:00:00, do nothing (button should be disabled)
+    if (totalSeconds <= 0 && !isPaused) {
+        return;
+    }
+    
+    if (countdownInterval) {
+        // Pause the timer
+        pauseCountdown();
+        // Change to play icon
+        this.innerHTML = `
+            <svg class="play-icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <polygon points="5 3 19 12 5 21 5 3"/>
+            </svg>
+        `;
+    } else {
+        // Start or resume timer
+        startCountdown();
+        // Change to pause icon
+        this.innerHTML = `
+            <svg class="play-icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <rect x="6" y="4" width="4" height="16" rx="1"/>
+                <rect x="14" y="4" width="4" height="16" rx="1"/>
+            </svg>
+        `;
+    }
 });
 
-// Show timer container
-function showTimerContainer(show = true) {
-	const container = document.querySelector('.timer-container');
-	if (container) {
-		// Explicitly show or hide based on the parameter
-		container.style.display = show ? 'block' : 'none';
-	}
+// ✅ Delete timer button 
+document.querySelectorAll('.icon-btn')[1].addEventListener('click', deleteTimer);
 
-	// Allow timer scrolling when mouse is over it
-	container.addEventListener("wheel", (event) => {
-		if (isMouseOver) {
-			event.stopPropagation();
-		}
-	});
+// ✅ Reset timer button 
+document.querySelectorAll('.icon-btn')[0].addEventListener('click', resetTimer);
 
-	container.addEventListener("mouseenter", () => {
-		isMouseOver = true;
-	});
-	container.addEventListener("mouseleave", () => {
-		isMouseOver = false;
-	});
+// Make timer container visible (call this from your main app)
+function showTimerContainer() {
+    const container = document.querySelector('.timer-container');
+    if (container) {
+        container.style.display = 'block';
+        
+        // Reset any running timer when showing
+        if (countdownInterval) {
+            clearInterval(countdownInterval);
+            countdownInterval = null;
+        }
+        
+        // Reset states
+        isPaused = false;
+        totalTimeInSeconds = 0;
+        remainingTimeOnPause = 0;
+        
+        // Reset display
+        updateDisplay(0, 0, 0);
+        
+        // Disable play button initially
+        updatePlayButtonState(false);
+        
+        // Ensure play icon is shown
+        document.querySelector('.play-btn').innerHTML = `
+            <svg class="play-icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <polygon points="5 3 19 12 5 21 5 3"/>
+            </svg>
+        `;
+    }
 }
 
-document.getElementById('sleep-timer').addEventListener('click', showTimerContainer);
-
-// Close button
-document.getElementById('closeTimer').addEventListener('click', () => {
-	document.querySelector('.timer-container').style.display = 'none';
+// Initialize play button as disabled on page load
+window.addEventListener('DOMContentLoaded', () => {
+    updatePlayButtonState(false);
 });
+
+// Allow timer scrolling when mouse is over it
+const timerContainer = document.querySelector('.timer-container');
+if (timerContainer) {
+    timerContainer.addEventListener("mouseenter", () => {
+        isMouseOver = true;
+    });
+    
+    timerContainer.addEventListener("mouseleave", () => {
+        isMouseOver = false;
+    });
+}
+
+document.getElementById('sleep-timer').addEventListener('click', () => showTimerContainer(true));
+
+	
 
 // Function to set playback speed
 function setPlaybackSpeed(speed) {
@@ -2589,90 +2748,172 @@ document.addEventListener("DOMContentLoaded", function() {
 	showControls();
 
 
-	// Function to show the context menu
-	function showContextMenu(event) {
-		event.preventDefault();
-		isContextMenuVisible = true;
+function positionDropdown(dropdown, parentElement) {
+  if (!dropdown || !parentElement) return;
+  
+  const rect = parentElement.getBoundingClientRect();
+  const dropdownHeight = dropdown.offsetHeight || 400; // Fallback height
+  const viewportHeight = window.innerHeight;
+  const spaceBelow = viewportHeight - rect.bottom;
+  const spaceAbove = rect.top;
+  
+  // Remove previous positioning classes
+  dropdown.classList.remove('open-upward', 'open-downward');
+  
+  // If not enough space below, open upward
+  if (spaceBelow < dropdownHeight && spaceAbove > spaceBelow) {
+    dropdown.classList.add('open-upward');
+    dropdown.style.bottom = '0';
+    dropdown.style.top = 'auto';
+  } else {
+    // Open downward (default)
+    dropdown.classList.add('open-downward');
+    dropdown.style.top = '0';
+    dropdown.style.bottom = 'auto';
+  }
+}
 
-		const {
-			clientX: mouseX,
-			clientY: mouseY
-		} = event;
-		const {
-			innerWidth: screenWidth,
-			innerHeight: screenHeight
-		} = window;
 
-		// Get the context menu dimensions
-		const contextMenuHeight = contextMenu.offsetHeight;
-		const contextMenuWidth = contextMenu.offsetWidth;
+// Function to show the context menu
+function showContextMenu(event) {
+  event.preventDefault();
+  isContextMenuVisible = true;
 
-		// Calculate the position dynamically
-		let top = mouseY;
-		let left = mouseX;
+  const { clientX: mouseX, clientY: mouseY } = event;
+  const { innerWidth: screenWidth, innerHeight: screenHeight } = window;
 
-		// Adjust if the menu would overflow the bottom of the screen
-		if (mouseY + contextMenuHeight > screenHeight) {
-			top = screenHeight - contextMenuHeight; // Position to fit within the screen
-		}
+  // Show menu to calculate dimensions
+  contextMenu.style.display = "block";
+  contextMenu.style.visibility = "hidden";
 
-		// Adjust if the menu would overflow the right of the screen
-		if (mouseX + contextMenuWidth > screenWidth) {
-			left = screenWidth - contextMenuWidth; // Position to fit within the screen
-		}
+  // Force reflow to get accurate measurements
+  const contextMenuHeight = contextMenu.scrollHeight;
+  const contextMenuWidth = contextMenu.offsetWidth;
 
-		// Set the calculated position and display the menu
-		contextMenu.style.top = `${top}px`;
-		contextMenu.style.left = `${left}px`;
-		contextMenu.style.display = "block";
+  let top = mouseY;
+  let left = mouseX;
 
-		updateContextTogglePlayPause(); // Update the context menu state
-	}
+  // Smart vertical positioning
+  if (mouseY + contextMenuHeight > screenHeight - 20) {
+    // Not enough space below, open upward
+    top = Math.max(10, mouseY - contextMenuHeight);
+  }
 
-	// Function to hide the context menu
-	function hideContextMenu() {
-		contextMenu.style.display = "none";
-	}
+  // Smart horizontal positioning
+  if (mouseX + contextMenuWidth > screenWidth - 20) {
+    // Not enough space on right, open to the left
+    left = Math.max(10, mouseX - contextMenuWidth);
+  }
 
-	// Attach event listener to mediaPlayer to show context menu
-	mediaPlayer.addEventListener("contextmenu", showContextMenu);
+  // Ensure menu stays within viewport bounds
+  top = Math.max(10, Math.min(top, screenHeight - contextMenuHeight - 10));
+  left = Math.max(10, Math.min(left, screenWidth - contextMenuWidth - 10));
 
-	// Hide the context menu when clicking elsewhere
-	document.addEventListener("click", hideContextMenu);
+  // Apply position and make visible
+  contextMenu.style.top = `${top}px`;
+  contextMenu.style.left = `${left}px`;
+  contextMenu.style.visibility = "visible";
 
-	// Function to update the context menu toggle play/pause item based on video state
-	function updateContextTogglePlayPause() {
-		const contextTogglePlayPause = document.querySelector("#contextTogglePlayPause");
-		const textElement = contextTogglePlayPause.querySelector(".text");
-		const iconElement = contextTogglePlayPause.querySelector(".icon");
+  updateContextTogglePlayPause();
+}
 
-		if (video.paused) {
-			textElement.innerText = "Play";
-			iconElement.innerHTML = "&#9658;";
-		} else {
-			textElement.innerText = "Pause";
-			iconElement.innerHTML = "&#10074;&#10074;";
-		}
-	}
+function hideContextMenu() {
+  contextMenu.style.display = "none";
+  contextMenu.style.visibility = "visible";
+}
 
-	// Handle context menu item clicks
-	contextMenuItems.forEach((item) => {
-		item.addEventListener("click", (event) => {
-			const target = event.target;
+// Attach event listeners
+mediaPlayer.addEventListener("contextmenu", showContextMenu);
 
-			if (target.closest("#contextOpenFile")) {
-				openFileButton.click();
-			} else if (target.closest("#contextOpenFolder")) {
-				openFolderButton.click();
-			} else if (target.closest("#contextTogglePlayPause")) {
-				togglePlayPause();
-			} else if (target.closest("#context-menu-shutdown-timer")) {
-				showTimerContainer(true);
-			}
-			hideContextMenu(); // Hide context menu after clicking an item
-		});
-	});
+document.addEventListener("click", (e) => {
+  if (!contextMenu.contains(e.target)) {
+    hideContextMenu();
+  }
+});
+
+// Prevent dropdown from closing when clicking inside
+contextMenu.addEventListener("click", (e) => {
+  if (e.target.closest(".sub-dropdown")) {
+    e.stopPropagation();
+  }
+});
+
+// UPDATE TOGGLE PLAY/PAUSE
+function updateContextTogglePlayPause() {
+  const contextTogglePlayPause = document.querySelector("#contextTogglePlayPause");
+  if (!contextTogglePlayPause) return;
+  
+  const textElement = contextTogglePlayPause.querySelector(".text");
+  const iconElement = contextTogglePlayPause.querySelector(".icon");
+
+  if (video.paused) {
+    textElement.innerText = "Play";
+    iconElement.innerHTML = "&#9658;";
+  } else {
+    textElement.innerText = "Pause";
+    iconElement.innerHTML = "&#10074;&#10074;";
+  }
+}
+
+// HANDLE CONTEXT MENU CLICKS
+const contextMenuItems = document.querySelectorAll(".context-menu ul li a");
+
+contextMenuItems.forEach((item) => {
+  item.addEventListener("click", (event) => {
+    const target = event.target;
+
+    // Don't close if clicking sub-dropdown
+    if (target.closest(".sub-dropdown")) {
+      return;
+    }
+
+    if (target.closest("#contextOpenFile")) {
+      openFileButton.click();
+    } else if (target.closest("#contextOpenFolder")) {
+      openFolderButton.click();
+    } else if (target.closest("#contextTogglePlayPause")) {
+      togglePlayPause();
+    } else if (target.closest("#context-menu-shutdown-timer")) {
+      showTimerContainer(true);
+    }
+
+    hideContextMenu();
+  });
+});
 	loadSaturationValue();
+	// Apply smart positioning to all sub-dropdowns
+	document.querySelectorAll('.sub-dropdown').forEach(dropdown => {
+	  dropdown.addEventListener('mouseenter', function() {
+		const dropdownContent = this.querySelector('.sub-dropdown-content');
+		if (dropdownContent) {
+		  // Small delay to ensure dropdown is rendered
+		  setTimeout(() => {
+			positionDropdown(dropdownContent, this);
+		  }, 1);
+		}
+	  });
+	});
+	
+	let resizeTimeout;
+	window.addEventListener('resize', () => {
+	  clearTimeout(resizeTimeout);
+	  resizeTimeout = setTimeout(() => {
+		if (contextMenu.style.display === "block") {
+		  // Reposition if menu is open
+		  const currentTop = parseInt(contextMenu.style.top);
+		  const currentLeft = parseInt(contextMenu.style.left);
+		  
+		  // Create synthetic event for repositioning
+		  const syntheticEvent = {
+			preventDefault: () => {},
+			clientX: currentLeft,
+			clientY: currentTop
+		  };
+		  
+		  showContextMenu(syntheticEvent);
+		}
+	  }, 250);
+	});
 });
 
 // ✅ Format time to HH:MM:SS
