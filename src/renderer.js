@@ -78,6 +78,8 @@ let tooltipTimeout;
 let scrollTimeout;
 let currentSpeedIndex = 3;
 let videoId;
+let sortMethod = 'name';
+let sortDirection = 'ascending';
 let hideContinueButtonTimeout;
 let hideHandleTimeout;
 let isVideoPaused = false;
@@ -883,33 +885,39 @@ video.addEventListener("ended", () => {
 	}
 });
 
-// 🟢 Open file dialog (Multiple File Selection) - MODIFIED to append files
+// 🟢 Open file dialog - replaces playlist and plays instantly
 openFileButton.addEventListener("click", async () => {
-	try {
-		const result = await window.electron.openFileDialog();
-		if (!result) return;
+    try {
+        const result = await window.electron.openFileDialog();
+        if (!result) return;
 
-		if (result.singleFile) {
-			mediaFiles = result.siblingFiles;
-			currentVideoIndex = mediaFiles.indexOf(result.currentFile);
-			if (currentVideoIndex === -1) {
-				// Shouldn't happen, but fallback
-				mediaFiles = [result.currentFile];
-				currentVideoIndex = 0;
-			}
-		} else {
-			// Multiple files selected - existing behavior
-			const newFiles = result.files.filter(file => !mediaFiles.includes(file));
-			mediaFiles = [...mediaFiles, ...newFiles];
-			currentVideoIndex = mediaFiles.indexOf(result.files[0]);
-		}
+if (result.singleFile) {
+    const alreadyInPlaylist = mediaFiles.indexOf(result.currentFile);
+    if (alreadyInPlaylist !== -1) {
+        // File is already in current playlist — just switch to it, don't reload
+        currentVideoIndex = alreadyInPlaylist;
+        playMediaFile(mediaFiles[currentVideoIndex]);
+        return;
+    }
+    // New file not in playlist — replace with sibling files from its folder
+    mediaFiles = result.siblingFiles;
+    currentVideoIndex = mediaFiles.indexOf(result.currentFile);
+    if (currentVideoIndex === -1) {
+        mediaFiles = [result.currentFile];
+        currentVideoIndex = 0;
+    }
+} else {
+            // Multiple files: REPLACE entire playlist, play first selected file instantly
+            mediaFiles = result.files;
+            currentVideoIndex = 0;
+        }
 
-		playMediaFile(mediaFiles[currentVideoIndex]);
-		updatePlaylistDropdown(mediaFiles);
-		showStatusMessage(`Loaded ${mediaFiles.length} video(s)`);
-	} catch (error) {
-		console.error("Error opening files:", error);
-	}
+        playMediaFile(mediaFiles[currentVideoIndex]);
+        updatePlaylistDropdown(mediaFiles);
+        showStatusMessage(`Loaded ${mediaFiles.length} video(s)`);
+    } catch (error) {
+        console.error("Error opening files:", error);
+    }
 });
 
 // 🟢 Open folder dialog (Load all media in a folder) - Keeps existing behavior
@@ -1596,6 +1604,99 @@ window.addEventListener("click", function(event) {
     if (playlistContainer && !playlistContainer.contains(event.target)) {
         playlistContainer.classList.remove("show");
     }
+});
+
+
+// ✅ Sort playlist and instantly play FIRST video of sorted result
+function sortPlaylist() {
+    if (mediaFiles.length === 0) return;
+
+    if (sortMethod === 'date') {
+        sortByDateAsync();
+        return;
+    }
+
+    // Name sort (natural numeric: ep1, ep2...ep10)
+    mediaFiles.sort((a, b) => {
+        const nameA = a.split(/[/\\]/).pop();
+        const nameB = b.split(/[/\\]/).pop();
+        return nameA.localeCompare(nameB, undefined, { numeric: true, sensitivity: 'base' });
+    });
+
+    if (sortDirection === 'descending') mediaFiles.reverse();
+
+    finalizeSortResult();
+}
+
+// ✅ Date sort — fetches mtimes from main process
+async function sortByDateAsync() {
+    try {
+        const filesWithDates = await window.electron.invoke('get-file-dates', mediaFiles);
+
+        if (!filesWithDates || typeof filesWithDates !== 'object') {
+            console.warn('get-file-dates returned invalid data, falling back to name sort');
+            sortMethod = 'name';
+            sortPlaylist();
+            return;
+        }
+
+        mediaFiles.sort((a, b) => {
+            const dateA = filesWithDates[a] ?? 0;
+            const dateB = filesWithDates[b] ?? 0;
+            return dateA - dateB;
+        });
+
+        if (sortDirection === 'descending') mediaFiles.reverse();
+
+        finalizeSortResult();
+    } catch (err) {
+        console.error('Date sort failed:', err);
+        showStatusMessage('Date sort unavailable');
+    }
+}
+
+// ✅ After sort: play index 0 (first in sorted list), update UI
+function finalizeSortResult() {
+    currentVideoIndex = 0;
+    updatePlaylistDropdown(mediaFiles);
+    playVideoByIndex(currentVideoIndex);         // instant play first video
+    highlightCurrentVideo(mediaFiles[currentVideoIndex]);
+    updateSortUI();
+    showStatusMessage(`Sorted: ${sortMethod} ${sortDirection === 'ascending' ? '⬆' : '⬇'}`);
+}
+
+// ✅ Sync active state on ALL sort buttons across both dropdowns
+function updateSortUI() {
+    // Both navbar and context menu share same data-sort attributes
+    document.querySelectorAll('[data-sort="name"], [data-sort="date"]').forEach(el => {
+        el.classList.toggle('active', el.dataset.sort === sortMethod);
+    });
+    document.querySelectorAll('[data-sort="ascending"], [data-sort="descending"]').forEach(el => {
+        el.classList.toggle('active', el.dataset.sort === sortDirection);
+    });
+}
+
+// ✅ Wire up ALL sort clicks in both navbar + context menu dropdowns
+document.addEventListener('click', (e) => {
+    const target = e.target.closest('[data-sort]');
+    if (!target) return;
+
+    const val = target.dataset.sort;
+
+    if (val === 'name' || val === 'date') {
+        sortMethod = val;
+        sortPlaylist();
+    } else if (val === 'ascending' || val === 'descending') {
+        sortDirection = val;
+        sortPlaylist();
+    }
+});
+
+// ✅ Toggle Order button — works in both dropdowns
+document.addEventListener('click', (e) => {
+    if (!e.target.closest('.toggle-sort-order')) return;
+    sortDirection = sortDirection === 'ascending' ? 'descending' : 'ascending';
+    sortPlaylist();
 });
 
 // ✅ Add time function - adds minutes to current timer
@@ -3232,6 +3333,20 @@ document.addEventListener("keydown", (event) => {
 		showStatusMessage("Normal Speed");
 	}
 
+    if (event.altKey && event.key.toLowerCase() === 'n') {
+        event.preventDefault();
+        sortMethod = 'name';
+        sortPlaylist();
+    } else if ( event.altKey && event.key.toLowerCase() === 'd') {
+        event.preventDefault();
+        sortMethod = 'date';
+        sortPlaylist();
+    } else if ( event.altKey && event.key.toLowerCase() === 'o') {
+        event.preventDefault();
+        sortDirection = sortDirection === 'ascending' ? 'descending' : 'ascending';
+        sortPlaylist();
+    }
+
 	const keyActions = {
 		ArrowLeft: () => {
 			currentMedia.currentTime = Math.max(0, currentMedia.currentTime - 10);
@@ -3711,33 +3826,21 @@ window.electron.onFileOpen((filePath) => {
 
 // ✅ Modified function for folder open from context menu
 window.electron.openFolderFromContext(async (folderPath) => {
-	try {
-		const receivedFiles = await window.electron.invoke("open-folder", folderPath);
+    try {
+        const receivedFiles = await window.electron.invoke("open-folder", folderPath);
 
-		if (Array.isArray(receivedFiles) && receivedFiles.length > 0) {
-			if (!isFirstFileOpened) {
-				// First folder - initialize playlist
-				mediaFiles = receivedFiles;
-				currentVideoIndex = 0;
-				isFirstFileOpened = true;
-				updatePlaylistDropdown(mediaFiles);
-				playMediaFile(mediaFiles[currentVideoIndex]);
-			} else {
-				// Subsequent folder - merge files
-				const newFiles = receivedFiles.filter(file => !mediaFiles.includes(file));
-				if (newFiles.length > 0) {
-					mediaFiles = [...mediaFiles, ...newFiles];
-					updatePlaylistDropdown(mediaFiles);
-
-					// auto-play first new file
-					currentVideoIndex = mediaFiles.indexOf(newFiles[0]);
-					playMediaFile(mediaFiles[currentVideoIndex]);
-				}
-			}
-		} 
-	} catch (error) {
-		console.error("❌ Error loading folder:", error);
-	}
+        if (Array.isArray(receivedFiles) && receivedFiles.length > 0) {
+            // Always REPLACE old playlist with the new folder's files
+            mediaFiles = receivedFiles;
+            currentVideoIndex = 0;
+            isFirstFileOpened = true;
+            updatePlaylistDropdown(mediaFiles);
+            playMediaFile(mediaFiles[currentVideoIndex]);
+            showStatusMessage(`Loaded ${receivedFiles.length} video(s) from folder`);
+        }
+    } catch (error) {
+        console.error("❌ Error loading folder:", error);
+    }
 });
 
 // Update Dialog Functions

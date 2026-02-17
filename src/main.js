@@ -811,3 +811,17 @@ ipcMain.on('shutdown-after-time', (event, timeInMinutes) => {
 
 });
 
+// File date fetcher for sort-by-date
+ipcMain.handle('get-file-dates', async (event, filePaths) => {
+    const result = {};
+    for (const filePath of filePaths) {
+        try {
+            const normalizedPath = path.normalize(filePath);
+            const stat = fs.statSync(normalizedPath);
+            result[filePath] = stat.mtimeMs; // key matches what renderer sent
+        } catch {
+            result[filePath] = 0;
+        }
+    }
+    return result;
+});

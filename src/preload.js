@@ -48,7 +48,7 @@ contextBridge.exposeInMainWorld('electron', {
   },
 
   invoke: (channel, ...args) => {
-    const validChannels = ["load-playback-time", "get-audio-thumbnail", "open-folder"]; // Add here
+    const validChannels = ["load-playback-time", "get-audio-thumbnail", "open-folder", "read-file-buffer","set-stream-file", "get-audio-tracks", "get-subtitle-tracks", "get-file-dates"]; // Add here
     if (validChannels.includes(channel)) {
       return ipcRenderer.invoke(channel, ...args);
     }

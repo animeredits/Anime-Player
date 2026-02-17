@@ -14,7 +14,6 @@
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Sharp:opsz,wght,FILL,GRAD@20,100,0,0" />
     <link rel="stylesheet" href="https://site-assets.fontawesome.com/releases/v6.4.2/css/all.css" />
     <link rel="stylesheet" href="styles.css" />
-    <link rel="manifest" href="/manifest.json">
   </head>
   <body>
     <!-- Media Player -->
@@ -40,35 +39,37 @@
             <a href="javascript:void(0)" class="dropbtn">Playback</a>
             <div class="dropdown-content">
               <div class="sub-dropdown">
-                <a href="javascript:void(0)" class="sub-dropbtn">Playlist</a>
+                <a href="javascript:void(0)" class="sub-dropbtn">📜 Playlist</a>
                 <div class="sub-dropdown-content play-list">
                   <!-- Play list will be dynamically inserted here -->
                 </div>
               </div>
               <div class="sub-dropdown">
-                <a href="javascript:void(0)" class="sub-dropbtn">Sort By</a>
+                <a href="javascript:void(0)" class="sub-dropbtn">🔀 Sort By</a>
                 <div class="sub-dropdown-content sort-dropdown">
                   <a href="javascript:void(0)" data-sort="name" class="sort-option active">
-                    <span class="sort-icon">📝</span> Name <span class="sort-shortcut">Alt+N</span>
+                    <span class="sort-icon">📝</span> Name
                   </a>
                   <a href="javascript:void(0)" data-sort="date" class="sort-option">
-                    <span class="sort-icon">📅</span> Date <span class="sort-shortcut">Alt+D</span>
+                    <span class="sort-icon">📅</span> Date
                   </a>
                   <div class="sort-divider"></div>
-                  <a href="javascript:void(0)" data-sort="ascending" class="sort-order">
-                    <span class="sort-icon">⬆️</span> Ascending </a>
+                  <a href="javascript:void(0)" data-sort="ascending" class="sort-order active">
+                    <span class="sort-icon">⬆️</span> Ascending
+                  </a>
                   <a href="javascript:void(0)" data-sort="descending" class="sort-order">
-                    <span class="sort-icon">⬇️</span> Descending </a>
+                    <span class="sort-icon">⬇️</span> Descending
+                  </a>
                   <a href="javascript:void(0)" class="toggle-sort-order">
-                    <span class="sort-icon">🔄</span> Toggle Order <span class="sort-shortcut">Alt+O</span>
+                    <span class="sort-icon">🔄</span> Toggle Order
                   </a>
                 </div>
               </div>
-              <a href="javascript:void(0)" class="">Play</a>
-              <a href="javascript:void(0)" class="nextbtn">Next</a>
-              <a href="javascript:void(0)" class="previousbtn">Previous</a>
-              <a href="javascript:void(0)" class="stopPlayback">Stop</a>
-              <a href="javascript:void(0)" id="sleep-timer">Sleep Timer</a>
+              <a href="javascript:void(0)" class="">▶️ Play</a>
+              <a href="javascript:void(0)" class="nextbtn">⏭️ Next <span class="shortcut">N</span></a>
+              <a href="javascript:void(0)" class="previousbtn">⏮️ Previous <span class="shortcut">P</span></a>
+              <a href="javascript:void(0)" class="stopPlayback">⏹️ Stop</a>
+              <a href="javascript:void(0)" id="sleep-timer">⏱️ Sleep Timer <span class="shortcut">Ctrl+T</span></a>
             </div>
           </li>
           <li class="dropdown">
@@ -299,25 +300,27 @@
             </li>
             <li>
               <a class="nextbtn">
-                <span class="icon">&#x23ED;</span>
+                <span class="icon">⏭️</span>
                 <span class="text">Next</span>
+                <span class="shortcut">N</span>
               </a>
             </li>
             <li>
               <a class="previousbtn">
-                <span class="icon">&#x23EE;</span>
+                <span class="icon">⏮️</span>
                 <span class="text">Previous</span>
+                <span class="shortcut">P</span>
               </a>
             </li>
             <li>
               <a class="stopPlayback">
-                <span class="icon">&#x23F9;</span>
+                <span class="icon">⏹️</span>
                 <span class="text">Stop</span>
               </a>
             </li>
             <li id="context-menu-audio-track" class="sub-dropdown">
               <a href="javascript:void(0)" class="sub-dropbtn">
-                <span class="icon">🎧</span>
+                <span class="icon">🎵</span>
                 <span class="text">Audio</span>
               </a>
               <div class="sub-dropdown-content">
@@ -325,90 +328,64 @@
                   <a href="javascript:void(0)" class="sub-dropbtn">
                     <span class="icon">🎧</span>
                     <span class="text">Audio Track</span>
+                    <span class="shortcut">B</span>
                   </a>
                   <div class="sub-dropdown-content audio-track-list">
                     <!-- Tracks will be dynamically inserted here -->
                   </div>
                 </div>
                 <a class="increase-volume">
-                  <span class="icon">&#128266;</span>
-                  <!-- Speaker icon -->
-                  <span class="text">increase Volume</span>
+                  <span class="icon">🔊</span>
+                  <span class="text">Increase Volume</span>
+                  <span class="shortcut">↑</span>
                 </a>
                 <a class="decrease-volume">
-                  <span class="icon">&#128265;</span>
-                  <!-- Lower volume icon -->
+                  <span class="icon">🔉</span>
                   <span class="text">Decrease Volume</span>
+                  <span class="shortcut">↓</span>
                 </a>
                 <!-- <a id="mic-access-button"><span class="icon">&#127908;</span><span class="text">Start Voice Recognition</span></a> -->
                 <a class="mute">
-                  <span class="icon">&#128263;</span>
-                  <!-- Mute icon -->
+                  <span class="icon">🔇</span>
                   <span class="text">Mute</span>
+                  <span class="shortcut">M</span>
                 </a>
               </div>
             </li>
             <li class="sub-dropdown">
               <a href="javascript:void(0)" class="sub-dropbtn">
-                <span class="icon">&#127909;</span>
-                <!-- Video camera icon -->
+                <span class="icon">🎞️</span>
                 <span class="text">Video</span>
               </a>
               <div class="sub-dropdown-content">
+                <a class="fullscreen-button">
+                  <span class="icon">⛶</span>
+                  <span class="text">Full Screen</span>
+                  <span class="shortcut">F</span>
+                </a>
                 <div class="sub-dropdown">
                   <a href="javascript:void(0)" class="sub-dropbtn">
-                    <span class="icon">&#128269;</span>
-                    <!-- Zoom icon -->
+                    <span class="icon">🔍</span>
                     <span class="text">Zoom</span>
+                    <span class="shortcut">Z</span>
                   </a>
                   <div class="sub-dropdown-content" id="zoom-track-list">
-                    <a>
-                      <span class="icon">&#128270;</span> 1.3x </a>
-                    <a>
-                      <span class="icon">&#128270;</span> 1.5x </a>
-                    <a>
-                      <span class="icon">&#128270;</span> 2x </a>
-                    <a>
-                      <span class="icon">&#128270;</span> 2.5x </a>
-                    <a>
-                      <span class="icon">&#128270;</span> 3x </a>
-                    <a>
-                      <span class="icon">&#8634;</span> Reset </a>
+                    <a><span class="icon">🔍</span> 1.3x</a>
+                    <a><span class="icon">🔍</span> 1.5x</a>
+                    <a><span class="icon">🔍</span> 2x</a>
+                    <a><span class="icon">🔍</span> 2.5x</a>
+                    <a><span class="icon">🔍</span> 3x</a>
+                    <a><span class="icon">↺</span> Reset</a>
                   </div>
-                  <a class="fullscreen-button">
-                    <img class="context-menu-full-screen" src="../assets/icons/full-screen.png" alt="Fullscreen"> Full Screen </a>
                 </div>
               </div>
             </li>
             <!-- <li><a><span class="icon">&#128250;</span><span class="text">Subtitle Track</span></a></li> -->
-            <li class="sub-dropdown">
-              <a href="javascript:void(0)" class="sub-dropbtn">
-                <span class="icon">🔀</span>
-                <span class="text">Sort By</span>
-              </a>
-              <div class="sub-dropdown-content">
-                <a href="javascript:void(0)" data-sort="name">
-                  <span class="icon">📝</span>
-                  <span class="text">Name</span>
-                </a>
-                <a href="javascript:void(0)" data-sort="date">
-                  <span class="icon">📅</span>
-                  <span class="text">Date</span>
-                </a>
-                <a href="javascript:void(0)" data-sort="ascending">
-                  <span class="icon">⬆️</span>
-                  <span class="text">Ascending</span>
-                </a>
-                <a href="javascript:void(0)" data-sort="descending">
-                  <span class="icon">⬇️</span>
-                  <span class="text">Descending</span>
-                </a>
-              </div>
-            </li>
             <li>
               <a id="context-menu-shutdown-timer">
                 <span class="icon">⏱️</span>
-                <span class="text">S Timer</span>
+                <span class="text">Sleep Timer</span>
+                <span class="shortcut">Ctrl+T</span>
               </a>
             </li>
             <li id="context-menu-playlist" class="sub-dropdown">
@@ -422,26 +399,59 @@
             </li>
             <li class="sub-dropdown">
               <a href="javascript:void(0)" class="sub-dropbtn">
-                <span class="icon">&#128194;</span>
+                <span class="icon">🔀</span>
+                <span class="text">Sort By</span>
+              </a>
+              <div class="sub-dropdown-content sort-dropdown">
+                <a href="javascript:void(0)" data-sort="name" class="sort-option active">
+                  <span class="icon">📝</span>
+                  <span class="text">Name</span>
+                  <span class="shortcut">Alt+N</span>
+                </a>
+                <a href="javascript:void(0)" data-sort="date" class="sort-option">
+                  <span class="icon">📅</span>
+                  <span class="text">Date</span>
+                  <span class="shortcut">Alt+D</span>
+                </a>
+                <div class="sort-divider"></div>
+                <a href="javascript:void(0)" data-sort="ascending" class="sort-order active">
+                  <span class="icon">⬆️</span>
+                  <span class="text">Ascending</span>
+                </a>
+                <a href="javascript:void(0)" data-sort="descending" class="sort-order">
+                  <span class="icon">⬇️</span>
+                  <span class="text">Descending</span>
+                </a>
+                <a href="javascript:void(0)" class="toggle-sort-order">
+                  <span class="icon">🔄</span>
+                  <span class="text">Toggle Order</span>
+                  <span class="shortcut">Alt+O</span>
+                </a>
+              </div>
+            </li>
+            <li class="sub-dropdown">
+              <a href="javascript:void(0)" class="sub-dropbtn">
+                <span class="icon">📂</span>
                 <span class="text">Open Media</span>
               </a>
               <div class="sub-dropdown-content">
-                <div class="sub-dropdown">
-                  <a id="contextOpenFile">
-                    <span class="icon">&#128194;</span>
-                    <span class="text">Open File</span>
-                  </a>
-                  <a id="contextOpenFolder">
-                    <span class="icon">&#128448;</span>
-                    <span class="text">Open Folder...</span>
-                  </a>
-                </div>
+                <a id="contextOpenFile">
+                  <span class="icon">🎬</span>
+                  <span class="text">Open File</span>
+                  <span class="shortcut">Ctrl+O</span>
+                </a>
+                <a id="contextOpenFolder">
+                  <span class="icon">📁</span>
+                  <span class="text">Open Folder</span>
+                  <span class="shortcut">Ctrl+F</span>
+                </a>
               </div>
             </li>
             <li>
               <a id="quit">
-                <span class="icon">&#10060;</span>
+                <span class="icon">🚪</span>
                 <span class="text quit">Quit</span>
+                <span class="shortcut">Ctrl+Q</span>
               </a>
             </li>
           </ul>
