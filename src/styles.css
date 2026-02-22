@@ -136,30 +136,107 @@ nav > * {
 .dropdown-content {
   display: none;
   position: absolute;
-  min-width: 200px;
-  margin-top: 10px;
-  backdrop-filter: blur(10px) saturate(180%);
+  min-width: 220px;
+  margin-top: 6px;
+  backdrop-filter: blur(20px) saturate(180%);
   background-color: #2f2f2f99;
-  border-radius: 8px;
   border: 1px solid rgba(255, 255, 255, 0.125);
-  z-index: 1;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.45);
+  border-radius: 8px;
+  padding: 4px 0;
+  z-index: 100;
 }
 
-.dropdown-content a {
-  display: flex;
-  justify-content: space-between;
+/* ── NAV ROW: 3-column layout (icon | label | shortcut) ── */
+.dropdown-content a,
+.sub-dropdown-content a {
+  display: grid;
+  grid-template-columns: 28px 1fr auto;
   align-items: center;
-  color: white;
-  padding: 15px 10px;
+  color: rgba(255,255,255,0.9);
+  padding: 7px 10px 7px 8px;
   text-decoration: none;
+  font-size: 12px;
+  transition: background 0.12s;
 }
 
-.dropdown-content a:first-child {
-  margin-top: 0;
+.dropdown-content a:hover,
+.sub-dropdown-content a:hover {
+  background-color: rgba(100, 130, 220, 0.25);
 }
 
-.dropdown-content a:hover {
-  background-color: rgba(255, 255, 255, 0.1);
+/* Icon column */
+.nav-row-icon {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  width: 20px;
+  font-size: 11px;
+  color: rgba(255,255,255,0.6);
+  flex-shrink: 0;
+}
+
+/* Label */
+.nav-row-text {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  padding-left: 2px;
+}
+
+/* Shortcut */
+.nav-row-shortcut {
+  font-size: 10px;
+  color: rgba(255,255,255,0.4);
+  white-space: nowrap;
+  padding-left: 12px;
+  text-align: right;
+}
+
+/* Sub-dropbtn uses same 3-column layout */
+.sub-dropbtn {
+  display: grid !important;
+  grid-template-columns: 28px 1fr auto;
+  align-items: center;
+  padding: 7px 10px 7px 8px;
+  font-size: 12px;
+  cursor: pointer;
+  width: 100%;
+  color: rgba(255,255,255,0.9);
+  background: none;
+  border: none;
+  text-align: left;
+  transition: background 0.12s;
+}
+
+.sub-dropbtn:hover {
+  background-color: rgba(100, 130, 220, 0.25);
+}
+
+/* Arrow indicator — replaces old unicode ▶ */
+.sub-dropdown .sub-dropbtn::after {
+  content: "›";
+  font-size: 16px;
+  color: rgba(255,255,255,0.4);
+  line-height: 1;
+  justify-self: end;
+}
+
+/* nav-sort-check & nav-effect-check */
+.nav-sort-check,
+.nav-effect-check {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  font-size: 10px;
+  color: #6fa3ef;
+}
+
+/* Active sort/effect items */
+.sort-option.active .nav-row-text,
+.sort-order.active .nav-row-text,
+.audio-effect-option.effect-active .nav-row-text {
+  color: #6fa3ef;
 }
 
 .dropdown:hover .dropdown-content {
@@ -172,64 +249,139 @@ nav > * {
   border: none;
 }
 
-/* Styling for sub-dropdown */
+/* Sub-dropdown panel */
 .sub-dropdown {
+  display: block;
   position: relative;
-  display: inline-block;
-}
-
-.sub-dropbtn {
-  font-size: 11px;
-  border: none;
-  cursor: pointer;
-  width: 100%;
-  text-align: left;
 }
 
 .sub-dropdown-content {
   display: none;
   position: absolute;
-  left: 98%; 
-  top: 0;
-  transform: translateX(1px); /* Adjust position to avoid overlap */
-  min-width: 170px;
-  border-radius: 5px;
-  margin-inline: 1.5px;
+  left: 100%;
+  top: -4px;
+  min-width: 190px;
+  border-radius: 6px;
+  backdrop-filter: blur(20px) saturate(180%);
   background-color: #2f2f2f99;
-  backdrop-filter: blur(30px) saturate(180%);
-  z-index: 2;
+  border: 1px solid rgba(255, 255, 255, 0.125);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.45);
+  padding: 4px 0;
+  z-index: 200;
 }
 
-.sub-dropdown-content a {
-  color: #fff;
-  padding: 10px 15px;
-  margin-bottom: 0;
-  text-decoration: none;
-  display: block;
-  border: none;
+/* Invisible hover bridge — fills the gap between parent and submenu so mouse hover isn't lost */
+.sub-dropdown-content::before {
+  content: '';
+  position: absolute;
+  left: -8px;
+  top: 0;
+  width: 8px;
+  height: 100%;
+  background: transparent;
 }
 
-.sub-dropdown-content a:hover {
-  background-color: rgba(255, 255, 255, 0.1);
-  border-radius: 5px;
-}
-
-/* Show sub-dropdown content on hover */
 .sub-dropdown:hover .sub-dropdown-content {
   display: block;
 }
 
-/* Adjust the display of the sub-dropdown to stay within the dropdown area */
-.sub-dropdown {
-  display: block;
-  position: relative;
+/* Sort/nav divider */
+.sort-divider {
+  height: 1px;
+  background: rgba(255,255,255,0.1);
+  margin: 3px 8px;
 }
 
-.sub-dropdown .sub-dropbtn::after {
-  content: "▶";
-  font-size: 8px;
-  color: #ffffff;
-  margin-left: 17.6px;
+/* ══ PLAYLIST ITEMS — ultra-compact, override ALL grid rules ══ */
+.sub-dropdown-content.play-list a,
+.sub-dropdown-content.play-list .playlist-item,
+.cm-dynamic-list.play-list a,
+.cm-dynamic-list.play-list .playlist-item,
+.play-list a,
+.play-list .playlist-item {
+  display: block !important;
+  grid-template-columns: none !important;
+  padding: 4px 10px !important;
+  margin: 0 !important;
+  font-size: 11px !important;
+  line-height: 1.35 !important;
+  height: auto !important;
+  min-height: 0 !important;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: rgba(255,255,255,0.82);
+  border-radius: 3px;
+  cursor: pointer;
+}
+
+.sub-dropdown-content.play-list a:hover,
+.sub-dropdown-content.play-list .playlist-item:hover,
+.cm-dynamic-list.play-list a:hover,
+.play-list .playlist-item:hover {
+  background-color: rgba(100, 130, 220, 0.25) !important;
+  color: #fff !important;
+}
+
+.play-list .playlist-item.highlight,
+.sub-dropdown-content.play-list .playlist-item.highlight,
+.cm-dynamic-list.play-list .playlist-item.highlight {
+  color: #6fa3ef !important;
+  background-color: rgba(100, 130, 220, 0.18) !important;
+  font-weight: 500 !important;
+}
+
+/* Playlist search bar — slim */
+.play-list .playlist-search,
+.sub-dropdown-content.play-list .playlist-search {
+  display: block !important;
+  grid-template-columns: none !important;
+  width: 100% !important;
+  box-sizing: border-box !important;
+  padding: 5px 10px !important;
+  margin: 0 !important;
+  height: 30px !important;
+  font-size: 11px !important;
+  line-height: 1 !important;
+  background: rgba(255,255,255,0.06) !important;
+  border: none !important;
+  border-bottom: 1px solid rgba(255,255,255,0.1) !important;
+  color: #fff;
+  outline: none;
+  position: sticky;
+  top: 0;
+  z-index: 2;
+}
+
+/* Nav .sub-dropdown-content.play-list panel */
+.sub-dropdown-content.play-list {
+  max-height: 380px !important;
+  min-width: 300px !important;
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+  padding: 2px 0 !important;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255,255,255,0.2) transparent;
+}
+
+.sub-dropdown-content.play-list::-webkit-scrollbar { width: 4px; }
+.sub-dropdown-content.play-list::-webkit-scrollbar-thumb {
+  background: rgba(255,255,255,0.2);
+  border-radius: 4px;
+}
+
+/* Audio/subtitle track lists: also compact single-line */
+.sub-dropdown-content.audio-track-list a,
+.sub-dropdown-content.subtitle-track-list a,
+.sub-dropdown-content.audio-device-list a {
+  display: block !important;
+  grid-template-columns: unset !important;
+  padding: 5px 12px !important;
+  font-size: 11px !important;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 240px;
 }
 
 /* Container for each logo item */
@@ -491,7 +643,7 @@ nav > * {
   background: #555;
 }
 
-/* playList */
+/* playList — standalone (bottom playlist panel) */
 .play-list {
   width: 550px;
   max-height: 450px;
@@ -506,27 +658,25 @@ nav > * {
 }
 
 .play-list::-webkit-scrollbar {
-  width: 10px;
-  padding-top: 10px;
+  width: 5px;
   cursor: pointer;
 }
 
 .play-list::-webkit-scrollbar-thumb {
-  background: #888;
-  border-radius: 5px;
+  background: rgba(255,255,255,0.2);
+  border-radius: 4px;
 }
 
 .play-list::-webkit-scrollbar-thumb:hover {
-  background: #555;
+  background: rgba(255,255,255,0.35);
 }
 
 /* Style for the currently playing video item */
 .play-list .highlight {
-  background-color: rgba(255, 255, 255, 0.2);
-  color: #fff;
-  font-weight: 400;
-  padding: 5px;
-  border-radius: 5px;
+  background-color: rgba(100, 130, 220, 0.2);
+  color: #6fa3ef;
+  font-weight: 500;
+  border-radius: 4px;
   transition: background-color 0.2s;
 }
 
@@ -801,7 +951,9 @@ main {
   outline: none;
   display: none;
   position: absolute;
-  object-fit: cover;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
   transition: transform 0.3s ease-out;
 }
 
@@ -818,82 +970,285 @@ main {
 
 }                               
 
-/* Context Menu */
+/* =============================================
+   CONTEXT MENU — VLC-style
+   ============================================= */
 .context-menu {
   display: none;
   position: fixed;
+  min-width: 200px;
+  padding: 4px 0;
   backdrop-filter: blur(30px) saturate(180%);
   background-color: #2f2f2f99;
   border: 1px solid rgba(255, 255, 255, 0.125);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.45);
   font-size: 12px;
-  border-radius: 5px;
+  border-radius: 6px;
   z-index: 1000;
-  width: 180px;
-  height: auto;
 }
 
+/* ── Base list reset ── */
 .context-menu ul {
   list-style: none;
   margin: 0;
+  padding: 0;
 }
 
+/* ── Every list item ── */
 .context-menu ul li {
-  display: flex;
-  align-items: center;
-  cursor: pointer;
-  margin-block: 5px;
   position: relative;
+  margin: 0;
 }
 
-.context-menu ul li:first-child {
-  margin-top: 0;
+/* ── Divider ── */
+.context-menu ul li.cm-divider {
+  height: 1px;
+  background-color: rgba(255, 255, 255, 0.12);
+  margin: 4px 0;
+  pointer-events: none;
 }
 
-.context-menu ul li:last-child {
-  margin-bottom: 0;
-}
-
-.context-menu ul li a {
-  padding: 5px;
-  font-weight: 300;
-  color: #fff;
-  font-size: 12px;
-  text-decoration: none;
+/* ── Anchor / row ── */
+.context-menu ul li > a {
   display: flex;
   align-items: center;
-  width: 100%;
-}
-
-.context-menu ul li a .icon {
-  margin-right: 10px;
-  font-size: 14px;
+  gap: 0;
+  padding: 6px 8px;
   color: #fff;
-  width: 20px; /* Fixed width for icon alignment */
-  text-align: center;
+  text-decoration: none;
+  font-weight: 300;
+  font-size: 12px;
+  cursor: pointer;
+  white-space: nowrap;
+  user-select: none;
 }
 
-.context-menu ul li a .text {
-  flex-grow: 1;
+/* Hover highlight */
+.context-menu ul li > a:hover,
+.context-menu ul li.cm-sub-item:hover > a {
+  background-color: rgba(100, 130, 220, 0.35);
+  border-radius: 4px;
 }
 
-.context-menu li:hover {
-  background-color: rgba(255, 255, 255, 0.1);
+/* ── Icon column (fixed width keeps text aligned) ── */
+.context-menu .cm-icon {
+  display: inline-flex;
+  justify-content: center;
+  align-items: center;
+  width: 22px;
+  min-width: 22px;
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.75);
+  margin-right: 6px;
 }
 
-/* Divider */
-.context-menu ul li.divider {
-  height: 1px;
-  background-color: #444;
-  margin: 5px 0;
+/* mute icon tint */
+.context-menu .cm-icon-mute {
+  color: rgba(220, 80, 80, 0.9);
 }
 
-/* Shortcut/After Content Alignment */
-.context-menu ul li a .shortcut {
-  margin-left: auto;
+/* ── Label text ── */
+.context-menu .cm-text {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ── Keyboard shortcut (right-aligned) ── */
+.context-menu .cm-shortcut {
+  margin-left: 18px;
+  font-size: 10px;
+  color: rgba(255, 255, 255, 0.45);
+  white-space: nowrap;
+}
+
+/* ── Sub-menu arrow ── */
+.context-menu .cm-arrow {
+  margin-left: 6px;
+  font-size: 8px;
+  color: rgba(255, 255, 255, 0.55);
+}
+
+/* ── Sub-menu panel ── */
+.context-menu .cm-submenu {
+  display: none;
+  position: absolute;
+  top: -4px;
+  left: 100%;
+  min-width: 190px;
+  padding: 4px 0;
+  backdrop-filter: blur(30px) saturate(180%);
+  background-color: #2f2f2f99;
+  border: 1px solid rgba(255, 255, 255, 0.125);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.45);
+  border-radius: 6px;
+  z-index: 1001;
+}
+
+/* Invisible hover bridge for context menu submenus */
+.context-menu .cm-submenu::before {
+  content: '';
+  position: absolute;
+  left: -8px;
+  top: 0;
+  width: 8px;
+  height: 100%;
+  background: transparent;
+}
+
+/* Show sub-menu on hover */
+.context-menu ul li.cm-sub-item:hover > .cm-submenu {
+  display: block;
+}
+
+/* Nested sub-menus (3rd level) */
+.context-menu .cm-submenu .cm-submenu {
+  z-index: 1002;
+}
+
+/* ── Playlist panel (wider + scrollable) ── */
+.context-menu .play-list {
+  min-width: 300px;
+  max-height: 380px;
+  overflow-y: auto;
+  overflow-x: hidden;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255,255,255,0.2) transparent;
+}
+
+/* ── Dynamic lists inside context menu sub-panels ── */
+.context-menu .cm-dynamic-list {
+  padding: 4px 0;
+}
+
+.context-menu .cm-dynamic-list a,
+.context-menu .cm-dynamic-list .track-item,
+.context-menu .cm-dynamic-list .subtitle-item,
+.context-menu .cm-dynamic-list .playlist-item {
+  display: flex;
+  align-items: center;
+  padding: 6px 12px;
+  color: #fff;
+  text-decoration: none;
+  font-size: 12px;
+  font-weight: 300;
+  cursor: pointer;
+  white-space: nowrap;
+  border: none;
+  margin: 0;
+}
+
+.context-menu .cm-dynamic-list a:hover,
+.context-menu .cm-dynamic-list .track-item:hover,
+.context-menu .cm-dynamic-list .subtitle-item:hover,
+.context-menu .cm-dynamic-list .playlist-item:hover {
+  background-color: rgba(100, 130, 220, 0.35);
+  border-radius: 4px;
+}
+
+.context-menu .cm-dynamic-list .selected-track,
+.context-menu .cm-dynamic-list .highlight {
+  background-color: rgba(100, 130, 220, 0.25);
+  font-weight: 400;
+  border-radius: 4px;
+}
+
+/* sort-dropdown lives inside cm-submenu > ul, style its li > a */
+.context-menu .sort-dropdown li > a {
+  padding: 6px 10px;
+}
+
+/* ── Font Awesome icons in context menu ── */
+.context-menu .cm-icon i,
+.context-menu .cm-arrow i {
   font-size: 11px;
-  color: #bbb;
+  display: inline-block;
+  width: 100%;
+  text-align: center;
+  color: rgba(255, 255, 255, 0.75);
 }
+
+.context-menu .cm-icon-mute i {
+  color: rgba(220, 80, 80, 0.9);
+}
+
+/* ── cm-check: always reserve width, icon visible only when .active ── */
+.context-menu .cm-check {
+  display: inline-flex;
+  justify-content: center;
+  align-items: center;
+  width: 14px;
+  min-width: 14px;
+  font-size: 10px;
+  color: #6fa3ef;
+}
+
+/* Sort active highlight */
+.context-menu .sort-option.active,
+.context-menu .sort-order.active {
+  color: #6fa3ef;
+}
+.context-menu .sort-option.active .cm-text,
+.context-menu .sort-order.active .cm-text {
+  color: #6fa3ef;
+}
+
+/* ── Font Awesome icons in nav dropdowns ── */
+.nav-icon {
+  font-size: 10px;
+  margin-right: 5px;
+  width: 12px;
+  text-align: center;
+  display: inline-block;
+  color: rgba(255, 255, 255, 0.7);
+}
+
+/* Nav sort check — fixed-width column so text aligns */
+.nav-sort-check {
+  display: inline-flex;
+  justify-content: center;
+  width: 16px;
+  min-width: 16px;
+  margin-right: 4px;
+  font-size: 10px;
+  color: #6fa3ef;
+}
+
+/* Active state tint for nav sort items */
+.dropdown-content .sort-option.active,
+.dropdown-content .sort-order.active {
+  color: #6fa3ef;
+}
+
+/* ── Sub-menu item: never hidden, always visible ── */
+/* (removed display:none rule — items always show) */
+
+/* ── Empty dynamic list placeholder ── */
+.context-menu .cm-empty-placeholder {
+  padding: 8px 14px;
+  font-size: 11px;
+  color: rgba(255,255,255,0.35);
+  font-style: italic;
+  pointer-events: none;
+}
+
+/* ── Speed active state ── */
+.context-menu .speed-option.speed-active .cm-icon,
+.speed-option.speed-active {
+  color: #6fa3ef;
+}
+
+/* ── Audio device active state ── */
+.audio-device-list .device-active {
+  color: #6fa3ef;
+  font-weight: 500;
+}
+
+/* ── Audio Effect active state ── */
+.audio-effect-option.effect-active {
+  color: #6fa3ef;
+}
+/* Note: tick is handled via .nav-effect-check / .cm-check spans injected by JS — no ::before needed */
 
 .context-menu-full-screen{
   width: 18px;
@@ -921,6 +1276,8 @@ main {
   z-index: 998;
   color: #fff;
   padding: 10px;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255,255,255,0.2) transparent;
 }
 
 /* When the playlist is visible */
@@ -1332,6 +1689,77 @@ font-size: 11px;
   pointer-events: none;
 }
 
+/* Subtitle Display Overlay*/
+
+
+/* Custom subtitle display — full-area overlay, children are absolutely positioned.
+   This mirrors VLC/libass behaviour: each cue can be at any position in the frame. */
+#subtitle-display {
+  position: absolute;   /* relative to #mediaPlayer (which must be position:relative) */
+  inset: 0;             /* covers the entire video area */
+  z-index: 98;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+/* In fullscreen the overlay still fills the screen */
+#subtitle-display.fullscreen {
+  position: fixed;
+  inset: 0;
+}
+
+/* Individual cue container — position is set via inline style from JS */
+/* Font size, color, shadow are ALL set from the ASS style by JS.       */
+/* CSS only provides the bare minimum layout defaults.                   */
+#subtitle-display .subtitle-cue {
+  position: absolute;
+  color: #ffffff;          /* overridden by JS for ASS tracks */
+  font-size: 3.2vh;        /* fallback for SRT/VTT only — ASS tracks set px via JS */
+  line-height: 1.25;
+  white-space: nowrap;     /* never wrap — ASS uses \N for explicit line breaks */
+  overflow: visible;
+  text-decoration: none;
+  /* Minimal default shadow for SRT/VTT tracks (ASS tracks override via JS inline style) */
+  text-shadow:
+    -1px -1px 0 #000,
+     1px -1px 0 #000,
+    -1px  1px 0 #000,
+     1px  1px 0 #000,
+     2px  2px 3px rgba(0,0,0,0.55);
+}
+
+#subtitle-display .subtitle-cue.wrap {
+  white-space: pre;        /* respect \N line breaks but never auto-reflow */
+  word-break: normal;
+}
+
+#subtitle-display .subtitle-line {
+  display: inline;
+  text-decoration: none;
+}
+
+#subtitle-display .subtitle-cue b { 
+  text-decoration: none;
+}
+
+#subtitle-display .subtitle-cue i { 
+  font-style: italic;
+  text-decoration: none;
+}
+
+#subtitle-display .subtitle-cue u {
+  text-decoration: underline;
+}
+/* Hide native browser subtitle rendering - we use custom div for clean display */
+video::cue {
+    color: transparent !important;
+    background: transparent !important;
+}
+
+video::-webkit-media-text-track-container {
+    display: none !important;
+}
+
 /* Progress Bar Container */
 #seek-bar-container {
   display: flex;
@@ -1350,53 +1778,72 @@ font-size: 11px;
   position: relative;
   z-index: 1;
   overflow: visible;
-  transition: all 0.3s ease;
+  cursor: pointer;
+  /* expand hit-area vertically without changing visual height */
 }
 
+/* Transparent hit-area extension — keeps the slim look */
 #seek-bar-wrapper::before {
   content: "";
   position: absolute;
-  top: -20px; /* Extend the clickable area above the progress bar */
-  left: -10px;
-  width: calc(100% + 20px); /* Extend the clickable area to the sides */
-  height: 32px; /* Total height of the clickable area */
-  background: transparent; /* Changed from 'none' to 'transparent' for better visibility */
+  top: -12px;
+  left: 0;
+  width: 100%;
+  height: calc(100% + 24px);
+  background: transparent;
   z-index: 2;
 }
 
+/* Fill — width driven by JS, NO transition (handle & fill stay in sync) */
 #seek-bar {
+  position: absolute;
+  top: 0;
+  left: 0;
   height: 100%;
   width: 0%;
   background-color: rgb(87, 111, 230);
   border-radius: 5px;
-  position: relative;
-  transition: width 0.1s ease, background-color 0.5s;
+  pointer-events: none;
+  will-change: width;
 }
 
+/* Handle — sibling of #seek-bar, both relative to #seek-bar-wrapper */
 #seek-bar-handle {
-    position: absolute;
-    top: 50%;
-    left: 0%; 
-    height: 15px;
-    width: 15px;
-    background-color: rgb(87, 111, 230);
-    border: 2px solid rgb(87, 111, 230);
-    border-radius: 50%;
-    transform: translate(-50%, -50%);
-    opacity: 0;
-    z-index: 10;
+  position: absolute;
+  top: 50%;
+  left: 0%;
+  height: 15px;
+  width: 15px;
+  background-color: rgb(87, 111, 230);
+  border: 2px solid rgb(87, 111, 230);
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+  opacity: 0;
+  z-index: 10;
+  pointer-events: none;   /* wrapper captures all pointer events */
+  transition: opacity 0.15s, transform 0.15s;
+  will-change: left;
 }
 
-#seek-bar-container.dragging #seekBar {
-    transition: none;
-}
-
-/* Show handle when container is hovered or focused */
+/* Show handle on hover / focus / dragging */
 #seek-bar-container:hover #seek-bar-handle,
 #seek-bar-container:focus-within #seek-bar-handle,
+#seek-bar-container.dragging #seek-bar-handle,
 #seek-bar-container.show-progress #seek-bar-handle {
-    opacity: 1;
-    transform: translate(-50%, -50%) scale(1.2);
+  opacity: 1;
+  transform: translate(-50%, -50%) scale(1.2);
+}
+
+/* Scale up handle while dragging for tactile feel */
+#seek-bar-container.dragging #seek-bar-handle {
+  transform: translate(-50%, -50%) scale(1.4);
+}
+
+/* Hover: slightly grow the track */
+#seek-bar-wrapper:hover #seek-bar,
+#seek-bar-container.dragging #seek-bar {
+  transform: scaleY(1.5);
+  transform-origin: center;
 }
 
 #current-time, #video-duration {
@@ -1633,14 +2080,18 @@ input[type="range"]::-moz-range-thumb:active {
   height: 20px;
 }
 
-/* Loader */
+/* Loader - COMPLETELY HIDDEN */
 #loader {
-  display: none;
+  display: none !important;
   position: fixed;
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
   padding: 10px;
+  z-index: 100;
+  visibility: hidden !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
 }
 
 .overlay {
@@ -1807,6 +2258,20 @@ input[type="range"]::-moz-range-thumb:active {
   opacity: 1;
   pointer-events: all;
   transform: translate(-50%, -50%) scale(1);
+}
+
+.update-version-badge {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 2px 10px;
+  background: rgba(33, 150, 243, 0.25);
+  border: 1px solid rgba(33, 150, 243, 0.5);
+  border-radius: 20px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #64b5f6;
+  letter-spacing: 0.03em;
+  vertical-align: middle;
 }
 
 .update-dialog h2 {
@@ -2103,4 +2568,224 @@ video:-ms-fullscreen {
   nav ul li.nav-image img {
     height: 18px;
   }
+}
+
+/* ========== CHAPTERS STYLING ========== */
+.chapters-markers {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  /* Must be above ::before hit-area (z-index:2) so markers are clickable & visible */
+  z-index: 3;
+  pointer-events: none;
+}
+
+.chapter-marker {
+  position: absolute;
+  width: 2px;
+  /* Taller than the bar (5px) so it pokes out top and bottom */
+  height: 13px;
+  background: rgba(255, 255, 255, 0.75);
+  top: 50%;
+  transform: translateY(-50%);
+  cursor: pointer;
+  border-radius: 1px;
+  transition: background 0.15s ease, height 0.15s ease, width 0.15s ease;
+  pointer-events: all;
+}
+
+/* Only show the expanded marker line on seekbar hover */
+#seek-bar-wrapper:not(:hover) .chapter-marker {
+  height: 5px;
+  background: rgba(255, 255, 255, 0.4);
+}
+
+.chapter-marker:hover {
+  width: 3px;
+  height: 16px;
+  background: rgba(255, 255, 255, 1);
+  box-shadow: 0 0 6px rgba(255, 255, 255, 0.5);
+}
+
+/* Chapter tooltip — pinned at marker, only shown on marker hover */
+.chapter-tooltip {
+  position: absolute;
+  background: rgba(15, 15, 22, 0.92);
+  color: #fff;
+  padding: 5px 10px;
+  border-radius: 6px;
+  font-size: 11px;
+  white-space: nowrap;
+  pointer-events: none;
+  z-index: 1000;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5);
+  bottom: 18px;
+  backdrop-filter: blur(10px);
+  line-height: 1.5;
+}
+
+.chapter-tooltip strong {
+  font-weight: 500;
+  color: #fff;
+  display: block;
+}
+
+.chapter-tooltip small {
+  color: rgba(255, 255, 255, 0.5);
+  font-size: 10px;
+}
+
+.chapter-tooltip::after {
+  content: '';
+  position: absolute;
+  bottom: -5px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 0;
+  height: 0;
+  border-left: 5px solid transparent;
+  border-right: 5px solid transparent;
+  border-top: 5px solid rgba(15, 15, 22, 0.92);
+}
+
+/* Chapters button — match other control icons (playlist etc.) */
+#chapters-button {
+  cursor: pointer;
+  transition: all 0.2s ease;
+  border-radius: 6px;
+  padding: 5px;
+}
+
+#chapters-button:hover {
+  transform: scale(1.15);
+  background: rgba(100, 130, 220, 0.18);
+  filter: brightness(1.3) !important;
+}
+
+#chapters-button.active {
+  background: rgba(100, 130, 220, 0.25);
+  filter: brightness(1.4) !important;
+}
+
+.chapters-dropdown {
+  position: absolute;
+  bottom: 70px;
+  right: 20px;
+  background: rgba(20, 20, 30, 0.98);
+  border: 1px solid #00d4ff;
+  border-radius: 8px;
+  max-width: 350px;
+  max-height: 400px;
+  z-index: 1001;
+  box-shadow: 0 -5px 30px rgba(0, 212, 255, 0.2);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  animation: slideUp 0.3s ease;
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.chapters-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 15px;
+  border-bottom: 1px solid #00d4ff;
+  background: rgba(0, 212, 255, 0.05);
+}
+
+.chapters-header h3 {
+  margin: 0;
+  color: #00d4ff;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.chapters-close {
+  background: none;
+  border: none;
+  color: #00d4ff;
+  cursor: pointer;
+  font-size: 20px;
+  padding: 0 5px;
+  transition: all 0.2s ease;
+}
+
+.chapters-close:hover {
+  color: #00ffff;
+  transform: scale(1.2);
+}
+
+.chapters-list {
+  overflow-y: auto;
+  flex: 1;
+  padding: 0;
+}
+
+.chapters-list::-webkit-scrollbar {
+  width: 6px;
+}
+
+.chapters-list::-webkit-scrollbar-track {
+  background: rgba(0, 212, 255, 0.05);
+}
+
+.chapters-list::-webkit-scrollbar-thumb {
+  background: #00d4ff;
+  border-radius: 3px;
+}
+
+.chapters-list::-webkit-scrollbar-thumb:hover {
+  background: #00ffff;
+}
+
+.chapter-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 15px;
+  border-bottom: 1px solid rgba(0, 212, 255, 0.1);
+  color: #e0e0e0;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-size: 13px;
+}
+
+.chapter-item:hover {
+  background: rgba(0, 212, 255, 0.1);
+  color: #00ffff;
+  padding-left: 20px;
+}
+
+.chapter-item:last-child {
+  border-bottom: none;
+}
+
+.chapter-item-time {
+  color: #00d4ff;
+  font-weight: 600;
+  font-size: 12px;
+  margin-left: 10px;
+}
+
+.chapter-item-name {
+  flex: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }

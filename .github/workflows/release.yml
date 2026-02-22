@@ -1,207 +1,230 @@
-name: Build and Release
+name: Release
 
+# ── Triggers ──────────────────────────────────────────────────────────────────
 on:
+  # Auto-release: push a tag like v1.3.14  →  full build + publish to GitHub Releases
   push:
-    branches: [ main ]
-  pull_request:
-    branches: [ main ]
-  release:
-    types: [created]
+    tags:
+      - 'v*'
 
+  # Manual trigger from GitHub Actions UI (useful for testing or hotfix releases)
+  workflow_dispatch:
+    inputs:
+      draft:
+        description: 'Create as draft release?'
+        required: false
+        default: 'false'
+        type: choice
+        options: ['true', 'false']
+
+# ── Permissions ───────────────────────────────────────────────────────────────
 permissions:
-  contents: write
-  packages: write
+  contents: write   # needed to create GitHub Releases and upload assets
 
+# ── Jobs ──────────────────────────────────────────────────────────────────────
 jobs:
-  # Build for Linux
-  build-linux:
-    name: Build Linux
+
+  # ────────────────────────────────────────────────────────────────────────────
+  # 1. Create the GitHub Release FIRST (draft), then parallel builds upload to it
+  # ────────────────────────────────────────────────────────────────────────────
+  create-release:
     runs-on: ubuntu-latest
-    if: github.event_name != 'release' || github.event.release.prerelease == false
-    
+    outputs:
+      release-id:  ${{ steps.create.outputs.id }}
+      upload-url:  ${{ steps.create.outputs.upload_url }}
+      tag:         ${{ steps.tag.outputs.tag }}
+
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-          cache: 'npm'
-
-      - name: Install dependencies
+      - name: Derive tag name
+        id: tag
         run: |
-          npm ci --ignore-scripts
-          npm run postinstall
+          if [[ "${GITHUB_REF}" == refs/tags/* ]]; then
+            echo "tag=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+          else
+            echo "tag=manual-$(date +'%Y%m%d-%H%M%S')" >> $GITHUB_OUTPUT
+          fi
 
-      - name: Build for Linux
-        run: npm run build -- --linux
+      - name: Create draft release
+        id: create
+        uses: actions/create-release@v1
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Upload Linux artifacts
-        uses: actions/upload-artifact@v4
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          name: linux-builds
-          path: |
-            dist/*.AppImage
-            dist/*.deb
-            dist/*.rpm
-            dist/*.tar.gz
-            dist/*.zip
+          tag_name:    ${{ steps.tag.outputs.tag }}
+          release_name: Anime Player ${{ steps.tag.outputs.tag }}
+          draft:       true    # stays draft until all builds upload their assets
+          prerelease:  false
+          body: |
+            ## Anime Player ${{ steps.tag.outputs.tag }}
 
-  # Build for Windows
+            ### 📦 Downloads
+            | Platform | File |
+            |----------|------|
+            | Windows  | `Anime Player Setup *.exe` (installer) · `*-Portable.exe` |
+            | macOS    | `Anime Player-*-x64.dmg` (Intel) · `Anime Player-*-arm64.dmg` (Apple Silicon) |
+            | Linux    | `Anime Player-*-x86_64.AppImage` · `*.deb` |
+
+            ### 🔄 Auto-updater
+            Windows and macOS builds include the built-in auto-updater.
+            Linux users should re-download the AppImage for updates.
+
+            ---
+            *Built automatically by GitHub Actions.*
+
+  # ────────────────────────────────────────────────────────────────────────────
+  # 2a. Windows build
+  # ────────────────────────────────────────────────────────────────────────────
   build-windows:
-    name: Build Windows
+    needs: create-release
     runs-on: windows-latest
-    if: github.event_name != 'release' || github.event.release.prerelease == false
-    
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
         with:
-          node-version: '20'
-          cache: 'npm'
+          node-version: 20
+          cache: npm
 
       - name: Install dependencies
-        run: |
-          npm ci --ignore-scripts
-          npm run postinstall
+        run: npm ci
 
-      - name: Build for Windows
-        run: npm run build -- --win --x64
+      - name: Build Windows (NSIS installer + Portable)
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # If you have a code-signing cert, add these secrets:
+          # CSC_LINK:          ${{ secrets.WIN_CSC_LINK }}
+          # CSC_KEY_PASSWORD:  ${{ secrets.WIN_CSC_KEY_PASSWORD }}
+        run: npm run dist:win
 
       - name: Upload Windows artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: windows-builds
+          name: windows-dist
           path: |
             dist/*.exe
-            dist/*.zip
-            dist/*.nsis.*
+            dist/*.blockmap
+            dist/latest.yml
 
-  # Build for macOS
-  build-macos:
-    name: Build macOS
-    runs-on: macos-latest
-    if: github.event_name != 'release' || github.event.release.prerelease == false
-    
+  # ────────────────────────────────────────────────────────────────────────────
+  # 2b. macOS build
+  # ────────────────────────────────────────────────────────────────────────────
+  build-mac:
+    needs: create-release
+    runs-on: macos-latest   # Apple Silicon runner (M-series) - builds both x64 + arm64
+
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
+      - uses: actions/setup-node@v4
         with:
-          node-version: '20'
-          cache: 'npm'
+          node-version: 20
+          cache: npm
 
       - name: Install dependencies
-        run: |
-          npm ci --ignore-scripts
-          npm run postinstall
+        run: npm ci
 
-      - name: Build for macOS
-        run: npm run build -- --mac --x64 --arm64
+      - name: Build macOS (DMG + ZIP, x64 + arm64)
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          CSC_LINK: ${{ secrets.MACOS_CERTIFICATE }}
-          CSC_KEY_PASSWORD: ${{ secrets.MACOS_CERTIFICATE_PASSWORD }}
-          APPLE_ID: ${{ secrets.APPLE_ID }}
-          APPLE_ID_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
-          TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          # Signing is fully disabled — no Apple Developer account needed.
+          # Users will see a one-time Gatekeeper warning on first launch;
+          # they right-click → Open to bypass it. Everything works normally after that.
+          CSC_IDENTITY_AUTO_DISCOVERY: "false"
+        run: npm run dist:mac
 
       - name: Upload macOS artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: macos-builds
+          name: mac-dist
           path: |
             dist/*.dmg
             dist/*.zip
-            dist/*.pkg
+            dist/*.blockmap
+            dist/latest-mac.yml
 
-  # Create Release
-  create-release:
-    name: Create Release
+  # ────────────────────────────────────────────────────────────────────────────
+  # 2c. Linux build
+  # ────────────────────────────────────────────────────────────────────────────
+  build-linux:
+    needs: create-release
     runs-on: ubuntu-latest
-    needs: [build-linux, build-windows, build-macos]
-    if: startsWith(github.ref, 'refs/tags/v')
-    
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
 
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      # electron-builder needs these system libs to package AppImage / deb
+      - name: Install Linux build dependencies
+        run: |
+          sudo apt-get update -y
+          sudo apt-get install -y \
+            libopenjp2-tools \
+            rpm \
+            libarchive-tools \
+            fakeroot \
+            dpkg \
+            libxss1 \
+            libgconf-2-4 \
+            libxtst6 \
+            libnss3 \
+            libgtk-3-0
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build Linux (AppImage + deb)
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: npm run dist:linux
+
+      - name: Upload Linux artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: linux-dist
+          path: |
+            dist/*.AppImage
+            dist/*.deb
+            dist/*.rpm
+            dist/latest-linux.yml
+
+  # ────────────────────────────────────────────────────────────────────────────
+  # 3. Publish — download all artifacts, upload to GitHub Release, un-draft it
+  # ────────────────────────────────────────────────────────────────────────────
+  publish:
+    needs: [create-release, build-windows, build-mac, build-linux]
+    runs-on: ubuntu-latest
+    # Always run publish even if one platform build failed (partial release)
+    if: always() && needs.create-release.result == 'success'
+
+    steps:
       - name: Download all artifacts
         uses: actions/download-artifact@v4
         with:
-          path: artifacts
+          path: all-dist
 
-      - name: Display structure of downloaded files
-        run: ls -R artifacts/
+      - name: List downloaded files
+        run: find all-dist -type f | sort
 
-      - name: Create Release
-        uses: softprops/action-gh-release@v1
+      - name: Upload release assets
+        uses: softprops/action-gh-release@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          name: Release ${{ github.ref_name }}
-          draft: false
-          prerelease: false
-          generate_release_notes: true
+          tag_name: ${{ needs.create-release.outputs.tag }}
+          draft: false   # un-draft the release now that assets are attached
           files: |
-            artifacts/**/*.exe
-            artifacts/**/*.AppImage
-            artifacts/**/*.deb
-            artifacts/**/*.rpm
-            artifacts/**/*.dmg
-            artifacts/**/*.zip
-            artifacts/**/*.tar.gz
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-  # Auto-tagging
-  tag-version:
-    name: Auto Tag Version
-    runs-on: ubuntu-latest
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-    
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
-      - name: Setup Git user
-        run: |
-          git config --global user.name "github-actions[bot]"
-          git config --global user.email "github-actions[bot]@users.noreply.github.com"
-
-      - name: Get version from package.json
-        id: version
-        run: |
-          VERSION=$(node -p "require('./package.json').version")
-          echo "VERSION=$VERSION" >> $GITHUB_ENV
-          echo "TAG=v$VERSION" >> $GITHUB_ENV
-
-      - name: Check if tag exists
-        id: check-tag
-        run: |
-          git fetch --tags
-          if git rev-parse "$TAG" >/dev/null 2>&1; then
-            echo "Tag $TAG already exists"
-            echo "exists=true" >> $GITHUB_OUTPUT
-          else
-            echo "Tag $TAG does not exist"
-            echo "exists=false" >> $GITHUB_OUTPUT
-          fi
-
-      - name: Create and push tag
-        if: steps.check-tag.outputs.exists == 'false'
-        run: |
-          git tag -a "$TAG" -m "Release $TAG"
-          git push origin "$TAG"
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+            all-dist/**/*.exe
+            all-dist/**/*.blockmap
+            all-dist/**/*.dmg
+            all-dist/**/*.zip
+            all-dist/**/*.AppImage
+            all-dist/**/*.deb
+            all-dist/**/*.rpm
+            all-dist/**/latest.yml
+            all-dist/**/latest-mac.yml
+            all-dist/**/latest-linux.yml

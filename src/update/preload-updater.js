@@ -1,6 +1,7 @@
 const { contextBridge, ipcRenderer } = require('electron');
 
 contextBridge.exposeInMainWorld('electronUpdater', {
-  onDownloadProgress: (callback) => ipcRenderer.on('download-progress', (_, percent) => callback(percent)),
-  onUpdateDownloaded: (callback) => ipcRenderer.on('update-downloaded', callback),
+  // Full progress object: { percent, bytesPerSecond, transferred, total }
+  onDownloadProgress: (callback) => ipcRenderer.on('download-progress', (_, data) => callback(data)),
+  onUpdateDownloaded: (callback) => ipcRenderer.on('update-downloaded', (_, info) => callback(info)),
 });

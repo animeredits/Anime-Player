@@ -52,7 +52,14 @@ const gifSearchButton = document.getElementById("gifSearchButton");
 const gifResultsContainer = document.getElementById("gifResultsContainer");
 const gifSearchContainer = document.getElementById("gifSearchContainer");
 const statusMessage = document.getElementById("statusMessage");
+const subtitleDisplay = document.getElementById('subtitle-display');
 
+let currentChapters = [];
+let currentVideoPath = null;
+let chaptersDropdown, chaptersButton, chaptersCloseBtn, chaptersList, chapterTooltip, chaptersMarkersContainer;
+let subtitleCueListener = null;
+let ffprobeAudioTracks = [];
+let audioTrackPlayer = null;
 let currentMedia = video;
 let isMaximized = false;
 let isFullscreen = false;
@@ -78,8 +85,8 @@ let tooltipTimeout;
 let scrollTimeout;
 let currentSpeedIndex = 3;
 let videoId;
-let sortMethod = 'name';
-let sortDirection = 'ascending';
+let sortMethod = 'name'; // 'name' | 'date'
+let sortDirection = 'ascending'; // 'ascending' | 'descending'
 let hideContinueButtonTimeout;
 let hideHandleTimeout;
 let isVideoPaused = false;
@@ -194,7 +201,7 @@ customLogoInput.addEventListener("change", async function(event) {
 		if (autoSaveLogo) {
 			const response = await window.electron.saveCustomLogo(fileBuffer, fileName);
 			if (response.success) {
-				console.log("GIF saved successfully at:", response.path);
+				// console.log("GIF saved successfully at:", response.path);
 				saveCustomLogo(response.path, fileName);
 				loadCustomLogos(); // ✅ Refresh the list
 			} else {
@@ -208,7 +215,7 @@ customLogoInput.addEventListener("change", async function(event) {
 			if (confirmed) {
 				const response = await window.electron.saveCustomLogo(fileBuffer, fileName);
 				if (response.success) {
-					console.log("GIF saved successfully at:", response.path);
+					// console.log("GIF saved successfully at:", response.path);
 					saveCustomLogo(response.path, fileName);
 					loadCustomLogos(); // ✅ Refresh the list
 					if (autoSave) {
@@ -343,7 +350,7 @@ function deleteCustomLogo(fileName) {
 	window.electron.deleteLogo(fileName)
 		.then(response => {
 			if (response.success) {
-				console.log(response.message); // Log success message
+				// console.log(response.message); // Log success message
 
 				// Stop Play All playback
 				stopGifPlayback();
@@ -709,7 +716,6 @@ modalContainer.addEventListener('mouseleave', function() {
 // ✅ Function to load media file
 async function loadMediaFile(filePath, fileName) {
 	if (!filePath) {
-		// No file: hide video and audio logo, show placeholder
 		video.style.display = "none";
 		document.getElementById("noMediaLogo").style.display = "block";
 		audioImage.style.display = "none";
@@ -718,70 +724,64 @@ async function loadMediaFile(filePath, fileName) {
 	}
 
 	try {
-		// Hide "no media" logo, show video
 		document.getElementById("noMediaLogo").style.display = "none";
 		video.style.display = "block";
 
-		// Normalize path and extract filename
+		// Normalize path separators
 		let fixedPath = filePath.replace(/\\/g, "/");
 		const fullPathParts = fixedPath.split("/");
 		const realFilename = fullPathParts[fullPathParts.length - 1];
 
 		video.dataset.videoId = realFilename;
 
-		// Encode only the filename, not the full path
-		const encodedFilename = encodeURIComponent(realFilename);
-		const directory = fixedPath.substring(0, fixedPath.lastIndexOf("/") + 1);
-		const fileURL = `file://${directory}${encodedFilename}`;
+		// Tell main process which file to serve, get back localhost URL 
+		const result = await window.electron.invoke('set-stream-file', filePath);
+		// console.log('🎬 set-stream-file result:', result); // ← debug line
+		if (!result.success) {
+			throw new Error(result.error);
+		}
+		// Reset subtitle population guard — new file needs fresh population
+		_subtitlePopulatedForFile = null;
+		// Cache-bust with timestamp so browser doesn't reuse previous stream
+		video.src = `http://127.0.0.1:${result.port}/stream?t=${Date.now()}`;
+		// Clear any stale freeze-frame from the previous file
+		_releaseFreezeFrame && _releaseFreezeFrame();
 
-		video.src = fileURL;
-
-		// Detect if the file is video or audio
+		// Detect format for UI (audio vs video)
 		const fileExtension = realFilename.split(".").pop().toLowerCase();
 		const videoFormats = ["mp4", "webm", "mkv", "avi", "mov"];
 		const audioFormats = ["mp3", "wav", "aac", "ogg", "flac"];
 
 		if (videoFormats.includes(fileExtension)) {
-			// If it's a video file
-			audioImage.style.display = "none"; // Hide audio logo
+			audioImage.style.display = "none";
 			document.getElementById("audioLogo").style.display = "none";
-			audioLogoDropdown.style.pointerEvents = "none"; // Disable dropdown
-			audioLogoDropdown.style.opacity = "0.5"; // Make it look disabled
+			audioLogoDropdown.style.pointerEvents = "none";
+			audioLogoDropdown.style.opacity = "0.5";
 		} else if (audioFormats.includes(fileExtension)) {
-			// Show the audio logo when an audio file is played
 			document.getElementById("audioLogo").style.display = "block";
 			audioImage.style.display = "block";
 			loadCustomLogos();
-			// Enable the logo dropdown for selection
 			audioLogoDropdown.style.pointerEvents = "auto";
 			audioLogoDropdown.style.opacity = "1";
-
-			// Check if a logo has already been set, if not, select the first logo
 			const savedLogo = localStorage.getItem("selectedLogo");
 			if (savedLogo) {
-				setSelectedLogo(savedLogo); // Apply the saved logo
+				setSelectedLogo(savedLogo);
 			} else {
-				// Use the first logo as default
 				const defaultLogoLinks = document.querySelectorAll(
 					"#logoOptions .sub-dropdown-content a[data-src]"
 				);
 				if (defaultLogoLinks.length > 0) {
-					const firstLogoSrc = defaultLogoLinks[0].getAttribute("data-src");
-					setSelectedLogo(firstLogoSrc);
+					setSelectedLogo(defaultLogoLinks[0].getAttribute("data-src"));
 				}
 			}
 		} else {
-			// Hide the audio logo when a video file is played
 			document.getElementById("audioLogo").style.display = "none";
 			audioImage.style.display = "none";
 		}
 
-		// Update UI with the REAL filename (not the short name)
 		updateVideoTitle(realFilename);
 		gifImageElement.style.display = "none";
-		video.style.display = "block";
 
-		// Load saved playback time using the real filename
 		const savedPlayback = await window.electron.invoke('load-playback-time', realFilename);
 		lastPlaybackTime = savedPlayback?.time || 0;
 		if (lastPlaybackTime > 0) {
@@ -790,28 +790,42 @@ async function loadMediaFile(filePath, fileName) {
 			video.currentTime = 0;
 		}
 
-		// Reset and apply transformations
 		video.dataset.rotation = "0";
 		applyRotation();
+
 	} catch (error) {
 		console.error("❌ Error loading media file:", error);
 		video.style.display = "none";
 		document.getElementById("noMediaLogo").style.display = "block";
-		return;
 	}
 }
 
-// ✅ Ensure event listeners are only added once
+// Ensure event listeners are only added once
 currentMedia.addEventListener("loadedmetadata", async () => {
 	updateSeekBar();
 	updateNavigationButtons();
 	updateDurationDisplay();
 	resetZoom(showStatusMessage(''));
 	updateVideoTitle(video.dataset.videoId);
-	populateAudioTracks();
 	highlightCurrentVideo(video.dataset.videoId);
 	video.currentTime = 0;
-	video.play().catch(console.error);
+
+	// Load chapters from video file
+	if (mediaFiles[currentVideoIndex]) {
+		loadChaptersFromFile(mediaFiles[currentVideoIndex]);
+	}
+
+	// Await track detection BEFORE play() to prevent AbortError race
+	await Promise.all([
+		populateAudioTracks(),
+		populateSubtitleTracks()
+	]);
+
+	// Guard: if another load started while awaiting, skip play()
+	if (!video.paused) return;
+	video.play().catch(function(err) {
+		if (err.name !== 'AbortError') console.error('play() error:', err);
+	});
 });
 
 // ✅ Handle playback ending
@@ -887,37 +901,37 @@ video.addEventListener("ended", () => {
 
 // 🟢 Open file dialog - replaces playlist and plays instantly
 openFileButton.addEventListener("click", async () => {
-    try {
-        const result = await window.electron.openFileDialog();
-        if (!result) return;
+	try {
+		const result = await window.electron.openFileDialog();
+		if (!result) return;
 
-if (result.singleFile) {
-    const alreadyInPlaylist = mediaFiles.indexOf(result.currentFile);
-    if (alreadyInPlaylist !== -1) {
-        // File is already in current playlist — just switch to it, don't reload
-        currentVideoIndex = alreadyInPlaylist;
-        playMediaFile(mediaFiles[currentVideoIndex]);
-        return;
-    }
-    // New file not in playlist — replace with sibling files from its folder
-    mediaFiles = result.siblingFiles;
-    currentVideoIndex = mediaFiles.indexOf(result.currentFile);
-    if (currentVideoIndex === -1) {
-        mediaFiles = [result.currentFile];
-        currentVideoIndex = 0;
-    }
-} else {
-            // Multiple files: REPLACE entire playlist, play first selected file instantly
-            mediaFiles = result.files;
-            currentVideoIndex = 0;
-        }
+		if (result.singleFile) {
+			const alreadyInPlaylist = mediaFiles.indexOf(result.currentFile);
+			if (alreadyInPlaylist !== -1) {
+				// File is already in current playlist — just switch to it, don't reload
+				currentVideoIndex = alreadyInPlaylist;
+				playMediaFile(mediaFiles[currentVideoIndex]);
+				return;
+			}
+			// New file not in playlist — replace with sibling files from its folder
+			mediaFiles = result.siblingFiles;
+			currentVideoIndex = mediaFiles.indexOf(result.currentFile);
+			if (currentVideoIndex === -1) {
+				mediaFiles = [result.currentFile];
+				currentVideoIndex = 0;
+			}
+		} else {
+			// Multiple files: REPLACE entire playlist, play first selected file instantly
+			mediaFiles = result.files;
+			currentVideoIndex = 0;
+		}
 
-        playMediaFile(mediaFiles[currentVideoIndex]);
-        updatePlaylistDropdown(mediaFiles);
-        showStatusMessage(`Loaded ${mediaFiles.length} video(s)`);
-    } catch (error) {
-        console.error("Error opening files:", error);
-    }
+		playMediaFile(mediaFiles[currentVideoIndex]);
+		updatePlaylistDropdown(mediaFiles);
+		showStatusMessage(`Loaded ${mediaFiles.length} video(s)`);
+	} catch (error) {
+		console.error("Error opening files:", error);
+	}
 });
 
 // 🟢 Open folder dialog (Load all media in a folder) - Keeps existing behavior
@@ -1104,7 +1118,7 @@ function updateNavigationButtons() {
 	nextButton.classList.toggle("hidden", nextIndex === null || mediaFiles.length === 0);
 	prevButton.classList.toggle("hidden", prevIndex === null || mediaFiles.length === 0);
 
-	// console.log("🔄 Navigation updated | Next:", nextIndex, "| Previous:", prevIndex);
+	// // console.log("🔄 Navigation updated | Next:", nextIndex, "| Previous:", prevIndex);
 }
 
 
@@ -1113,6 +1127,7 @@ function updateVideoTitle(fileName) {
 
 	if (!fileName || typeof fileName !== "string") {
 		console.error("Invalid fileName passed to updateVideoTitle:", fileName);
+		document.title = "Anime Player"; // Reset to default
 		return;
 	}
 
@@ -1120,8 +1135,12 @@ function updateVideoTitle(fileName) {
 		// Remove file extensions (.mp4, .mp3, etc.)
 		const nameWithoutExtension = fileName.replace(/\.[^/.]+$/, "");
 		videoTitleElement.textContent = nameWithoutExtension;
+
+		// Update window title
+		document.title = nameWithoutExtension + " - Anime Player";
 	} else {
 		console.error('Element with id "videoTitle" not found.');
+		document.title = "Anime Player";
 	}
 }
 
@@ -1140,6 +1159,7 @@ function hideVideoTitle() {
 // Function to stop playback and reset the media player
 function stopPlayback() {
 	video.pause();
+	stopExternalAudio(); // stop any transcoded audio stream
 	video.style.display = "none";
 	updateVideoTitle(video.dataset.videoId);
 	updatePlayPauseIcon(false);
@@ -1153,6 +1173,9 @@ function stopPlayback() {
 	document.getElementById("audioLogo").style.display = "none";
 	stopGifPlayback();
 	updateNavigationButtons();
+
+	// Clean up temp subtitle files
+	window.electron.invoke('cleanup-subtitles').catch(e => console.warn('Subtitle cleanup:', e));
 }
 
 // Event listener for stop playback using querySelectorAll and forEach
@@ -1257,14 +1280,14 @@ function savePlaybackTime(videoId, time) {
 		clearPlaybackTime(videoId);
 		return;
 	}
-	// console.log("✅ Saving playback time:", videoId, time);
+	// // console.log("✅ Saving playback time:", videoId, time);
 	window.electron.send('save-playback-time', time, videoId);
 }
 
 // ✅ Clear playback time entry
 function clearPlaybackTime(videoId) {
 	if (!videoId) return;
-	// console.log("🗑️ Clearing playback time for:", videoId);
+	// // console.log("🗑️ Clearing playback time for:", videoId);
 	window.electron.send('delete-playback-entry', videoId);
 }
 
@@ -1282,7 +1305,7 @@ function handleContinueButtonVisibility() {
 function startAutoHideContinueButton() {
 	clearTimeout(hideContinueButtonTimeout);
 	hideContinueButtonTimeout = setTimeout(() => {
-		// console.log("⏳ Continue Watching button auto-hidden");
+		// // console.log("⏳ Continue Watching button auto-hidden");
 		continueButton.style.display = "none";
 		clearPlaybackTime(video.dataset.videoId);
 	}, 5000);
@@ -1308,7 +1331,7 @@ video.addEventListener("pause", () => {
 window.addEventListener("beforeunload", () => {
 	const videoId = getVideoId();
 	if (videoId && video.currentTime > 0 && video.duration >= 60) {
-		// console.log("💾 Saving playback time before closing:", videoId, video.currentTime);
+		// // console.log("💾 Saving playback time before closing:", videoId, video.currentTime);
 		window.electron.send('save-playback-time', video.currentTime, videoId);
 	}
 });
@@ -1317,7 +1340,7 @@ window.addEventListener("beforeunload", () => {
 window.electron.onAppClosing(async () => {
 	const videoId = getVideoId();
 	if (videoId && !video.paused && video.duration >= 60) {
-		// console.log("💾 Saving playback time before quit:", videoId, video.currentTime);
+		// // console.log("💾 Saving playback time before quit:", videoId, video.currentTime);
 		window.electron.send('save-playback-time', video.currentTime, videoId);
 	}
 });
@@ -1335,7 +1358,7 @@ function savePlaybackAndQuit() {
 // ✅ Handle "Continue Watching" button click
 continueButton.addEventListener("click", () => {
 	if (lastPlaybackTime > 0) {
-		// console.log("🎬 Resuming playback from:", lastPlaybackTime);
+		// // console.log("🎬 Resuming playback from:", lastPlaybackTime);
 		video.currentTime = lastPlaybackTime;
 		video.play();
 		clearPlaybackTime(video.dataset.videoId);
@@ -1351,7 +1374,7 @@ async function deleteCurrentMediaFile() {
 	if (!filePath) return;
 	try {
 		await window.electron.deleteFile(filePath); // API from preload.js
-		console.log("🗑️ File deleted:", filePath);
+		// console.log("🗑️ File deleted:", filePath);
 		// Remove the file from the playlist
 		mediaFiles.splice(currentVideoIndex, 1);
 		// Adjust index if necessary
@@ -1450,56 +1473,56 @@ function updatePlaylistDropdown(mediaFiles) {
 				if (input) input.value = "";
 				playlistContainer.querySelectorAll(".playlist-item").forEach((item) => {
 					item.style.display = "block";
-            });
-            }
-        });
-    });
+				});
+			}
+		});
+	});
 }
 
 // ✅ Function to HIGHLIGHT CURRENT VIDEO (All Containers)
 function highlightCurrentVideo(fileName) {
-    // Extract filename from path if needed
-    const pathParts = fileName.split(/[/\\]/);
-    const realFileName = pathParts[pathParts.length - 1];
+	// Extract filename from path if needed
+	const pathParts = fileName.split(/[/\\]/);
+	const realFileName = pathParts[pathParts.length - 1];
 
-    // Update ALL playlist containers
-    document.querySelectorAll(".play-list").forEach(playlistContainer => {
-        // Remove existing highlights
-        playlistContainer.querySelectorAll(".highlight").forEach(item => {
-            item.classList.remove("highlight");
-        });
+	// Update ALL playlist containers
+	document.querySelectorAll(".play-list").forEach(playlistContainer => {
+		// Remove existing highlights
+		playlistContainer.querySelectorAll(".highlight").forEach(item => {
+			item.classList.remove("highlight");
+		});
 
-        // Add highlight to matching items
-        playlistContainer.querySelectorAll(".playlist-item").forEach(item => {
-            if (item.textContent.trim() === realFileName) {
-                item.classList.add("highlight");
+		// Add highlight to matching items
+		playlistContainer.querySelectorAll(".playlist-item").forEach(item => {
+			if (item.textContent.trim() === realFileName) {
+				item.classList.add("highlight");
 
-                // ✅ ONLY scroll if container is VISIBLE
-                if (isContainerVisible(playlistContainer)) {
-                    item.scrollIntoView({
-                        behavior: "smooth",
-                        block: "center",
-                        inline: "nearest"
-                    });
-                }
-            }
-        });
-    });
+				// ✅ ONLY scroll if container is VISIBLE
+				if (isContainerVisible(playlistContainer)) {
+					item.scrollIntoView({
+						behavior: "smooth",
+						block: "center",
+						inline: "nearest"
+					});
+				}
+			}
+		});
+	});
 }
 
 // Check if a container is actually visible in the DOM
 function isContainerVisible(container) {
-    const style = window.getComputedStyle(container);
-    const parent = container.closest('.sub-dropdown-content, .playlist-container');
-    
-    // Check if element or parent is hidden
-    if (style.display === 'none' || style.visibility === 'hidden') return false;
-    if (parent) {
-        const parentStyle = window.getComputedStyle(parent);
-        if (parentStyle.display === 'none' || parentStyle.visibility === 'hidden') return false;
-    }
-    
-    return true;
+	const style = window.getComputedStyle(container);
+	const parent = container.closest('.sub-dropdown-content, .playlist-container');
+
+	// Check if element or parent is hidden
+	if (style.display === 'none' || style.visibility === 'hidden') return false;
+	if (parent) {
+		const parentStyle = window.getComputedStyle(parent);
+		if (parentStyle.display === 'none' || parentStyle.visibility === 'hidden') return false;
+	}
+
+	return true;
 }
 
 const playlistContainers = document.querySelectorAll(".play-list");
@@ -1536,425 +1559,749 @@ playlistContainers.forEach((playlistContainer) => {
 
 // For navbar playlist (on hover/show)
 document.querySelectorAll('.sub-dropdown').forEach(dropdown => {
-    dropdown.addEventListener('mouseenter', () => {
-        setTimeout(() => scrollToHighlighted(dropdown.querySelector('.play-list')), 50);
-    });
+	dropdown.addEventListener('mouseenter', () => {
+		setTimeout(() => scrollToHighlighted(dropdown.querySelector('.play-list')), 50);
+	});
 });
 
 
 // For playlist-container toggle button
 function togglePlaylist() {
-    const playlistContainer = document.querySelector(".playlist-container");
-    const playlistItems = playlistContainer.querySelectorAll(".playlist-item");
+	const playlistContainer = document.querySelector(".playlist-container");
+	const playlistItems = playlistContainer.querySelectorAll(".playlist-item");
 
-    if (playlistItems.length === 0) {
-        showStatusMessage("No videos in the playlist.");
-        playlistContainer.classList.remove("show");
-        return;
-    }
+	if (playlistItems.length === 0) {
+		showStatusMessage("No videos in the playlist.");
+		playlistContainer.classList.remove("show");
+		return;
+	}
 
-    const willShow = !playlistContainer.classList.contains("show");
-    playlistContainer.classList.toggle("show");
+	const willShow = !playlistContainer.classList.contains("show");
+	playlistContainer.classList.toggle("show");
 
-    // ✅ Scroll after container becomes visible
-    if (willShow) {
-        setTimeout(() => scrollToHighlighted(playlistContainer.querySelector('.play-list')), 50);
-    }
+	// ✅ Scroll after container becomes visible
+	if (willShow) {
+		setTimeout(() => scrollToHighlighted(playlistContainer.querySelector('.play-list')), 50);
+	}
 }
 
 // Reusable scroll function
 function scrollToHighlighted(playlistContainer) {
-    if (!playlistContainer) return;
-    
-    const highlighted = playlistContainer.querySelector(".playlist-item.highlight");
-    if (highlighted && isContainerVisible(playlistContainer)) {
-        highlighted.scrollIntoView({
-            behavior: "smooth",
-            block: "center",
-            inline: "nearest"
-        });
-    }
+	if (!playlistContainer) return;
+
+	const highlighted = playlistContainer.querySelector(".playlist-item.highlight");
+	if (highlighted && isContainerVisible(playlistContainer)) {
+		highlighted.scrollIntoView({
+			behavior: "smooth",
+			block: "center",
+			inline: "nearest"
+		});
+	}
 }
 
 // KEYBOARD NAVIGATION for playlist
 document.addEventListener("keydown", function(event) {
-    const playlistContainer = document.querySelector(".playlist-container");
-    
-    if (playlistContainer && playlistContainer.classList.contains("show")) {
-        const playlistItems = Array.from(playlistContainer.querySelectorAll(".playlist-item"));
-        if (playlistItems.length === 0) return;
+	const playlistContainer = document.querySelector(".playlist-container");
 
-        const currentIndex = playlistItems.findIndex(item => item.classList.contains("highlight"));
+	if (playlistContainer && playlistContainer.classList.contains("show")) {
+		const playlistItems = Array.from(playlistContainer.querySelectorAll(".playlist-item"));
+		if (playlistItems.length === 0) return;
 
-        if (event.key === "ArrowDown") {
-            event.preventDefault();
-            const nextIndex = (currentIndex + 1) % playlistItems.length;
-            playlistItems[nextIndex].click();
-        } else if (event.key === "ArrowUp") {
-            event.preventDefault();
-            const prevIndex = (currentIndex - 1 + playlistItems.length) % playlistItems.length;
-            playlistItems[prevIndex].click();
-        }
-    }
+		const currentIndex = playlistItems.findIndex(item => item.classList.contains("highlight"));
+
+		if (event.key === "ArrowDown") {
+			event.preventDefault();
+			const nextIndex = (currentIndex + 1) % playlistItems.length;
+			playlistItems[nextIndex].click();
+		} else if (event.key === "ArrowUp") {
+			event.preventDefault();
+			const prevIndex = (currentIndex - 1 + playlistItems.length) % playlistItems.length;
+			playlistItems[prevIndex].click();
+		}
+	}
 });
 
 // Hide playlist on outside click
 window.addEventListener("click", function(event) {
-    const playlistContainer = document.querySelector(".playlist-container");
-    if (playlistContainer && !playlistContainer.contains(event.target)) {
-        playlistContainer.classList.remove("show");
-    }
+	const playlistContainer = document.querySelector(".playlist-container");
+	if (playlistContainer && !playlistContainer.contains(event.target)) {
+		playlistContainer.classList.remove("show");
+	}
 });
 
 
 // ✅ Sort playlist and instantly play FIRST video of sorted result
 function sortPlaylist() {
-    if (mediaFiles.length === 0) return;
+	if (mediaFiles.length === 0) return;
 
-    if (sortMethod === 'date') {
-        sortByDateAsync();
-        return;
-    }
+	if (sortMethod === 'date') {
+		sortByDateAsync();
+		return;
+	}
 
-    // Name sort (natural numeric: ep1, ep2...ep10)
-    mediaFiles.sort((a, b) => {
-        const nameA = a.split(/[/\\]/).pop();
-        const nameB = b.split(/[/\\]/).pop();
-        return nameA.localeCompare(nameB, undefined, { numeric: true, sensitivity: 'base' });
-    });
+	// Name sort (natural numeric: ep1, ep2...ep10)
+	mediaFiles.sort((a, b) => {
+		const nameA = a.split(/[/\\]/).pop();
+		const nameB = b.split(/[/\\]/).pop();
+		return nameA.localeCompare(nameB, undefined, {
+			numeric: true,
+			sensitivity: 'base'
+		});
+	});
 
-    if (sortDirection === 'descending') mediaFiles.reverse();
+	if (sortDirection === 'descending') mediaFiles.reverse();
 
-    finalizeSortResult();
+	finalizeSortResult();
 }
 
 // ✅ Date sort — fetches mtimes from main process
 async function sortByDateAsync() {
-    try {
-        const filesWithDates = await window.electron.invoke('get-file-dates', mediaFiles);
+	try {
+		const filesWithDates = await window.electron.invoke('get-file-dates', mediaFiles);
 
-        if (!filesWithDates || typeof filesWithDates !== 'object') {
-            console.warn('get-file-dates returned invalid data, falling back to name sort');
-            sortMethod = 'name';
-            sortPlaylist();
-            return;
-        }
+		if (!filesWithDates || typeof filesWithDates !== 'object') {
+			console.warn('get-file-dates returned invalid data, falling back to name sort');
+			sortMethod = 'name';
+			sortPlaylist();
+			return;
+		}
 
-        mediaFiles.sort((a, b) => {
-            const dateA = filesWithDates[a] ?? 0;
-            const dateB = filesWithDates[b] ?? 0;
-            return dateA - dateB;
-        });
+		mediaFiles.sort((a, b) => {
+			const dateA = filesWithDates[a] ?? 0;
+			const dateB = filesWithDates[b] ?? 0;
+			return dateA - dateB;
+		});
 
-        if (sortDirection === 'descending') mediaFiles.reverse();
+		if (sortDirection === 'descending') mediaFiles.reverse();
 
-        finalizeSortResult();
-    } catch (err) {
-        console.error('Date sort failed:', err);
-        showStatusMessage('Date sort unavailable');
-    }
+		finalizeSortResult();
+	} catch (err) {
+		console.error('Date sort failed:', err);
+		showStatusMessage('Date sort unavailable');
+	}
 }
 
 // ✅ After sort: play index 0 (first in sorted list), update UI
 function finalizeSortResult() {
-    currentVideoIndex = 0;
-    updatePlaylistDropdown(mediaFiles);
-    playVideoByIndex(currentVideoIndex);         // instant play first video
-    highlightCurrentVideo(mediaFiles[currentVideoIndex]);
-    updateSortUI();
-    showStatusMessage(`Sorted: ${sortMethod} ${sortDirection === 'ascending' ? '⬆' : '⬇'}`);
+	currentVideoIndex = 0;
+	updatePlaylistDropdown(mediaFiles);
+	playVideoByIndex(currentVideoIndex); // instant play first video
+	highlightCurrentVideo(mediaFiles[currentVideoIndex]);
+	updateSortUI();
+	showStatusMessage(`Sorted: ${sortMethod} ${sortDirection === 'ascending' ? '⬆' : '⬇'}`);
 }
 
 // ✅ Sync active state on ALL sort buttons across both dropdowns
 function updateSortUI() {
-    // Both navbar and context menu share same data-sort attributes
-    document.querySelectorAll('[data-sort="name"], [data-sort="date"]').forEach(el => {
-        el.classList.toggle('active', el.dataset.sort === sortMethod);
-    });
-    document.querySelectorAll('[data-sort="ascending"], [data-sort="descending"]').forEach(el => {
-        el.classList.toggle('active', el.dataset.sort === sortDirection);
-    });
+	// Context menu sort items — toggle .active and update .cm-check icon visibility
+	document.querySelectorAll('[data-sort="name"], [data-sort="date"]').forEach(el => {
+		const isActive = el.dataset.sort === sortMethod;
+		el.classList.toggle('active', isActive);
+		// Update cm-check icon (context menu)
+		const cmCheck = el.querySelector('.cm-check');
+		if (cmCheck) cmCheck.innerHTML = isActive ? '<i class="fa-solid fa-check"></i>' : '';
+		// Update nav-sort-check icon (nav bar)
+		const navCheck = el.querySelector('.nav-sort-check');
+		if (navCheck) navCheck.innerHTML = isActive ? '<i class="fa-solid fa-check"></i>' : '';
+	});
+	document.querySelectorAll('[data-sort="ascending"], [data-sort="descending"]').forEach(el => {
+		const isActive = el.dataset.sort === sortDirection;
+		el.classList.toggle('active', isActive);
+		const cmCheck = el.querySelector('.cm-check');
+		if (cmCheck) cmCheck.innerHTML = isActive ? '<i class="fa-solid fa-check"></i>' : '';
+		const navCheck = el.querySelector('.nav-sort-check');
+		if (navCheck) navCheck.innerHTML = isActive ? '<i class="fa-solid fa-check"></i>' : '';
+	});
 }
 
 // ✅ Wire up ALL sort clicks in both navbar + context menu dropdowns
 document.addEventListener('click', (e) => {
-    const target = e.target.closest('[data-sort]');
-    if (!target) return;
+	const target = e.target.closest('[data-sort]');
+	if (!target) return;
 
-    const val = target.dataset.sort;
+	const val = target.dataset.sort;
 
-    if (val === 'name' || val === 'date') {
-        sortMethod = val;
-        sortPlaylist();
-    } else if (val === 'ascending' || val === 'descending') {
-        sortDirection = val;
-        sortPlaylist();
-    }
+	if (val === 'name' || val === 'date') {
+		sortMethod = val;
+		sortPlaylist();
+	} else if (val === 'ascending' || val === 'descending') {
+		sortDirection = val;
+		sortPlaylist();
+	}
 });
 
 // ✅ Toggle Order button — works in both dropdowns
 document.addEventListener('click', (e) => {
-    if (!e.target.closest('.toggle-sort-order')) return;
-    sortDirection = sortDirection === 'ascending' ? 'descending' : 'ascending';
-    sortPlaylist();
+	if (!e.target.closest('.toggle-sort-order')) return;
+	sortDirection = sortDirection === 'ascending' ? 'descending' : 'ascending';
+	sortPlaylist();
 });
+
+// CHAPTERS MANAGEMENT SYSTEM 
+
+// Initialize DOM elements (delay to ensure they exist)
+function initChaptersDOM() {
+	chaptersDropdown = document.getElementById('chapters-dropdown');
+	chaptersButton = document.getElementById('chapters-button');
+	chaptersCloseBtn = document.getElementById('chapters-close-btn');
+	chaptersList = document.querySelector('.chapters-list');
+	chapterTooltip = document.getElementById('chapter-tooltip');
+	chaptersMarkersContainer = document.getElementById('chapters-markers-container');
+
+	// console.log('[Chapters] DOM Elements initialized:');
+	// console.log('  - chaptersDropdown:', !!chaptersDropdown);
+	// console.log('  - chaptersButton:', !!chaptersButton);
+	// console.log('  - chaptersList:', !!chaptersList);
+	// console.log('  - chapterTooltip:', !!chapterTooltip);
+	// console.log('  - chaptersMarkersContainer:', !!chaptersMarkersContainer);
+
+	setupChapterEventListeners();
+}
+
+// Load chapters from video file
+async function loadChaptersFromFile(filePath) {
+	// console.log('[Chapters] Loading chapters from:', filePath);
+	try {
+		currentVideoPath = filePath;
+		currentChapters = await window.electron.loadChapters(filePath);
+		// console.log('[Chapters] Loaded chapters:', currentChapters);
+
+		if (currentChapters && currentChapters.length > 0) {
+			renderChapterMarkers();
+			renderChaptersList();
+			// console.log(`[Chapters] Successfully loaded ${currentChapters.length} chapters`);
+		} else {
+			// console.log('[Chapters] No chapters found in video');
+			clearChapters();
+		}
+	} catch (error) {
+		console.error('[Chapters] Error loading chapters:', error);
+		clearChapters();
+	}
+}
+
+// Render chapter markers on seekbar
+function renderChapterMarkers() {
+	if (!chaptersMarkersContainer) {
+		console.warn('[Chapters] Markers container not found');
+		return;
+	}
+
+	chaptersMarkersContainer.innerHTML = '';
+
+	if (!video.duration) {
+		console.warn('[Chapters] Video duration not available');
+		return;
+	}
+
+	currentChapters.forEach((chapter, index) => {
+		const marker = document.createElement('div');
+		marker.className = 'chapter-marker';
+		marker.id = `chapter-marker-${index}`;
+
+		const percentage = (chapter.start / video.duration) * 100;
+		marker.style.left = percentage + '%';
+
+		marker.dataset.chapterIndex = index;
+		marker.dataset.chapterName = chapter.name;
+		marker.dataset.chapterTime = formatChapterTime(chapter.start);
+
+		marker.addEventListener('click', (e) => {
+			e.stopPropagation();
+			jumpToChapter(index);
+		});
+
+		marker.addEventListener('mouseenter', (e) => {
+			showChapterTooltip(e, chapter, percentage);
+		});
+
+		marker.addEventListener('mouseleave', () => {
+			hideChapterTooltip();
+		});
+
+		chaptersMarkersContainer.appendChild(marker);
+	});
+
+	// console.log(`[Chapters] Rendered ${currentChapters.length} markers`);
+}
+
+// Render chapters list in dropdown
+function renderChaptersList() {
+	if (!chaptersList) {
+		console.warn('[Chapters] List container not found');
+		return;
+	}
+
+	chaptersList.innerHTML = '';
+
+	currentChapters.forEach((chapter, index) => {
+		const item = document.createElement('a');
+		item.className = 'chapter-item';
+		item.id = `chapter-item-${index}`;
+
+		const nameSpan = document.createElement('span');
+		nameSpan.className = 'chapter-item-name';
+		nameSpan.textContent = chapter.name;
+
+		const timeSpan = document.createElement('span');
+		timeSpan.className = 'chapter-item-time';
+		timeSpan.textContent = formatChapterTime(chapter.start);
+
+		item.appendChild(nameSpan);
+		item.appendChild(timeSpan);
+
+		item.addEventListener('click', (e) => {
+			e.preventDefault();
+			jumpToChapter(index);
+			if (chaptersDropdown) {
+				chaptersDropdown.style.display = 'none';
+			}
+		});
+
+		chaptersList.appendChild(item);
+	});
+
+	// console.log(`[Chapters] Rendered ${currentChapters.length} chapter items`);
+}
+
+// Show chapter tooltip on hover
+function showChapterTooltip(event, chapter, percentage) {
+	if (!chapterTooltip || !seekBarWrapper) {
+		console.warn('[Chapters] Tooltip or seekbar wrapper not found');
+		return;
+	}
+
+	const rect = seekBarWrapper.getBoundingClientRect();
+	const tooltipX = (percentage / 100) * rect.width;
+
+	const timeStr = formatChapterTime(chapter.start);
+	// console.log(`[Chapters] Showing tooltip: ${chapter.name} at ${timeStr}`);
+
+	chapterTooltip.innerHTML = `<strong>${chapter.name}</strong><br><small>${timeStr}</small>`;
+	chapterTooltip.style.display = 'block';
+	chapterTooltip.style.left = tooltipX + 'px';
+	chapterTooltip.style.transform = 'translateX(-50%)';
+}
+
+// Hide chapter tooltip
+function hideChapterTooltip() {
+	if (chapterTooltip) {
+		chapterTooltip.style.display = 'none';
+	}
+}
+
+// Jump to chapter
+function jumpToChapter(index) {
+	if (index < 0 || index >= currentChapters.length) {
+		console.warn('[Chapters] Invalid chapter index:', index);
+		return;
+	}
+
+	const chapter = currentChapters[index];
+	video.currentTime = chapter.start;
+	// console.log(`[Chapters] Jumped to chapter: ${chapter.name} at ${formatChapterTime(chapter.start)}`);
+
+	// Highlight the current chapter
+	if (chaptersList) {
+		document.querySelectorAll('.chapter-item').forEach((item, i) => {
+			item.style.background = i === index ? 'rgba(0, 212, 255, 0.2)' : '';
+		});
+	}
+}
+
+// Jump to next chapter
+function jumpToNextChapter() {
+	if (currentChapters.length === 0) return;
+
+	const currentTime = video.currentTime;
+
+	for (let i = 0; i < currentChapters.length; i++) {
+		if (currentChapters[i].start > currentTime) {
+			jumpToChapter(i);
+			return;
+		}
+	}
+
+	// console.log('[Chapters] Already at last chapter');
+}
+
+// Jump to previous chapter
+function jumpToPreviousChapter() {
+	if (currentChapters.length === 0) return;
+
+	const currentTime = video.currentTime;
+	let currentChapterIndex = -1;
+
+	// Find which chapter we're currently in
+	for (let i = 0; i < currentChapters.length; i++) {
+		if (currentChapters[i].start <= currentTime) {
+			currentChapterIndex = i;
+		} else {
+			break;
+		}
+	}
+
+	// console.log(`[Chapters] Current chapter index: ${currentChapterIndex}`);
+
+	// Jump to previous chapter
+	if (currentChapterIndex > 0) {
+		jumpToChapter(currentChapterIndex - 1);
+		// console.log(`[Chapters] Jumping to previous chapter`);
+	} else {
+		// console.log('[Chapters] Already at first chapter');
+	}
+}
+
+// Clear chapters
+function clearChapters() {
+	currentChapters = [];
+	if (chaptersMarkersContainer) chaptersMarkersContainer.innerHTML = '';
+	if (chaptersList) chaptersList.innerHTML = '';
+	if (chapterTooltip) chapterTooltip.style.display = 'none';
+}
+
+// Toggle chapters dropdown
+function toggleChaptersDropdown() {
+	if (!chaptersDropdown) {
+		console.warn('[Chapters] Dropdown not found');
+		return;
+	}
+
+	if (chaptersDropdown.style.display === 'none' || chaptersDropdown.style.display === '') {
+		chaptersDropdown.style.display = 'flex';
+		if (chaptersButton) chaptersButton.classList.add('active');
+	} else {
+		chaptersDropdown.style.display = 'none';
+		if (chaptersButton) chaptersButton.classList.remove('active');
+	}
+}
+
+// Format time for chapters
+function formatChapterTime(seconds) {
+	if (!seconds || isNaN(seconds)) return '0:00';
+
+	const hours = Math.floor(seconds / 3600);
+	const minutes = Math.floor((seconds % 3600) / 60);
+	const secs = Math.floor(seconds % 60);
+
+	if (hours > 0) {
+		return `${hours}:${String(minutes).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+	}
+	return `${minutes}:${String(secs).padStart(2, '0')}`;
+}
+
+// Setup all chapter event listeners
+function setupChapterEventListeners() {
+	// Chapters button click
+	if (chaptersButton) {
+		chaptersButton.onclick = null; // Clear any existing listeners
+		chaptersButton.addEventListener('click', (e) => {
+			// console.log('[Chapters] Button clicked');
+			e.stopPropagation();
+			toggleChaptersDropdown();
+		});
+		// console.log('[Chapters] Button listener attached');
+	} else {
+		console.warn('[Chapters] Button not found for listener');
+	}
+
+	// Close button
+	if (chaptersCloseBtn) {
+		chaptersCloseBtn.addEventListener('click', () => {
+			if (chaptersDropdown) {
+				chaptersDropdown.style.display = 'none';
+				if (chaptersButton) chaptersButton.classList.remove('active');
+			}
+		});
+	}
+
+	// Close dropdown when clicking outside
+	document.addEventListener('click', (e) => {
+		if (chaptersDropdown && chaptersButton) {
+			if (!chaptersDropdown.contains(e.target) && e.target !== chaptersButton && !chaptersButton.contains(e.target)) {
+				chaptersDropdown.style.display = 'none';
+				chaptersButton.classList.remove('active');
+			}
+		}
+	});
+
+	// Update markers when video duration changes
+	video.addEventListener('loadedmetadata', () => {
+		if (currentChapters.length > 0) {
+			renderChapterMarkers();
+		}
+	});
+
+	// Tooltip stays pinned at the marker — no mousemove follower needed
+
+	// console.log('[Chapters] All event listeners attached');
+}
+
+// Initialize when DOM is ready
+if (document.readyState === 'loading') {
+	document.addEventListener('DOMContentLoaded', initChaptersDOM);
+} else {
+	initChaptersDOM();
+}
+
+// console.log('[Chapters] Fixed chapters system loaded successfully');
 
 // ✅ Add time function - adds minutes to current timer
 function addTime(minutes) {
-    // Get current time in seconds
-    const currentHours = parseInt(document.getElementById('hours').textContent, 10);
-    const currentMinutes = parseInt(document.getElementById('minutes').textContent, 10);
-    const currentSeconds = parseInt(document.getElementById('seconds').textContent, 10);
-    
-    let currentTotalSeconds = currentHours * 3600 + currentMinutes * 60 + currentSeconds;
-    
-    // Add new minutes
-    currentTotalSeconds += minutes * 60;
-    
-    // Calculate new time
-    const hours = Math.floor(currentTotalSeconds / 3600);
-    const mins = Math.floor((currentTotalSeconds % 3600) / 60);
-    const secs = currentTotalSeconds % 60;
-    
-    // Update display
-    updateDisplay(hours, mins, secs);
-    
-    // Update countdown if running
-    if (countdownInterval && !isPaused) {
-        totalTimeInSeconds = currentTotalSeconds;
-    }
-    
-    // Enable play button if time > 0
-    updatePlayButtonState(currentTotalSeconds > 0);
-    
-    showStatusMessage(`Added ${minutes} minutes`);
+	// Get current time in seconds
+	const currentHours = parseInt(document.getElementById('hours').textContent, 10);
+	const currentMinutes = parseInt(document.getElementById('minutes').textContent, 10);
+	const currentSeconds = parseInt(document.getElementById('seconds').textContent, 10);
+
+	let currentTotalSeconds = currentHours * 3600 + currentMinutes * 60 + currentSeconds;
+
+	// Add new minutes
+	currentTotalSeconds += minutes * 60;
+
+	// Calculate new time
+	const hours = Math.floor(currentTotalSeconds / 3600);
+	const mins = Math.floor((currentTotalSeconds % 3600) / 60);
+	const secs = currentTotalSeconds % 60;
+
+	// Update display
+	updateDisplay(hours, mins, secs);
+
+	// Update countdown if running
+	if (countdownInterval && !isPaused) {
+		totalTimeInSeconds = currentTotalSeconds;
+	}
+
+	// Enable play button if time > 0
+	updatePlayButtonState(currentTotalSeconds > 0);
+
+	showStatusMessage(`Added ${minutes} minutes`);
 }
 
 // ✅ Update display function
 function updateDisplay(hours, minutes, seconds) {
-    document.getElementById('hours').textContent = hours.toString().padStart(2, '0');
-    document.getElementById('minutes').textContent = minutes.toString().padStart(2, '0');
-    document.getElementById('seconds').textContent = seconds.toString().padStart(2, '0');
+	document.getElementById('hours').textContent = hours.toString().padStart(2, '0');
+	document.getElementById('minutes').textContent = minutes.toString().padStart(2, '0');
+	document.getElementById('seconds').textContent = seconds.toString().padStart(2, '0');
 }
 
 // ✅ Update play button state (enable/disable)
 function updatePlayButtonState(enable) {
-    const playBtn = document.querySelector('.play-btn');
-    if (enable) {
-        playBtn.disabled = false;
-        playBtn.style.opacity = '1';
-        playBtn.style.cursor = 'pointer';
-    } else {
-        playBtn.disabled = true;
-        playBtn.style.opacity = '0.5';
-        playBtn.style.cursor = 'not-allowed';
-        
-        // Ensure it shows play icon when disabled
-        playBtn.innerHTML = `
+	const playBtn = document.querySelector('.play-btn');
+	if (enable) {
+		playBtn.disabled = false;
+		playBtn.style.opacity = '1';
+		playBtn.style.cursor = 'pointer';
+	} else {
+		playBtn.disabled = true;
+		playBtn.style.opacity = '0.5';
+		playBtn.style.cursor = 'not-allowed';
+
+		// Ensure it shows play icon when disabled
+		playBtn.innerHTML = `
             <svg class="play-icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                 <polygon points="5 3 19 12 5 21 5 3"/>
             </svg>
         `;
-    }
+	}
 }
 
 // ✅ Quick-set buttons handler - adds time instead of setting
 document.querySelectorAll('.preset-btn').forEach(button => {
-    button.addEventListener('click', function() {
-        let minutes = parseInt(button.textContent);
-        addTime(minutes);
-    });
+	button.addEventListener('click', function() {
+		let minutes = parseInt(button.textContent);
+		addTime(minutes);
+	});
 });
 
 // ✅ Mouse wheel scroll for time unit adjustments
 document.querySelectorAll('#hours, #minutes, #seconds').forEach(unit => {
-    let max = unit.id === 'hours' ? 23 : 59;
+	let max = unit.id === 'hours' ? 23 : 59;
 
-    unit.addEventListener('wheel', function(event) {
-        event.preventDefault();
-        let delta = event.deltaY > 0 ? -1 : 1;
-        let newValue = parseInt(unit.textContent) + delta;
+	unit.addEventListener('wheel', function(event) {
+		event.preventDefault();
+		let delta = event.deltaY > 0 ? -1 : 1;
+		let newValue = parseInt(unit.textContent) + delta;
 
-        if (newValue < 0) newValue = max;
-        if (newValue > max) newValue = 0;
+		if (newValue < 0) newValue = max;
+		if (newValue > max) newValue = 0;
 
-        unit.textContent = newValue.toString().padStart(2, '0');
-        
-        // Check if total time > 0 to enable play button
-        const totalSeconds = getTotalTimeInSeconds();
-        updatePlayButtonState(totalSeconds > 0);
-        
-        // Update countdown if running
-        if (countdownInterval && !isPaused) {
-            totalTimeInSeconds = totalSeconds;
-        }
-    });
+		unit.textContent = newValue.toString().padStart(2, '0');
+
+		// Check if total time > 0 to enable play button
+		const totalSeconds = getTotalTimeInSeconds();
+		updatePlayButtonState(totalSeconds > 0);
+
+		// Update countdown if running
+		if (countdownInterval && !isPaused) {
+			totalTimeInSeconds = totalSeconds;
+		}
+	});
 });
 
 // Function to convert current display time to total seconds
 function getTotalTimeInSeconds() {
-    const hours = parseInt(document.getElementById('hours').textContent, 10);
-    const minutes = parseInt(document.getElementById('minutes').textContent, 10);
-    const seconds = parseInt(document.getElementById('seconds').textContent, 10);
-    return hours * 3600 + minutes * 60 + seconds;
+	const hours = parseInt(document.getElementById('hours').textContent, 10);
+	const minutes = parseInt(document.getElementById('minutes').textContent, 10);
+	const seconds = parseInt(document.getElementById('seconds').textContent, 10);
+	return hours * 3600 + minutes * 60 + seconds;
 }
 
 // ✅ Start countdown function
 function startCountdown() {
-    // Get current display time
-    if (!isPaused) {
-        totalTimeInSeconds = getTotalTimeInSeconds();
-    } else {
-        // Resume from paused time
-        totalTimeInSeconds = remainingTimeOnPause;
-        isPaused = false;
-    }
+	// Get current display time
+	if (!isPaused) {
+		totalTimeInSeconds = getTotalTimeInSeconds();
+	} else {
+		// Resume from paused time
+		totalTimeInSeconds = remainingTimeOnPause;
+		isPaused = false;
+	}
 
-    if (totalTimeInSeconds <= 0) {
-        showStatusMessage('Please set a valid timer.');
-        return;
-    }
+	if (totalTimeInSeconds <= 0) {
+		showStatusMessage('Please set a valid timer.');
+		return;
+	}
 
-    // Clear any existing interval
-    if (countdownInterval) {
-        clearInterval(countdownInterval);
-    }
+	// Clear any existing interval
+	if (countdownInterval) {
+		clearInterval(countdownInterval);
+	}
 
-    // Start countdown
-    countdownInterval = setInterval(() => {
-        if (totalTimeInSeconds <= 0) {
-            clearInterval(countdownInterval);
-            countdownInterval = null;
-            
-            // Update play button to disabled
-            updatePlayButtonState(false);
-            
-            // Show play icon
-            document.querySelector('.play-btn').innerHTML = `
+	// Start countdown
+	countdownInterval = setInterval(() => {
+		if (totalTimeInSeconds <= 0) {
+			clearInterval(countdownInterval);
+			countdownInterval = null;
+
+			// Update play button to disabled
+			updatePlayButtonState(false);
+
+			// Show play icon
+			document.querySelector('.play-btn').innerHTML = `
                 <svg class="play-icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                     <polygon points="5 3 19 12 5 21 5 3"/>
                 </svg>
             `;
-            
-            showStatusMessage('Time is up! Shutting down...');
 
-            // Shut down the PC using Electron
-            if (window.electron && typeof window.electron.sendShutdownRequest === 'function') {
-                window.electron.sendShutdownRequest();
-            } else {
-                console.warn('Electron shutdown function not found.');
-            }
-            return;
-        }
-        
-        totalTimeInSeconds--;
-        updateTimeDisplay(totalTimeInSeconds);
-    }, 1000);
-    
-    showStatusMessage('Countdown started');
+			showStatusMessage('Time is up! Shutting down...');
+
+			// Shut down the PC using Electron
+			if (window.electron && typeof window.electron.sendShutdownRequest === 'function') {
+				window.electron.sendShutdownRequest();
+			} else {
+				console.warn('Electron shutdown function not found.');
+			}
+			return;
+		}
+
+		totalTimeInSeconds--;
+		updateTimeDisplay(totalTimeInSeconds);
+	}, 1000);
+
+	showStatusMessage('Countdown started');
 }
 
 // ✅ Pause countdown function
 function pauseCountdown() {
-    if (countdownInterval) {
-        clearInterval(countdownInterval);
-        countdownInterval = null;
-        isPaused = true;
-        remainingTimeOnPause = totalTimeInSeconds;
-        showStatusMessage('Timer paused');
-    }
+	if (countdownInterval) {
+		clearInterval(countdownInterval);
+		countdownInterval = null;
+		isPaused = true;
+		remainingTimeOnPause = totalTimeInSeconds;
+		showStatusMessage('Timer paused');
+	}
 }
 
 // Function to update time display from total seconds
 function updateTimeDisplay(totalSeconds) {
-    const hours = Math.floor(totalSeconds / 3600);
-    const minutes = Math.floor((totalSeconds % 3600) / 60);
-    const seconds = totalSeconds % 60;
+	const hours = Math.floor(totalSeconds / 3600);
+	const minutes = Math.floor((totalSeconds % 3600) / 60);
+	const seconds = totalSeconds % 60;
 
-    updateDisplay(hours, minutes, seconds);
+	updateDisplay(hours, minutes, seconds);
 }
 
 // ✅ Reset timer function - resets to 00:00:00 without stopping
 function resetTimer() {
-    if (countdownInterval) {
-        // If timer is running, stop it and reset
-        clearInterval(countdownInterval);
-        countdownInterval = null;
-        isPaused = false;
-    }
-    
-    // Reset display
-    updateDisplay(0, 0, 0);
-    
-    // Disable play button
-    updatePlayButtonState(false);
-    
-    // Reset state variables
-    totalTimeInSeconds = 0;
-    remainingTimeOnPause = 0;
-    
-    // Ensure play icon is shown
-    document.querySelector('.play-btn').innerHTML = `
+	if (countdownInterval) {
+		// If timer is running, stop it and reset
+		clearInterval(countdownInterval);
+		countdownInterval = null;
+		isPaused = false;
+	}
+
+	// Reset display
+	updateDisplay(0, 0, 0);
+
+	// Disable play button
+	updatePlayButtonState(false);
+
+	// Reset state variables
+	totalTimeInSeconds = 0;
+	remainingTimeOnPause = 0;
+
+	// Ensure play icon is shown
+	document.querySelector('.play-btn').innerHTML = `
         <svg class="play-icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
             <polygon points="5 3 19 12 5 21 5 3"/>
         </svg>
     `;
-    
-    showStatusMessage('Timer reset');
+
+	showStatusMessage('Timer reset');
 }
 
 // ✅ Delete timer function - stops timer and hides container
 function deleteTimer() {
-    // Stop any running timer
-    if (countdownInterval) {
-        clearInterval(countdownInterval);
-        countdownInterval = null;
-    }
-    
-    // Reset all states
-    isPaused = false;
-    totalTimeInSeconds = 0;
-    remainingTimeOnPause = 0;
-    
-    // Reset display
-    updateDisplay(0, 0, 0);
-    
-    // Hide timer container
-    const container = document.querySelector('.timer-container');
-    if (container) {
-        container.style.display = 'none';
-    }
-    }
+	// Stop any running timer
+	if (countdownInterval) {
+		clearInterval(countdownInterval);
+		countdownInterval = null;
+	}
+
+	// Reset all states
+	isPaused = false;
+	totalTimeInSeconds = 0;
+	remainingTimeOnPause = 0;
+
+	// Reset display
+	updateDisplay(0, 0, 0);
+
+	// Hide timer container
+	const container = document.querySelector('.timer-container');
+	if (container) {
+		container.style.display = 'none';
+	}
+}
 
 // ✅ Play/Pause button click handler
 document.querySelector('.play-btn').addEventListener('click', function() {
-    const totalSeconds = getTotalTimeInSeconds();
-    
-    // If timer is 00:00:00, do nothing (button should be disabled)
-    if (totalSeconds <= 0 && !isPaused) {
-        return;
-    }
-    
-    if (countdownInterval) {
-        // Pause the timer
-        pauseCountdown();
-        // Change to play icon
-        this.innerHTML = `
+	const totalSeconds = getTotalTimeInSeconds();
+
+	// If timer is 00:00:00, do nothing (button should be disabled)
+	if (totalSeconds <= 0 && !isPaused) {
+		return;
+	}
+
+	if (countdownInterval) {
+		// Pause the timer
+		pauseCountdown();
+		// Change to play icon
+		this.innerHTML = `
             <svg class="play-icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                 <polygon points="5 3 19 12 5 21 5 3"/>
             </svg>
         `;
-    } else {
-        // Start or resume timer
-        startCountdown();
-        // Change to pause icon
-        this.innerHTML = `
+	} else {
+		// Start or resume timer
+		startCountdown();
+		// Change to pause icon
+		this.innerHTML = `
             <svg class="play-icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                 <rect x="6" y="4" width="4" height="16" rx="1"/>
                 <rect x="14" y="4" width="4" height="16" rx="1"/>
             </svg>
         `;
-    }
+	}
 });
 
 // ✅ Delete timer button 
@@ -1965,111 +2312,61 @@ document.querySelectorAll('.icon-btn')[0].addEventListener('click', resetTimer);
 
 // Make timer container visible (call this from your main app)
 function showTimerContainer() {
-    const container = document.querySelector('.timer-container');
-    if (container) {
-        container.style.display = 'block';
-        
-        // Reset any running timer when showing
-        if (countdownInterval) {
-            clearInterval(countdownInterval);
-            countdownInterval = null;
-        }
-        
-        // Reset states
-        isPaused = false;
-        totalTimeInSeconds = 0;
-        remainingTimeOnPause = 0;
-        
-        // Reset display
-        updateDisplay(0, 0, 0);
-        
-        // Disable play button initially
-        updatePlayButtonState(false);
-        
-        // Ensure play icon is shown
-        document.querySelector('.play-btn').innerHTML = `
+	const container = document.querySelector('.timer-container');
+	if (container) {
+		container.style.display = 'block';
+
+		// Reset any running timer when showing
+		if (countdownInterval) {
+			clearInterval(countdownInterval);
+			countdownInterval = null;
+		}
+
+		// Reset states
+		isPaused = false;
+		totalTimeInSeconds = 0;
+		remainingTimeOnPause = 0;
+
+		// Reset display
+		updateDisplay(0, 0, 0);
+
+		// Disable play button initially
+		updatePlayButtonState(false);
+
+		// Ensure play icon is shown
+		document.querySelector('.play-btn').innerHTML = `
             <svg class="play-icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                 <polygon points="5 3 19 12 5 21 5 3"/>
             </svg>
         `;
-    }
+	}
 }
 
 // Initialize play button as disabled on page load
 window.addEventListener('DOMContentLoaded', () => {
-    updatePlayButtonState(false);
+	updatePlayButtonState(false);
 });
 
 // Allow timer scrolling when mouse is over it
 const timerContainer = document.querySelector('.timer-container');
 if (timerContainer) {
-    timerContainer.addEventListener("mouseenter", () => {
-        isMouseOver = true;
-    });
-    
-    timerContainer.addEventListener("mouseleave", () => {
-        isMouseOver = false;
-    });
+	timerContainer.addEventListener("mouseenter", () => {
+		isMouseOver = true;
+	});
+
+	timerContainer.addEventListener("mouseleave", () => {
+		isMouseOver = false;
+	});
 }
 
 document.getElementById('sleep-timer').addEventListener('click', () => showTimerContainer(true));
 
-	
+
 
 // Function to set playback speed
 function setPlaybackSpeed(speed) {
 	video.playbackRate = speed;
 }
-
-// video.addEventListener('mousedown', (e) => {
-//     if (e.button === 0) { // Left mouse button
-//         isLeftMouseDown = true;
-//         leftWasPausedBeforeHold = video.paused;
-//         if (leftWasPausedBeforeHold) video.play();
-//         setPlaybackSpeed(2);
-//         showStatusMessage("Fast 2x (hold)");
-//         isSpeedAdjustmentHold = true;
-//         e.preventDefault();
-//     } 
-// 	// else if (e.button === 2) { // Right mouse button
-//     //     isRightMouseDown = true;
-//     //     rightWasPausedBeforeHold = video.paused;
-//     //     if (rightWasPausedBeforeHold) video.play();
-//     //     setPlaybackSpeed(1.5);
-//     //     showStatusMessage("Fast 1.5x (hold)");
-//     //     isSpeedAdjustmentHold = true;
-//     //     e.preventDefault();
-//     // }
-// });
-
-// document.addEventListener('mouseup', (e) => {
-//     if (e.button === 0 && isLeftMouseDown) {
-//         isLeftMouseDown = false;
-//         setPlaybackSpeed(1);
-//         if (leftWasPausedBeforeHold) video.pause();
-//         leftWasPausedBeforeHold = false;
-//         isSpeedAdjustmentHold = false; // Immediate reset
-//     } 
-//     // else if (e.button === 2 && isRightMouseDown) {
-//     //     isRightMouseDown = false;
-//     //     setPlaybackSpeed(1);
-//     //     if (rightWasPausedBeforeHold) video.pause();
-//     //     rightWasPausedBeforeHold = false;
-//     //     isSpeedAdjustmentHold = false; // Immediate reset
-//     // }
-// });
-
-// // Prevent click-triggered pause/play when releasing speed hold
-// video.addEventListener('click', (e) => {
-//     if (isSpeedAdjustmentHold) {
-//         e.preventDefault();
-//         e.stopImmediatePropagation();
-//         // If video was playing before hold, resume playback
-//         if (!leftWasPausedBeforeHold && !rightWasPausedBeforeHold) {
-//             video.play();
-//         }
-//     }
-// });
 
 // Keep your existing speed controls
 playbackSpeedLinks.forEach(link => {
@@ -2185,35 +2482,48 @@ compressor.connect(audioAnalyser); // Place analyser after the compressor
 audioAnalyser.connect(gainNode); // Continue connecting analyser to the gain node
 
 // Function to monitor audio levels and normalize automatically
-function monitorAudioLevels() {
-	audioAnalyser.getByteTimeDomainData(timeDomainData); // Get the waveform data from the analyser
+let _monitorRafId = null;
+let _monitorRunning = false;
 
-	// Calculate the root mean square (RMS) value to estimate audio loudness
+function monitorAudioLevels() {
+	if (!_monitorRunning) return; // Stop if flagged
+
+	audioAnalyser.getByteTimeDomainData(timeDomainData);
+
 	let sum = 0;
 	for (let i = 0; i < bufferLength; i++) {
-		let sample = timeDomainData[i] / 128 - 1.0; // Normalize the data between -1.0 and 1.0
+		let sample = timeDomainData[i] / 128 - 1.0;
 		sum += sample * sample;
 	}
-	const rms = Math.sqrt(sum / bufferLength); // Calculate RMS
+	const rms = Math.sqrt(sum / bufferLength);
 
-	// Check if RMS level is above a threshold (e.g., 0.7 indicates loud audio)
 	if (rms > 0.7) {
-		// Reduce the volume gradually to protect from loud audio
-		let newVolume = Math.max(0, gainNode.gain.value - 0.1); // Decrease volume smoothly
-		gainNode.gain.linearRampToValueAtTime(
-			newVolume,
-			audioContext.currentTime + 0.1
-		);
+		let newVolume = Math.max(0, gainNode.gain.value - 0.1);
+		gainNode.gain.linearRampToValueAtTime(newVolume, audioContext.currentTime + 0.1);
 	}
 
-	// Call this function repeatedly for real-time monitoring
-	requestAnimationFrame(monitorAudioLevels);
+	_monitorRafId = requestAnimationFrame(monitorAudioLevels);
+}
+
+function startMonitor() {
+	if (_monitorRunning) return; // Already running — do NOT start a second loop
+	_monitorRunning = true;
+	_monitorRafId = requestAnimationFrame(monitorAudioLevels);
+}
+
+function stopMonitor() {
+	_monitorRunning = false;
+	if (_monitorRafId !== null) {
+		cancelAnimationFrame(_monitorRafId);
+		_monitorRafId = null;
+	}
 }
 
 // Start monitoring audio levels when the video is played
-videoElement.addEventListener("play", () => {
-	monitorAudioLevels(); // Start monitoring when video playback begins
-});
+
+videoElement.addEventListener("play", startMonitor);
+videoElement.addEventListener("pause", stopMonitor);
+videoElement.addEventListener("ended", stopMonitor);
 
 // Function to save volume setting to localStorage
 function saveVolumeSetting(volume) {
@@ -2249,6 +2559,12 @@ function updateVolume(newVolume, source = null) {
 
 	// Update the actual audio volume
 	gainNode.gain.linearRampToValueAtTime(newVolume, audioContext.currentTime + 0.1);
+
+	// Sync volume to external audio element (non-native codec path)
+	// audioTrackPlayer.volume is 0–1, gainNode supports 0–2 (boosted)
+	if (audioTrackPlayer && audioTrackPlayer.src) {
+		audioTrackPlayer.volume = Math.min(1, newVolume);
+	}
 
 	// Always update the slider to match the exact volume, except when the source is the slider
 	if (source !== 'slider') {
@@ -2341,6 +2657,9 @@ mediaPlayer.appendChild(fontSizeTooltip);
 
 let fontSize = loadFontSize() || defaultFontSize;
 
+// Set initial subtitle font size via CSS custom property
+document.documentElement.style.setProperty('--subtitle-font-size', `${fontSize}px`);
+
 // Function to save font size to local storage
 function saveFontSize(size) {
 	localStorage.setItem("fontSize", size);
@@ -2385,6 +2704,8 @@ mediaPlayer.addEventListener("wheel", (event) => {
 		videoTitleElement.style.fontSize = `${fontSize}px`;
 		statusMessage.style.fontSize = `${fontSize}px`;
 		fontSizeTooltip.style.fontSize = `${fontSize}px`;
+		// Update subtitle font size via CSS custom property
+		document.documentElement.style.setProperty('--subtitle-font-size', `${fontSize}px`);
 		saveFontSize(fontSize);
 
 		const fontSizePercentage = Math.round(((fontSize - minFontSize) / (maxFontSize - minFontSize)) * 100);
@@ -2428,19 +2749,6 @@ function updateVolumeIcon() {
 	} else {
 		volumeBtn.src = "../assets/icons/volume-high.png";
 		volumeBtn.setAttribute("title", "Mute"); // Update tooltip
-	}
-}
-
-// Volume control logic
-function handleVolumeControl(event) {
-	if (event.key === "ArrowUp") {
-		event.preventDefault();
-		updateVolume(Math.min(2, gainNode.gain.value + 0.05));
-		showStatusMessage(`Volume: ${(Math.min(2, gainNode.gain.value + 0.05) * 100).toFixed(0)}%`);
-	} else if (event.key === "ArrowDown") {
-		event.preventDefault();
-		updateVolume(Math.max(0, gainNode.gain.value - 0.05));
-		showStatusMessage(`Volume: ${(Math.max(0, gainNode.gain.value - 0.05) * 100).toFixed(0)}%`);
 	}
 }
 
@@ -2688,12 +2996,31 @@ const fullscreenButtons = document.querySelectorAll(".fullscreen-button");
 // Function to update the fullscreen button UI
 function updateFullscreenIcon(fullscreen) {
 	isFullscreen = fullscreen;
+
+	// Update bottom-bar fullscreen button (image-based)
 	fullscreenButtons.forEach(button => {
 		const img = button.querySelector("img");
 		if (img) {
 			img.src = isFullscreen ?
 				"../assets/icons/exit-full-screen.png" :
 				"../assets/icons/full-screen.png";
+		}
+		// Update FA icon if present (context menu / nav bar)
+		const icon = button.querySelector("i.fa-solid");
+		if (icon) {
+			icon.className = isFullscreen ?
+				"fa-solid fa-compress" :
+				"fa-solid fa-expand";
+		}
+		// Update text span if present (nav bar)
+		const textSpan = button.querySelector(".nav-row-text");
+		if (textSpan) {
+			textSpan.textContent = isFullscreen ? "Exit Full Screen" : "Full Screen";
+		}
+		// Update cm-text if present (context menu)
+		const cmText = button.querySelector(".cm-text");
+		if (cmText) {
+			cmText.textContent = isFullscreen ? "Exit Full Screen" : "Full Screen";
 		}
 	});
 }
@@ -2735,6 +3062,19 @@ mediaPlayer?.addEventListener("dblclick", toggleFullScreen);
 // Listen for fullscreen state changes
 window.electron.onFullscreenStateChanged((isFullscreen) => {
 	updateFullscreenIcon(isFullscreen);
+});
+
+// Initialize fullscreen icon state on load
+window.addEventListener('DOMContentLoaded', () => {
+	// Request current fullscreen state from main process
+	window.electron.invoke('get-fullscreen-state')
+		.then(isFullscreen => {
+			updateFullscreenIcon(isFullscreen);
+		})
+		.catch(() => {
+			// Fallback: assume not fullscreen
+			updateFullscreenIcon(false);
+		});
 });
 
 
@@ -2849,171 +3189,177 @@ document.addEventListener("DOMContentLoaded", function() {
 	showControls();
 
 
-function positionDropdown(dropdown, parentElement) {
-  if (!dropdown || !parentElement) return;
-  
-  const rect = parentElement.getBoundingClientRect();
-  const dropdownHeight = dropdown.offsetHeight || 400; // Fallback height
-  const viewportHeight = window.innerHeight;
-  const spaceBelow = viewportHeight - rect.bottom;
-  const spaceAbove = rect.top;
-  
-  // Remove previous positioning classes
-  dropdown.classList.remove('open-upward', 'open-downward');
-  
-  // If not enough space below, open upward
-  if (spaceBelow < dropdownHeight && spaceAbove > spaceBelow) {
-    dropdown.classList.add('open-upward');
-    dropdown.style.bottom = '0';
-    dropdown.style.top = 'auto';
-  } else {
-    // Open downward (default)
-    dropdown.classList.add('open-downward');
-    dropdown.style.top = '0';
-    dropdown.style.bottom = 'auto';
-  }
-}
+	function positionDropdown(dropdown, parentElement) {
+		if (!dropdown || !parentElement) return;
+
+		const rect = parentElement.getBoundingClientRect();
+		const dropdownHeight = dropdown.offsetHeight || 400; // Fallback height
+		const viewportHeight = window.innerHeight;
+		const spaceBelow = viewportHeight - rect.bottom;
+		const spaceAbove = rect.top;
+
+		// Remove previous positioning classes
+		dropdown.classList.remove('open-upward', 'open-downward');
+
+		// If not enough space below, open upward
+		if (spaceBelow < dropdownHeight && spaceAbove > spaceBelow) {
+			dropdown.classList.add('open-upward');
+			dropdown.style.bottom = '0';
+			dropdown.style.top = 'auto';
+		} else {
+			// Open downward (default)
+			dropdown.classList.add('open-downward');
+			dropdown.style.top = '0';
+			dropdown.style.bottom = 'auto';
+		}
+	}
 
 
-// Function to show the context menu
-function showContextMenu(event) {
-  event.preventDefault();
-  isContextMenuVisible = true;
+	// Function to show the context menu
+	function showContextMenu(event) {
+		event.preventDefault();
+		isContextMenuVisible = true;
 
-  const { clientX: mouseX, clientY: mouseY } = event;
-  const { innerWidth: screenWidth, innerHeight: screenHeight } = window;
+		const {
+			clientX: mouseX,
+			clientY: mouseY
+		} = event;
+		const {
+			innerWidth: screenWidth,
+			innerHeight: screenHeight
+		} = window;
 
-  // Show menu to calculate dimensions
-  contextMenu.style.display = "block";
-  contextMenu.style.visibility = "hidden";
+		// Show menu to calculate dimensions
+		contextMenu.style.display = "block";
+		contextMenu.style.visibility = "hidden";
 
-  // Force reflow to get accurate measurements
-  const contextMenuHeight = contextMenu.scrollHeight;
-  const contextMenuWidth = contextMenu.offsetWidth;
+		// Force reflow to get accurate measurements
+		const contextMenuHeight = contextMenu.scrollHeight;
+		const contextMenuWidth = contextMenu.offsetWidth;
 
-  let top = mouseY;
-  let left = mouseX;
+		let top = mouseY;
+		let left = mouseX;
 
-  // Smart vertical positioning
-  if (mouseY + contextMenuHeight > screenHeight - 20) {
-    // Not enough space below, open upward
-    top = Math.max(10, mouseY - contextMenuHeight);
-  }
+		// Smart vertical positioning
+		if (mouseY + contextMenuHeight > screenHeight - 20) {
+			// Not enough space below, open upward
+			top = Math.max(10, mouseY - contextMenuHeight);
+		}
 
-  // Smart horizontal positioning
-  if (mouseX + contextMenuWidth > screenWidth - 20) {
-    // Not enough space on right, open to the left
-    left = Math.max(10, mouseX - contextMenuWidth);
-  }
+		// Smart horizontal positioning
+		if (mouseX + contextMenuWidth > screenWidth - 20) {
+			// Not enough space on right, open to the left
+			left = Math.max(10, mouseX - contextMenuWidth);
+		}
 
-  // Ensure menu stays within viewport bounds
-  top = Math.max(10, Math.min(top, screenHeight - contextMenuHeight - 10));
-  left = Math.max(10, Math.min(left, screenWidth - contextMenuWidth - 10));
+		// Ensure menu stays within viewport bounds
+		top = Math.max(10, Math.min(top, screenHeight - contextMenuHeight - 10));
+		left = Math.max(10, Math.min(left, screenWidth - contextMenuWidth - 10));
 
-  // Apply position and make visible
-  contextMenu.style.top = `${top}px`;
-  contextMenu.style.left = `${left}px`;
-  contextMenu.style.visibility = "visible";
+		// Apply position and make visible
+		contextMenu.style.top = `${top}px`;
+		contextMenu.style.left = `${left}px`;
+		contextMenu.style.visibility = "visible";
 
-  updateContextTogglePlayPause();
-}
+		updateContextTogglePlayPause();
+	}
 
-function hideContextMenu() {
-  contextMenu.style.display = "none";
-  contextMenu.style.visibility = "visible";
-}
+	function hideContextMenu() {
+		contextMenu.style.display = "none";
+		contextMenu.style.visibility = "visible";
+	}
 
-// Attach event listeners
-mediaPlayer.addEventListener("contextmenu", showContextMenu);
+	// Attach event listeners
+	mediaPlayer.addEventListener("contextmenu", showContextMenu);
 
-document.addEventListener("click", (e) => {
-  if (!contextMenu.contains(e.target)) {
-    hideContextMenu();
-  }
-});
+	document.addEventListener("click", (e) => {
+		if (!contextMenu.contains(e.target)) {
+			hideContextMenu();
+		}
+	});
 
-// Prevent dropdown from closing when clicking inside
-contextMenu.addEventListener("click", (e) => {
-  if (e.target.closest(".sub-dropdown")) {
-    e.stopPropagation();
-  }
-});
+	// Prevent dropdown from closing when clicking inside
+	contextMenu.addEventListener("click", (e) => {
+		if (e.target.closest(".sub-dropdown")) {
+			e.stopPropagation();
+		}
+	});
 
-// UPDATE TOGGLE PLAY/PAUSE
-function updateContextTogglePlayPause() {
-  const contextTogglePlayPause = document.querySelector("#contextTogglePlayPause");
-  if (!contextTogglePlayPause) return;
-  
-  const textElement = contextTogglePlayPause.querySelector(".text");
-  const iconElement = contextTogglePlayPause.querySelector(".icon");
+	// UPDATE TOGGLE PLAY/PAUSE
+	function updateContextTogglePlayPause() {
+		const contextTogglePlayPause = document.querySelector("#contextTogglePlayPause");
+		if (!contextTogglePlayPause) return;
 
-  if (video.paused) {
-    textElement.innerText = "Play";
-    iconElement.innerHTML = "&#9658;";
-  } else {
-    textElement.innerText = "Pause";
-    iconElement.innerHTML = "&#10074;&#10074;";
-  }
-}
+		const textElement = contextTogglePlayPause.querySelector(".cm-text");
+		const iconElement = contextTogglePlayPause.querySelector(".cm-icon");
 
-// HANDLE CONTEXT MENU CLICKS
-const contextMenuItems = document.querySelectorAll(".context-menu ul li a");
+		if (video.paused) {
+			textElement.innerText = "Play";
+			iconElement.innerHTML = '<i class="fa-solid fa-play"></i>';
+		} else {
+			textElement.innerText = "Pause";
+			iconElement.innerHTML = '<i class="fa-solid fa-pause"></i>';
+		}
+	}
 
-contextMenuItems.forEach((item) => {
-  item.addEventListener("click", (event) => {
-    const target = event.target;
+	// HANDLE CONTEXT MENU CLICKS
+	const contextMenuItems = document.querySelectorAll(".context-menu ul li a");
 
-    // Don't close if clicking sub-dropdown
-    if (target.closest(".sub-dropdown")) {
-      return;
-    }
+	contextMenuItems.forEach((item) => {
+		item.addEventListener("click", (event) => {
+			const target = event.target;
 
-    if (target.closest("#contextOpenFile")) {
-      openFileButton.click();
-    } else if (target.closest("#contextOpenFolder")) {
-      openFolderButton.click();
-    } else if (target.closest("#contextTogglePlayPause")) {
-      togglePlayPause();
-    } else if (target.closest("#context-menu-shutdown-timer")) {
-      showTimerContainer(true);
-    }
+			// Don't close if clicking a sub-menu trigger
+			if (target.closest(".cm-sub-item")) {
+				return;
+			}
 
-    hideContextMenu();
-  });
-});
+			if (target.closest("#contextOpenFile")) {
+				openFileButton.click();
+			} else if (target.closest("#contextOpenFolder")) {
+				openFolderButton.click();
+			} else if (target.closest("#contextTogglePlayPause")) {
+				togglePlayPause();
+			} else if (target.closest("#context-menu-shutdown-timer")) {
+				showTimerContainer(true);
+			}
+
+			hideContextMenu();
+		});
+	});
 	loadSaturationValue();
 	// Apply smart positioning to all sub-dropdowns
 	document.querySelectorAll('.sub-dropdown').forEach(dropdown => {
-	  dropdown.addEventListener('mouseenter', function() {
-		const dropdownContent = this.querySelector('.sub-dropdown-content');
-		if (dropdownContent) {
-		  // Small delay to ensure dropdown is rendered
-		  setTimeout(() => {
-			positionDropdown(dropdownContent, this);
-		  }, 1);
-		}
-	  });
+		dropdown.addEventListener('mouseenter', function() {
+			const dropdownContent = this.querySelector('.sub-dropdown-content');
+			if (dropdownContent) {
+				// Small delay to ensure dropdown is rendered
+				setTimeout(() => {
+					positionDropdown(dropdownContent, this);
+				}, 1);
+			}
+		});
 	});
-	
+
 	let resizeTimeout;
 	window.addEventListener('resize', () => {
-	  clearTimeout(resizeTimeout);
-	  resizeTimeout = setTimeout(() => {
-		if (contextMenu.style.display === "block") {
-		  // Reposition if menu is open
-		  const currentTop = parseInt(contextMenu.style.top);
-		  const currentLeft = parseInt(contextMenu.style.left);
-		  
-		  // Create synthetic event for repositioning
-		  const syntheticEvent = {
-			preventDefault: () => {},
-			clientX: currentLeft,
-			clientY: currentTop
-		  };
-		  
-		  showContextMenu(syntheticEvent);
-		}
-	  }, 250);
+		clearTimeout(resizeTimeout);
+		resizeTimeout = setTimeout(() => {
+			if (contextMenu.style.display === "block") {
+				// Reposition if menu is open
+				const currentTop = parseInt(contextMenu.style.top);
+				const currentLeft = parseInt(contextMenu.style.left);
+
+				// Create synthetic event for repositioning
+				const syntheticEvent = {
+					preventDefault: () => {},
+					clientX: currentLeft,
+					clientY: currentTop
+				};
+
+				showContextMenu(syntheticEvent);
+			}
+		}, 250);
 	});
 });
 
@@ -3036,7 +3382,7 @@ function updateSeekBar() {
 	if (video && video.duration && !isNaN(video.duration)) {
 		const progress = (video.currentTime / video.duration) * 100;
 		seekBar.style.width = `${progress}%`;
-		seekBarHandle.style.left = '100%';
+		seekBarHandle.style.left = `${progress}%`;
 		currentTimeDisplay.textContent = formatTime(video.currentTime);
 		seekBarHandle.style.display = "block";
 	} else {
@@ -3074,8 +3420,12 @@ seekBarWrapper.addEventListener("click", (e) => {
 	const rect = seekBarWrapper.getBoundingClientRect();
 	const posX = e.clientX - rect.left;
 	const percentage = posX / rect.width;
-	video.currentTime = percentage * video.duration;
-	updateSeekBar();
+	const targetTime = percentage * video.duration;
+	// Update UI instantly, let _seekTo debounce the actual seek
+	seekBar.style.width = `${percentage * 100}%`;
+	seekBarHandle.style.left = `${percentage * 100}%`;
+	currentTimeDisplay.textContent = formatTime(targetTime);
+	_seekTo(targetTime);
 });
 
 // Handle dragging for smoother seeking
@@ -3101,7 +3451,8 @@ function updateDragging(e) {
 seekBarHandle.addEventListener("mousedown", (e) => {
 	e.preventDefault();
 	isDragging = true;
-	video.pause(); // Pause video while seeking to prevent buffering
+	// Don't pause - allows smooth seeking without buffering
+	// video.pause(); // Pause video while seeking to prevent buffering
 	document.addEventListener("mousemove", updateDragging);
 });
 
@@ -3110,15 +3461,17 @@ document.addEventListener("mouseup", () => {
 		isDragging = false;
 		document.removeEventListener("mousemove", updateDragging);
 
-		// Only update video time once when dragging is complete
+		// Apply the seek (debounced to avoid re-request spam)
 		if (temporaryTime !== video.currentTime) {
-			video.currentTime = temporaryTime;
+			_seekTo(temporaryTime);
 		}
 
-		// Resume playback if it was playing before seeking
-		if (!video.paused) {
-			video.play();
-		}
+		// Resume playback — wait for seeked event so we don't resume mid-stall
+		video.addEventListener('seeked', () => {
+			if (!video.paused) video.play().catch(() => {});
+		}, {
+			once: true
+		});
 
 		hideHandleTimeout = setTimeout(() => {
 			seekBarHandle.style.opacity = "0";
@@ -3133,7 +3486,7 @@ seekBarWrapper.addEventListener("wheel", (e) => {
 		const direction = e.deltaY > 0 ? -1 : 1;
 		let newTime = video.currentTime + direction * step;
 		newTime = Math.max(0, Math.min(newTime, video.duration));
-		video.currentTime = newTime;
+		_seekTo(newTime);
 	}
 });
 
@@ -3196,7 +3549,7 @@ document.querySelectorAll(".decrease-volume").forEach((element) => {
 });
 
 
-// Player Shortcut
+// keybord Shortcut
 document.addEventListener("keydown", (event) => {
 	if (gifSearchContainer.contains(document.activeElement)) {
 		return;
@@ -3267,6 +3620,16 @@ document.addEventListener("keydown", (event) => {
 		return;
 	}
 
+	if (event.key === "ArrowUp") {
+		event.preventDefault();
+		updateVolume(Math.min(2, gainNode.gain.value + 0.05));
+		showStatusMessage(`Volume: ${(Math.min(2, gainNode.gain.value + 0.05) * 100).toFixed(0)}%`);
+	} else if (event.key === "ArrowDown") {
+		event.preventDefault();
+		updateVolume(Math.max(0, gainNode.gain.value - 0.05));
+		showStatusMessage(`Volume: ${(Math.max(0, gainNode.gain.value - 0.05) * 100).toFixed(0)}%`);
+	}
+
 	if (event.ctrlKey && event.key === ";") {
 		event.preventDefault();
 		togglePlaylist();
@@ -3292,11 +3655,6 @@ document.addEventListener("keydown", (event) => {
 
 		const zoomPercentage = Math.round(scale * 100);
 		showStatusMessage(`Zoom: ${zoomPercentage}%`);
-	}
-
-	if (event.ctrlKey && event.key === "d") {
-		event.preventDefault();
-		deleteCurrentMediaFile();
 	}
 
 	if (event.key.toLowerCase() === 't' && !event.ctrlKey) {
@@ -3332,20 +3690,34 @@ document.addEventListener("keydown", (event) => {
 		setPlaybackSpeed(1);
 		showStatusMessage("Normal Speed");
 	}
+	if (event.altKey && event.key.toLowerCase() === 'n') {
+		event.preventDefault();
+		sortMethod = 'name';
+		sortPlaylist();
+	} else if (event.altKey && event.key.toLowerCase() === 'd') {
+		event.preventDefault();
+		sortMethod = 'date';
+		sortPlaylist();
+	} else if (event.altKey && event.key.toLowerCase() === 'o') {
+		event.preventDefault();
+		sortDirection = sortDirection === 'ascending' ? 'descending' : 'ascending';
+		sortPlaylist();
+	}
 
-    if (event.altKey && event.key.toLowerCase() === 'n') {
-        event.preventDefault();
-        sortMethod = 'name';
-        sortPlaylist();
-    } else if ( event.altKey && event.key.toLowerCase() === 'd') {
-        event.preventDefault();
-        sortMethod = 'date';
-        sortPlaylist();
-    } else if ( event.altKey && event.key.toLowerCase() === 'o') {
-        event.preventDefault();
-        sortDirection = sortDirection === 'ascending' ? 'descending' : 'ascending';
-        sortPlaylist();
-    }
+	if (event.target === document.body || event.target === document.getElementById('media')) {
+		if (event.key === '[' || event.key === '{') {
+			event.preventDefault();
+			jumpToPreviousChapter();
+		}
+		if (event.key === ']' || event.key === '}') {
+			event.preventDefault();
+			jumpToNextChapter();
+		}
+		if (event.key.toLowerCase() === 'c') {
+			event.preventDefault();
+			toggleChaptersDropdown();
+		}
+	}
 
 	const keyActions = {
 		ArrowLeft: () => {
@@ -3396,6 +3768,15 @@ document.addEventListener("keydown", (event) => {
 			deleteCurrentMediaFile();
 			showStatusMessage("Deleted current media file.");
 		},
+		v: () => {
+			const total = video.textTracks.length;
+			if (total === 0) {
+				showStatusMessage('No subtitles');
+				return;
+			}
+			const next = currentSubtitleIndex + 1 >= total ? -1 : currentSubtitleIndex + 1;
+			switchSubtitleTrack(next);
+		}
 	};
 
 	if (keyActions[event.key]) {
@@ -3518,88 +3899,328 @@ document.addEventListener("fullscreenchange", () => {
 video.dataset.rotation = "0"; // Set rotation angle
 applyRotation(); // Apply initial rotation
 
-function populateAudioTracks() {
+// Audio Track Management (ffprobe-based — detects AC3, DTS, TrueHD, etc.) 
+
+// Holds ffprobe track data returned from main process
+
+// Audio Track Management
+//
+// ARCHITECTURE:
+//   video#media  → always plays /stream (HEVC/H264 video + container audio).
+//                  For native codecs (AAC) this is all we need.
+//   audio#audioTrackPlayer → hidden <audio> element that plays /audio/<n>
+//                  (ffmpeg transcodes EAC3/AC3/DTS → Opus/WebM).
+//                  We mute the <video> and sync this element to it.
+//
+// This avoids ALL video.src swapping, so no AbortError, no re-load races.
+//
+
+
+
+// Get or create the hidden <audio> element for non-native audio codecs
+function getAudioTrackPlayer() {
+	if (audioTrackPlayer) return audioTrackPlayer;
+
+	// Try to find it in the DOM
+	audioTrackPlayer = document.getElementById('audioTrackPlayer');
+
+	// If not found, create it dynamically
+	if (!audioTrackPlayer) {
+		console.warn('[Audio] audioTrackPlayer not in HTML, creating it dynamically...');
+		audioTrackPlayer = document.createElement('audio');
+		audioTrackPlayer.id = 'audioTrackPlayer';
+		audioTrackPlayer.style.display = 'none';
+		audioTrackPlayer.preload = 'none';
+		document.body.appendChild(audioTrackPlayer);
+		// console.log('[Audio] audioTrackPlayer element created successfully');
+	}
+
+	return audioTrackPlayer;
+}
+
+// Initialize on DOM ready
+document.addEventListener('DOMContentLoaded', function() {
+	getAudioTrackPlayer();
+});
+
+// Also try immediately (script may run after DOM is ready)
+if (document.readyState !== 'loading') {
+	getAudioTrackPlayer();
+}
+
+// All audio tracks now route through the external FFmpeg pipe regardless of codec.
+// The NATIVE_AUDIO_CODECS distinction is no longer needed for routing decisions.
+
+async function populateAudioTracks() {
 	const audioTrackLists = document.querySelectorAll(".audio-track-list");
-	audioTrackLists.forEach((audioTrackList) => {
-		audioTrackList.innerHTML = ""; // Clear any existing content
-
-		if (video && video.audioTracks) {
-			const audioTracks = video.audioTracks;
-			// console.log("Available audio tracks:", audioTracks.length);
-
-			if (audioTracks.length === 1) {
-				// Only one track, no need to switch
-				// console.log("Only one audio track available. No need to switch.");
-				const track = audioTracks[0];
-
-				// Create a list item for the single track
-				const trackItem = document.createElement("a");
-				trackItem.href = "javascript:void(0)";
-				trackItem.textContent = `${track.label || "Track"} ${track.language || "1"}`;
-				trackItem.className = "track-item";
-
-				audioTrackList.appendChild(trackItem);
-
-				// Enable the single audio track
-				audioTracks[0].enabled = true;
-				currentAudioIndex = 0; // Set the current track index
-				autoSwitchDone = true; // Mark that auto-switch has been done
-
-				// console.log(Single audio track selected: ${ track.label || "Unnamed Track" }, Language: ${track.language || "Unknown"}`);
-				return; // Exit the function as no further action is needed
-			}
-
-			let hindiTrackIndex = -1; // To store index of Hindi track
-			let englishTrackIndex = -1; // To store index of English track
-			let defaultTrackIndex = 0; // Fallback to the first track if neither Hindi nor English is found
-
-			for (let i = 0; i < audioTracks.length; i++) {
-				const track = audioTracks[i];
-
-				// Check for Hindi track (language codes may vary, e.g., 'hi', 'hin')
-				if (
-					track.language &&
-					(track.language.toLowerCase() === "hi" ||
-						track.language.toLowerCase() === "hin" ||
-						track.language.toLowerCase() === "hindi")
-				) {
-					hindiTrackIndex = i; // Save Hindi track index if found
-				}
-
-				// Check for English track (language codes may vary, e.g., 'en', 'eng')
-				if (
-					track.language &&
-					(track.language.toLowerCase() === "en" ||
-						track.language.toLowerCase() === "eng")
-				) {
-					englishTrackIndex = i; // Save English track index if found
-				}
-
-				// Create a list item for each track
-				const trackItem = document.createElement("a");
-				trackItem.href = "javascript:void(0)";
-				trackItem.textContent = `${track.label || "Track"} ${track.language || "1"}`;
-				trackItem.className = "track-item";
-				trackItem.onclick = () => switchTrack(i); // Add click handler
-
-				audioTrackList.appendChild(trackItem);
-			}
-
-			// Switch to Hindi track if found, otherwise fallback to English, otherwise default to the first track
-			if (hindiTrackIndex !== -1) {
-				switchTrack(hindiTrackIndex);
-				// console.log("Hindi track found and selected.");
-			} else if (englishTrackIndex !== -1) {
-				switchTrack(englishTrackIndex);
-				// console.log("Hindi track not found. English track selected.");
-			} else {
-				switchTrack(defaultTrackIndex);
-				// console.log("Neither Hindi nor English track found. Default track selected.");
-			}
-		} else {
-			console.error("audioTracks API is not supported in this browser");
-		}
+	audioTrackLists.forEach(list => {
+		list.innerHTML = "";
 	});
+
+	// Always stop any existing external audio before detection
+	stopExternalAudio();
+
+	const filePath = mediaFiles[currentVideoIndex];
+	if (!filePath) return;
+
+	// 1. Detect tracks via ffprobe
+	let ffTracks = [];
+	try {
+		const result = await window.electron.invoke('get-audio-tracks', filePath);
+		if (result && result.success) ffTracks = result.tracks || [];
+	} catch (e) {
+		console.warn('[Audio] get-audio-tracks failed:', e);
+	}
+
+	if (ffTracks.length > 0) {
+		ffprobeAudioTracks = ffTracks;
+
+		// Auto-select: Hindi > English > default-flagged > track 0
+		let autoIndex = 0;
+		const hindiIdx = ffTracks.findIndex(t => ['hi', 'hin', 'hindi'].includes(t.lang.toLowerCase()));
+		const engIdx = ffTracks.findIndex(t => ['en', 'eng'].includes(t.lang.toLowerCase()));
+		const defIdx = ffTracks.findIndex(t => t.default);
+		if (hindiIdx >= 0) autoIndex = hindiIdx;
+		else if (engIdx >= 0) autoIndex = engIdx;
+		else if (defIdx >= 0) autoIndex = defIdx;
+
+		currentAudioIndex = autoIndex;
+		autoSwitchDone = true;
+
+		// Build dropdown UI
+		audioTrackLists.forEach(list => {
+			ffTracks.forEach(function(track, i) {
+				var item = document.createElement("a");
+				item.href = "javascript:void(0)";
+				item.className = "track-item" + (i === autoIndex ? " selected-track" : "");
+				var codec = track.codec.toUpperCase();
+				var ch = track.channelLayout || (track.channels ? track.channels + 'ch' : '');
+				var lang = (track.lang && track.lang !== 'track' + (i + 1)) ? ' - ' + track.lang : '';
+				var title = (track.title && track.title !== track.codec) ? ' [' + track.title + ']' : '';
+				item.textContent = '[' + codec + (ch ? ' ' + ch : '') + ']' + lang + title;
+				item.addEventListener('click', function() {
+					switchAudioTrackByIndex(i);
+				});
+				list.appendChild(item);
+			});
+		});
+
+		// Apply the auto-selected track (no src-swap, no AbortError)
+		applyAudioTrack(autoIndex);
+		return;
+	}
+
+	// 2. No ffprobe tracks found
+	// The video.audioTracks browser API is unreliable for MKV in Electron
+	// (wrong indices, often empty). Show a message and let the user try the
+	// next file — ffprobe should always find tracks for valid media files.
+	ffprobeAudioTracks = [];
+	console.warn('[Audio] No tracks found via ffprobe — cannot populate audio menu');
+}
+
+// Apply audio track selection without touching video.src
+// For native codecs: use browser audioTracks API (video element handles it)
+// For non-native:    mute video, play /audio/<n> in hidden <audio> element, keep in sync
+// Audio sync state 
+var _activeAudioIndex = -1; // which track is in the <audio> element
+var _streamStartedAt = 0; // video.currentTime when the stream was launched
+var _driftTimer = null; // setInterval handle for drift correction
+var DRIFT_MAX = 0.5; // seconds — restart stream if drift exceeds this
+
+// Launch (or re-launch) the external audio stream from video.currentTime.
+// This kills the old ffmpeg process and starts a new one from the right seek position.
+// Because the stream is a live WebM pipe, we CANNOT seek audioTrackPlayer.currentTime —
+// instead we pass ?ss= so ffmpeg starts encoding at the correct offset.
+function startExternalAudio(index) {
+	audioTrackPlayer = getAudioTrackPlayer();
+	if (!audioTrackPlayer) {
+		console.error('[Audio] Failed to get or create audioTrackPlayer element!');
+		return;
+	}
+
+	_stopDriftTimer();
+
+	// Kill previous stream
+	audioTrackPlayer.pause();
+	audioTrackPlayer.removeAttribute('src');
+	try {
+		audioTrackPlayer.load();
+	} catch (e) {}
+
+	_activeAudioIndex = index;
+	_streamStartedAt = video.currentTime || 0;
+
+	var ss = _streamStartedAt.toFixed(3);
+	var url = 'http://127.0.0.1:54321/audio/' + index + '?ss=' + ss + '&t=' + Date.now();
+
+	// console.log('[Audio] Starting external audio stream:');
+	// console.log('  Track:', index);
+	// console.log('  Start position:', ss + 's');
+	// console.log('  URL:', url);
+	// console.log('  Video paused:', video.paused);
+
+	audioTrackPlayer.src = url;
+	audioTrackPlayer.muted = false;
+	audioTrackPlayer.volume = Math.min(1, gainNode ? gainNode.gain.value : 1);
+	audioTrackPlayer.playbackRate = video.playbackRate;
+
+	// Explicitly load the new source
+	audioTrackPlayer.load();
+
+	// Error handler
+	function onError(e) {
+		audioTrackPlayer.removeEventListener('error', onError);
+		console.error('[Audio] Stream error:', e);
+		console.error('[Audio] Error details:', audioTrackPlayer.error);
+	}
+	audioTrackPlayer.addEventListener('error', onError);
+
+	// Wait for enough buffered data, then play
+	function onCanPlay() {
+		audioTrackPlayer.removeEventListener('canplay', onCanPlay);
+		// console.log('[Audio] Stream ready, playing...');
+
+		// Always try to play, even if video is paused (video might play immediately after)
+		audioTrackPlayer.play().then(function() {
+			// console.log('[Audio] Playing successfully');
+			_startDriftTimer();
+			// If video is paused, pause audio too
+			if (video.paused) {
+				audioTrackPlayer.pause();
+			}
+		}).catch(function(e) {
+			if (e.name !== 'AbortError') {
+				console.error('[Audio] play() failed:', e.name, e.message);
+			}
+		});
+	}
+	audioTrackPlayer.addEventListener('canplay', onCanPlay);
+
+	// Timeout fallback - if canplay never fires
+	setTimeout(function() {
+		if (audioTrackPlayer.readyState < 2) {
+			console.warn('[Audio] Stream not ready after 5s, forcing play attempt...');
+			audioTrackPlayer.play().catch(function(e) {
+				console.error('[Audio] Force play failed:', e.message);
+			});
+		}
+	}, 5000);
+}
+
+// Stop the external audio stream and clear drift correction.
+// NOTE: We do NOT unmute video here — video stays muted because all audio
+// comes through the external pipe. Video is only unmuted when no media is loaded.
+function stopExternalAudio() {
+	_stopDriftTimer();
+	audioTrackPlayer = getAudioTrackPlayer();
+	if (audioTrackPlayer) {
+		audioTrackPlayer.pause();
+		audioTrackPlayer.removeAttribute('src');
+		try {
+			audioTrackPlayer.load();
+		} catch (e) {}
+	}
+	_activeAudioIndex = -1;
+}
+
+// Drift correction: every 2 s check how far audio has wandered from video.
+// audioTrackPlayer.currentTime counts up from 0 since stream start.
+// Expected audio time = video.currentTime - _streamStartedAt.
+// If |expected - actual| > DRIFT_MAX, restart the stream from current position.
+function _startDriftTimer() {
+	_stopDriftTimer();
+	_driftTimer = setInterval(function() {
+		if (!audioTrackPlayer || !audioTrackPlayer.src) {
+			_stopDriftTimer();
+			return;
+		}
+		if (video.paused || audioTrackPlayer.paused) return; // OK while paused
+
+		if (audioTrackPlayer.readyState < 2) {
+			// Stalled
+			// console.log('[Audio] stalled — restarting');
+			startExternalAudio(_activeAudioIndex);
+			return;
+		}
+
+		var expected = video.currentTime - _streamStartedAt;
+		var actual = audioTrackPlayer.currentTime;
+		var drift = Math.abs(expected - actual);
+		if (drift > DRIFT_MAX) {
+			// console.log('[Audio] drift=' + drift.toFixed(3) + 's — resyncing');
+			startExternalAudio(_activeAudioIndex);
+		}
+	}, 2000);
+}
+
+function _stopDriftTimer() {
+	if (_driftTimer) {
+		clearInterval(_driftTimer);
+		_driftTimer = null;
+	}
+}
+
+// Apply a chosen audio track (called on load and on user pick)
+//
+// WHY always external (even for native AAC):
+//   video.audioTracks[] browser API is unreliable for MKV in Electron.
+//   Its indices don't match ffprobe's — e.g. if track 0 is EAC3 (non-native),
+//   the browser may only expose the two AAC tracks as indices 0 and 1, making
+//   ffprobe index 2 → video.audioTracks[2] = undefined → no track enabled →
+//   browser falls back to English default.
+//   The HTTP /audio/<n> pipe already transcodes to WebM/Opus for EAC3/AC3/DTS.
+//   For AAC it's equally fast — FFmpeg just reads/remuxes, barely any CPU cost.
+//   All three tracks now work identically through one reliable code path.
+function applyAudioTrack(index) {
+	const track = ffprobeAudioTracks[index];
+	if (!track) return;
+
+	currentAudioIndex = index;
+	autoSwitchDone = true;
+
+	// Mute the video element — audio comes entirely from the external pipe
+	video.muted = true;
+
+	// Update UI highlight
+	document.querySelectorAll('.audio-track-list .track-item').forEach((el, i) => {
+		el.classList.toggle('selected-track', i === index);
+	});
+
+	// Start/switch the ffmpeg audio stream for this track
+	startExternalAudio(index);
+
+	// console.log(`[Audio] Switching to track ${index}: ${track.codec.toUpperCase()} - ${track.lang} "${track.title}"`);
+}
+
+// Mirror play / pause / seek / rate from video → external audio element
+video.addEventListener('play', function() {
+	if (!audioTrackPlayer || !audioTrackPlayer.src) return;
+	audioTrackPlayer.play().catch(function() {});
+});
+
+video.addEventListener('pause', function() {
+	if (!audioTrackPlayer || !audioTrackPlayer.src) return;
+	audioTrackPlayer.pause();
+});
+
+video.addEventListener('seeked', function() {
+	if (!audioTrackPlayer || !audioTrackPlayer.src) return;
+	// Live stream can't seek in place — restart from new position
+	startExternalAudio(_activeAudioIndex);
+});
+
+video.addEventListener('ratechange', function() {
+	if (!audioTrackPlayer || !audioTrackPlayer.src) return;
+	audioTrackPlayer.playbackRate = video.playbackRate;
+});
+
+
+// Called when user picks a track from the dropdown
+function switchAudioTrackByIndex(index) {
+	var track = ffprobeAudioTracks[index];
+	if (!track) return;
+	applyAudioTrack(index);
+	showStatusMessage('[Audio] ' + track.codec.toUpperCase() + ' - ' + track.lang);
 }
 
 function switchTrack(index) {
@@ -3607,65 +4228,53 @@ function switchTrack(index) {
 		const audioTracks = video.audioTracks;
 		const audioTrackLists = document.querySelectorAll(".audio-track-list");
 
-		// Deselect all audio tracks and remove highlight from all items
 		for (let i = 0; i < audioTracks.length; i++) {
+			if (!audioTracks[i]) continue;
 			audioTracks[i].enabled = false;
-
-			audioTrackLists.forEach((audioTrackList) => {
-				const trackItems = audioTrackList.querySelectorAll(".track-item");
-				if (trackItems[i]) {
-					trackItems[i].classList.remove("selected-track");
-				}
+			audioTrackLists.forEach(list => {
+				const items = list.querySelectorAll(".track-item");
+				if (items[i]) items[i].classList.remove("selected-track");
 			});
 		}
 
-		// Enable the selected audio track
+		if (!audioTracks[index]) return;
 		audioTracks[index].enabled = true;
-		currentAudioIndex = index; // Update current track index
-		autoSwitchDone = true; // Mark that auto-switch has been done
+		currentAudioIndex = index;
+		autoSwitchDone = true;
 
-		// Highlight the selected track
-		audioTrackLists.forEach((audioTrackList) => {
-			const trackItems = audioTrackList.querySelectorAll(".track-item");
-			if (trackItems[index]) {
-				trackItems[index].classList.add("selected-track");
-			}
+		audioTrackLists.forEach(list => {
+			const items = list.querySelectorAll(".track-item");
+			if (items[index]) items[index].classList.add("selected-track");
 		});
 
-		// Get the label and language of the selected track
 		const track = audioTracks[index];
-		const trackName = track.label || "Track ";
-		const trackLanguage = track.language || "1";
-
-		// Display the status message with track name and language
-		showStatusMessage(`${trackName} - ${trackLanguage}`);
-		// console.log(Switched to track ${index + 1}: ${audioTracks[index].label || "Unnamed Track" );
-
-		// Sync audio and video without interrupting playback
+		showStatusMessage(`${track.label || "Track "} - ${track.language || "1"}`);
 		syncAudioAndVideo();
 	} else {
 		console.error("audioTracks API is not supported in this browser");
 	}
 }
 
-
 // Sync audio and video without interrupting playback
 function syncAudioAndVideo() {
 	if (video.readyState >= 2) {
 		if (!video.paused) {
-			video.currentTime = video.currentTime; // Keep playing without interruption
+			video.currentTime = video.currentTime;
 		} else {
-			video
-				.play()
-				.catch((error) => console.error("Error playing video:", error));
+			video.play().catch((error) => console.error("Error playing video:", error));
 		}
 	}
 }
 
-// Handle key press for switching tracks
+// Handle key press for switching audio tracks (B key cycles through)
 function handleKeyPress(event) {
 	if (event.key.toLowerCase() === "b") {
-		if (video && video.audioTracks && video.audioTracks.length > 0) {
+		if (ffprobeAudioTracks.length > 0) {
+			// ffprobe mode — cycle through detected tracks
+			const next = (currentAudioIndex + 1) % ffprobeAudioTracks.length;
+			switchAudioTrackByIndex(next);
+		} else if (video && video.audioTracks && video.audioTracks.length > 0) {
+			// Native mode fallback
 			currentAudioIndex = (currentAudioIndex + 1) % video.audioTracks.length;
 			switchTrack(currentAudioIndex);
 		}
@@ -3675,8 +4284,733 @@ function handleKeyPress(event) {
 // Add event listener for key press
 document.addEventListener("keydown", handleKeyPress);
 
-// Call this function when video metadata is loaded or when the video source changes
-video.addEventListener("loadeddata", populateAudioTracks);
+// Audio tracks are populated in loadedmetadata (already handles this)
+
+
+// Freeze-frame seek overlay
+// Problem: browser clears the video frame the instant video.currentTime changes,
+// causing a black/white flash while it fetches & decodes the new position.
+//
+// Fix (same technique used by YouTube, Netflix, VLC preview):
+//   1. Before seeking → snapshot current frame onto a hidden <canvas>
+//   2. Show canvas ON TOP of video (covers the black flash completely)
+//   3. Show spinner on top of the canvas so user knows it's loading
+//   4. When 'seeked' fires AND first new frame is painted → hide canvas
+//
+// The canvas exactly matches the video element size/position so the transition
+// is completely seamless — user never sees black.
+
+let _freezeCanvas = null; // created once, reused
+let _freezeCtx = null;
+let _freezeActive = false;
+let _seekSpinnerTimer = null;
+let _rafHandle = null;
+
+function _ensureFreezeCanvas() {
+	if (_freezeCanvas) return;
+	_freezeCanvas = document.createElement('canvas');
+	_freezeCanvas.style.cssText = [
+		'position:absolute',
+		'top:0', 'left:0', 'width:100%', 'height:100%',
+		'object-fit:contain',
+		'pointer-events:none',
+		'z-index:97', // above video (z=auto) but below subtitle (z=98)
+		'display:none',
+	].join(';');
+	document.getElementById('mediaPlayer').appendChild(_freezeCanvas);
+	_freezeCtx = _freezeCanvas.getContext('2d');
+}
+
+function _captureAndFreeze() {
+	if (!video.videoWidth || !video.videoHeight) return;
+	_ensureFreezeCanvas();
+
+	// Match canvas resolution to actual video pixels for sharp snapshot
+	_freezeCanvas.width = video.videoWidth;
+	_freezeCanvas.height = video.videoHeight;
+
+	try {
+		_freezeCtx.drawImage(video, 0, 0, _freezeCanvas.width, _freezeCanvas.height);
+		_freezeCanvas.style.display = 'block';
+		_freezeActive = true;
+	} catch (e) {
+		// drawImage can fail if video is in error state — just skip freeze
+		_freezeActive = false;
+	}
+}
+
+function _releaseFreezeFrame() {
+	clearTimeout(_seekSpinnerTimer);
+	cancelAnimationFrame(_rafHandle);
+	if (_freezeCanvas) _freezeCanvas.style.display = 'none';
+	_freezeActive = false;
+	// Loader completely disabled
+}
+
+function _onSeeking() {
+	// Capture current frame BEFORE the browser wipes it for seamless seeking
+	_captureAndFreeze();
+	// Do NOT pause - allows smooth seeking without buffering
+	// console.log('[Seek] Fast seeking - no buffer pause');
+}
+
+function _onSeeked() {
+	// Don't release immediately — wait for the first new painted frame via rAF.
+	// This ensures the canvas hides only AFTER the new frame is visible,
+	// so there is zero gap between freeze-frame and live video.
+	cancelAnimationFrame(_rafHandle);
+	_rafHandle = requestAnimationFrame(() => {
+		_rafHandle = requestAnimationFrame(() => {
+			// Two rAF levels: first fires at start of paint, second after it completes
+			_releaseFreezeFrame();
+		});
+	});
+}
+
+video.addEventListener('seeking', _onSeeking);
+video.addEventListener('waiting', () => {
+	// Loader completely disabled - no spinner shown on buffer
+	// console.log('[Seek] Buffering...');
+});
+video.addEventListener('seeked', _onSeeked);
+video.addEventListener('playing', _releaseFreezeFrame);
+video.addEventListener('canplay', () => {
+	// Loader completely disabled
+});
+
+// Debounced seek helper
+// Throttle rapid currentTime changes (drag, wheel) to one Range request per 100 ms.
+// The freeze-frame already covers the gap visually, so debounce is for perf only.
+let _seekDebounceTimer = null;
+
+function _seekTo(time) {
+	clearTimeout(_seekDebounceTimer);
+	_seekDebounceTimer = setTimeout(() => {
+		video.currentTime = time;
+	}, 80);
+}
+
+
+let currentSubtitleIndex = -1; // -1 = off
+
+// Tracks currently-alive Blob URLs so we can revoke them when loading a new video
+// (avoids memory leaks — browser keeps Blob data alive until revoked)
+let _subtitleBlobUrls = [];
+
+// ASS style data per track (index → { styles, events }).  Null for SRT/VTT.
+// Populated by populateSubtitleTracks(), consumed by _renderCues().
+let _subtitleCueStyles = [];
+
+// ── Subtitle population guard ─────────────────────────────────────────────
+// Problem: loadedmetadata fires TWICE — once when video.src is set, and again
+// when populateSubtitleTracks appends <track> elements to the video element.
+// A simple boolean flag resets between the two fires (async completes first),
+// so the second fire bypasses it and re-populates → duplicate track list.
+//
+// Fix: key the guard to the file path. Once a file's subtitles are populated,
+// any subsequent call for the SAME file is a no-op — regardless of timing.
+// Resets to null when a new file starts loading (playMediaFile / stopPlayback).
+let _subtitlePopulatedForFile = null;
+
+async function populateSubtitleTracks() {
+	const filePath = mediaFiles[currentVideoIndex];
+	if (!filePath) return;
+	// Already populated for this exact file — skip (handles double loadedmetadata)
+	if (filePath === _subtitlePopulatedForFile) return;
+	_subtitlePopulatedForFile = filePath; // claim this file immediately (before any await)
+
+	// Tear down previous subtitle state & revoke old Blob URLs
+	_subtitleTeardown();
+	video.querySelectorAll('track').forEach(t => t.remove());
+	_subtitleBlobUrls.forEach(u => URL.revokeObjectURL(u));
+	_subtitleBlobUrls = [];
+	_subtitleCueStyles = [];
+	currentSubtitleIndex = -1;
+
+	// Reset UI lists
+	const subtitleLists = document.querySelectorAll('.subtitle-track-list');
+	subtitleLists.forEach(list => {
+		list.innerHTML = '';
+		const offBtn = document.createElement('a');
+		offBtn.href = 'javascript:void(0)';
+		offBtn.className = 'subtitle-item active';
+		offBtn.dataset.index = '-1';
+		offBtn.textContent = 'Off';
+		offBtn.addEventListener('click', () => switchSubtitleTrack(-1));
+		list.appendChild(offBtn);
+	});
+
+	let result;
+	try {
+		result = await window.electron.invoke('get-subtitle-tracks', filePath);
+	} catch (err) {
+		console.error('[Sub] IPC error:', err);
+		_subtitlePopulatedForFile = null; // allow retry on error
+		return;
+	}
+	if (!result || !result.success || result.tracks.length === 0) return;
+
+	let forcedIndex = -1;
+
+	result.tracks.forEach((track, i) => {
+		// Create Blob URL from the VTT string sent by main process 
+		// No HTTP fetch needed — data is already in memory.
+		const blob = new Blob([track.vttContent], {
+			type: 'text/vtt; charset=utf-8'
+		});
+		const blobUrl = URL.createObjectURL(blob);
+		_subtitleBlobUrls.push(blobUrl); // remember for cleanup
+
+		// Store ASS style data for this track (null for SRT/VTT, object for ASS/SSA)
+		_subtitleCueStyles[i] = track.cueStyles || null;
+
+		const trackEl = document.createElement('track');
+		trackEl.src = blobUrl; // ← instant: no network, no disk
+		trackEl.kind = 'subtitles';
+		trackEl.label = track.title;
+		trackEl.srclang = track.lang || 'und';
+		trackEl.default = false;
+		video.appendChild(trackEl);
+
+		if (track.forced && forcedIndex === -1) forcedIndex = i;
+
+		subtitleLists.forEach(list => {
+			const a = document.createElement('a');
+			a.href = 'javascript:void(0)';
+			a.className = 'subtitle-item';
+			a.dataset.index = i;
+			const badge = track.forced ? ' ⚡' : '';
+			a.textContent = `${track.title} (${track.lang})${badge}`;
+			a.addEventListener('click', () => switchSubtitleTrack(i));
+			list.appendChild(a);
+		});
+	});
+
+	// Auto-activate forced track if present
+	if (forcedIndex !== -1) switchSubtitleTrack(forcedIndex);
+}
+
+// Subtitle render engine
+// Event-driven: uses cuechange + seeked — zero polling, zero temp files.
+// All state lives in these four variables; _subtitleTeardown() resets them all.
+
+let _subTrack = null; // active TextTrack object
+let _subCueHandler = null; // cuechange listener (kept so we can removeEventListener)
+let _subSeekHandler = null; // seeked listener
+let _subReadyTimer = null; // interval used while waiting for Blob cues to parse
+
+// Teardown: removes all listeners, clears display, disables all tracks.
+// Called at the start of every populateSubtitleTracks() and switchSubtitleTrack().
+function _subtitleTeardown() {
+	if (_subTrack && _subCueHandler) {
+		try {
+			_subTrack.removeEventListener('cuechange', _subCueHandler);
+		} catch (_) {}
+	}
+	if (_subSeekHandler) {
+		video.removeEventListener('seeked', _subSeekHandler);
+	}
+	if (_subReadyTimer) {
+		clearInterval(_subReadyTimer);
+		_subReadyTimer = null;
+	}
+	Array.from(video.textTracks).forEach(t => {
+		try {
+			t.mode = 'disabled';
+		} catch (_) {}
+	});
+	const disp = document.getElementById('subtitle-display');
+	if (disp) disp.innerHTML = '';
+	_subTrack = null;
+	_subCueHandler = null;
+	_subSeekHandler = null;
+}
+
+// VLC-equivalent ASS subtitle renderer
+// Implements the same positioning logic as libass/VLC:
+//   • \pos(x,y)         → exact pixel → percentage of PlayRes
+//   • \an / style align → CSS transform anchor (numpad 1-9)
+//   • \move()           → midpoint used for static placement
+//   • Style margins     → fallback when no \pos tag present
+//   • Inline color/bold/italic from style + overrides
+//
+// Numpad alignment grid (same as libass):
+//   7 8 9   ← top
+//   4 5 6   ← middle
+//   1 2 3   ← bottom
+
+const _ALIGN_TRANSFORM = {
+	1: ['0%', '-100%'], // bot-left
+	2: ['-50%', '-100%'], // bot-center
+	3: ['-100%', '-100%'], // bot-right
+	4: ['0%', '-50%'], // mid-left
+	5: ['-50%', '-50%'], // mid-center
+	6: ['-100%', '-50%'], // mid-right
+	7: ['0%', '0%'], // top-left
+	8: ['-50%', '0%'], // top-center
+	9: ['-100%', '0%'], // top-right
+};
+const _ALIGN_TEXT = {
+	1: 'left',
+	2: 'center',
+	3: 'right',
+	4: 'left',
+	5: 'center',
+	6: 'right',
+	7: 'left',
+	8: 'center',
+	9: 'right'
+};
+
+const _HAS_LETTER   = /\p{L}/u;
+const _IS_NUMS_ONLY = /^[\d\s.,\-]+$/;
+// Detects ASS draw-path lines after {\p1} tag stripping.
+// Draw paths contain ONLY ASS draw-command letters (m l b h v c s q t a z),
+// digits, whitespace, and decimal/minus/slash characters.
+// Removing those leaves an empty string for draw data, a non-empty string for real text.
+// Also requires at least one digit (so lone letters like "a" or "m" are not flagged).
+const _IS_DRAW_CMD = s => {
+  const residual = s.replace(/[mlbhvcsqtaz]/gi, '').replace(/[\d\s.,\-\/]/g, '').trim();
+  return residual.length === 0 && /\d/.test(s);
+};
+
+function _vttToHtml(text) {
+	// Escape all HTML first to prevent injection
+	text = text
+		.replace(/&/g, '&amp;')
+		.replace(/</g, '&lt;')
+		.replace(/>/g, '&gt;');
+
+	// Now restore safe VTT formatting tags
+	text = text
+		.replace(/&lt;b&gt;/gi, '<b>')
+		.replace(/&lt;\/b&gt;/gi, '</b>')
+		.replace(/&lt;i&gt;/gi, '<i>')
+		.replace(/&lt;\/i&gt;/gi, '</i>')
+		.replace(/&lt;u&gt;/gi, '<u>')
+		.replace(/&lt;\/u&gt;/gi, '</u>')
+		.replace(/&lt;br&gt;/gi, '<br>')
+		.replace(/&lt;br\s*\/&gt;/gi, '<br>');
+
+	return text;
+}
+
+
+// ASS per-segment renderer
+// Converts an array of {text, color, bold, italic, underline, fontSize} segments (parsed
+// by main.js from raw ASS override tags) into HTML with per-span styling.
+// This is what VLC/libass does: every tag-block produces a new styled run of text.
+function _renderAssSegments(segments, pResY, dispH) {
+	let flat = '';
+	for (const seg of segments) {
+		const lines = seg.text.split('\n');
+		for (let li = 0; li < lines.length; li++) {
+			if (li > 0) flat += '\n';
+			const raw = lines[li];
+			if (!raw) continue;
+			const escaped = raw
+				.replace(/&/g, '&amp;')
+				.replace(/</g, '&lt;')
+				.replace(/>/g, '&gt;');
+			const css = [];
+			// Color: skip pure-white (default), apply everything else
+			if (seg.color && !/^#(?:f{6}|fff)$/i.test(seg.color)) css.push('color:' + seg.color);
+			if (seg.bold) css.push('font-weight:bold');
+			if (seg.italic) css.push('font-style:italic');
+			if (seg.underline) css.push('text-decoration:underline');
+			if (seg.fontSize > 0) {
+				// Scale from ASS canvas pixels to display pixels
+				const scaledFs = (pResY > 0 && dispH > 0) ?
+					Math.round((seg.fontSize / pResY) * dispH) :
+					seg.fontSize;
+				if (scaledFs > 0) css.push('font-size:' + scaledFs + 'px');
+			}
+			flat += css.length ?
+				`<span style="${css.join(';')}">${escaped}</span>` :
+				escaped;
+		}
+	}
+	// Wrap each line in a .subtitle-line span (matches existing VTT path)
+	return flat.split('\n')
+		.map(l => `<span class="subtitle-line">${l}</span>`)
+		.join('<br>');
+}
+
+
+// Returns the actual rendered height of the video content inside the element 
+// The <video> element fills the overlay container but the content is letterboxed.
+// Font sizes must be scaled relative to the VIDEO HEIGHT, not the container height —
+// exactly like VLC scales libass fonts to the video frame before compositing.
+function _getVideoDisplayHeight() {
+	const vw = video.videoWidth;
+	const vh = video.videoHeight;
+	const cw = video.clientWidth || video.offsetWidth;
+	const ch = video.clientHeight || video.offsetHeight;
+	if (!vw || !vh || !cw || !ch) return ch || 480;
+	const videoAspect = vw / vh;
+	const containerAspect = cw / ch;
+	// object-fit:contain — video is pillarboxed or letterboxed
+	if (videoAspect > containerAspect) {
+		// Wider than container → letterboxed (bars top/bottom)
+		return Math.round(cw / videoAspect);
+	} else {
+		// Taller than container → pillarboxed (bars left/right)
+		return ch;
+	}
+}
+
+// Build CSS text-shadow from ASS Outline + Shadow values
+// Outline is simulated with 8 hard shadows; Shadow is a directional drop shadow.
+// Both values are in ASS canvas pixels (at PlayResY scale) — we scale to display.
+function _buildAssTextShadow(outlinePx, shadowPx, outlineColor, shadowColor, pResY, dispH) {
+	const scale = (pResY > 0 && dispH > 0) ? dispH / pResY : 1;
+	const o = outlinePx * scale;
+	const s = shadowPx * scale;
+	const shadows = [];
+	if (o > 0.1) {
+		const oc = outlineColor || '#000000';
+		const dirs = [
+			[-o, -o],
+			[-o, 0],
+			[-o, o],
+			[0, -o],
+			[0, o],
+			[o, -o],
+			[o, 0],
+			[o, o]
+		];
+		for (const [dx, dy] of dirs) {
+			shadows.push(`${dx.toFixed(2)}px ${dy.toFixed(2)}px 0 ${oc}`);
+		}
+	}
+	if (s > 0.1) {
+		const sc = shadowColor || 'rgba(0,0,0,0.75)';
+		shadows.push(`${s.toFixed(2)}px ${s.toFixed(2)}px ${(s * 0.5).toFixed(2)}px ${sc}`);
+	}
+	return shadows.join(', ');
+}
+
+function _renderCues(activeCues) {
+	const disp = document.getElementById('subtitle-display');
+	if (!disp) return;
+	disp.innerHTML = '';
+	if (!activeCues || activeCues.length === 0) return;
+
+	const assData = _subtitleCueStyles[currentSubtitleIndex] || null;
+	const pResX = assData ? assData.playResX : 0;
+	const pResY = assData ? assData.playResY : 0;
+	const seen = new Set(); // dedup identical cue text
+	const usedEventSet = new Set(); // each ASS event consumed by exactly one VTT cue
+
+	Array.from(activeCues).forEach(cue => {
+		const raw = cue.text || '';
+		let text = raw
+			.replace(/\{[^}]*\\p\d[^}]*\}/g, '') // strip ASS draw-mode {\p1} blocks
+			.replace(/\{[^}]+\}/g, '') // strip all other {ASS tag} blocks
+			.replace(/\\[Nn]/g, '\n') // \N or \n → real newline
+			.trim();
+		if (!text) return;
+
+		const validLines = text.split('\n').filter(line => {
+			const l = line.trim();
+			return l && !_IS_DRAW_CMD(l) && !_IS_NUMS_ONLY.test(l) && _HAS_LETTER.test(l);
+		});
+		if (validLines.length === 0) return;
+		text = validLines.join('\n');
+
+		const plainKey = text.replace(/<[^>]+>/g, '');
+		if (seen.has(plainKey)) return;
+		seen.add(plainKey);
+
+		let cueColor = '',
+			cueBold = false,
+			cueItalic = false,
+			cueUnderline = false,
+			cueFontName = '';
+		let cueFontSize = 0,
+			cueOutline = 0,
+			cueShadow = 0,
+			cueOutlineColor = '#000000',
+			cueShadowColor = null,
+			cueBorderStyle = 1;
+		let posX = null,
+			posY = null,
+			assAlign = null;
+		let bestEvent = null; // hoisted — set inside if(assData), read after it
+
+		if (assData) {
+			const st = cue.startTime;
+			const et = cue.endTime;
+
+			// Smart event matching
+			// Problem: multiple simultaneous ASS events (signs + dialogue) share
+			// the same timestamp, so time-only matching assigns them all the same
+			// position. Fix: prefer text-content matching; each event consumed once.
+			// Step 1: collect ALL events whose time window overlaps this cue.
+			const candidates = assData.events.filter(e =>
+				Math.abs(e.start - st) < 0.25 ||
+				(e.start <= st + 0.05 && e.end >= et - 0.05)
+			);
+
+			// Step 2: normalize cue text for comparison (strip HTML tags, lowercase)
+			const cueNorm = plainKey
+				.replace(/<[^>]+>/g, '')
+				.toLowerCase()
+				.replace(/s+/g, ' ')
+				.trim();
+
+			// Step 3: score each candidate by text similarity (character overlap ratio)
+			// then pick the highest-scoring unused event.
+			bestEvent = null;
+			let bestScore = -1;
+
+			for (const e of candidates) {
+				if (usedEventSet.has(e)) continue; // already consumed by another cue
+
+				// Simple similarity: count common chars / max length
+				const eText = e.text || '';
+				if (!eText && candidates.length === 1) {
+					// Only candidate, no text stored — use it directly
+					bestEvent = e;
+					bestScore = 1;
+					break;
+				}
+
+				// Compute longest-common-substring approximation via char bigrams
+				const bigrams = s => {
+					const b = new Set();
+					for (let i = 0; i < s.length - 1; i++) b.add(s[i] + s[i + 1]);
+					return b;
+				};
+				const cb = bigrams(cueNorm),
+					eb = bigrams(eText);
+				let common = 0;
+				cb.forEach(g => {
+					if (eb.has(g)) common++;
+				});
+				const score = (cb.size + eb.size) === 0 ? 0 : (2 * common) / (cb.size + eb.size);
+
+				if (score > bestScore) {
+					bestScore = score;
+					bestEvent = e;
+				}
+			}
+
+			// Fallback: if no text-match found, take first unused candidate by time
+			if (!bestEvent) {
+				bestEvent = candidates.find(e => !usedEventSet.has(e)) || candidates[0] || null;
+			}
+
+			if (bestEvent) {
+				usedEventSet.add(bestEvent); // mark as consumed for this render call
+				const styleDef = assData.styles[bestEvent.style] || assData.styles['Default'] || null;
+				if (styleDef) {
+					cueColor = bestEvent.inlineColor || styleDef.color;
+					cueBold = bestEvent.inlineBold != null ? bestEvent.inlineBold : styleDef.bold;
+					cueItalic = bestEvent.inlineItalic != null ? bestEvent.inlineItalic : styleDef.italic;
+					cueUnderline = styleDef.underline || false;
+					cueFontName = styleDef.fontName || '';
+					cueFontSize = styleDef.fontSize || 0;
+					cueOutline = styleDef.outline || 0;
+					cueShadow = styleDef.shadow || 0;
+					cueOutlineColor = styleDef.outlineColor || '#000000';
+					cueShadowColor = styleDef.shadowColor || null;
+					cueBorderStyle = styleDef.borderStyle || 1;
+				}
+				posX = bestEvent.posX;
+				posY = bestEvent.posY;
+				assAlign = bestEvent.align ?? (assData.styles[bestEvent.style]?.alignment) ?? 2;
+
+				// Margin-based fallback when no \pos tag
+				if (posX === null && pResX > 0 && pResY > 0) {
+					const style = assData.styles[bestEvent.style] || {};
+					const mL = style.marginL || 0;
+					const mR = style.marginR || 0;
+					const mV = style.marginV || 0;
+					const row = Math.ceil((assAlign || 2) / 3);
+					if ((assAlign || 2) % 3 === 1) posX = mL;
+					else if ((assAlign || 2) % 3 === 0) posX = pResX - mR;
+					else posX = pResX / 2;
+					if (row === 1) posY = pResY - mV;
+					else if (row === 3) posY = mV;
+					else posY = pResY / 2;
+				}
+			}
+		}
+
+		let leftPct, topPct, transformX, transformY, cssAlign;
+
+		if (assData && posX !== null && posY !== null && pResX > 0 && pResY > 0) {
+			leftPct = (posX / pResX) * 100;
+			topPct = (posY / pResY) * 100;
+			const an = Math.max(1, Math.min(9, assAlign || 2));
+			[transformX, transformY] = _ALIGN_TRANSFORM[an];
+			cssAlign = _ALIGN_TEXT[an];
+		} else {
+			let vLine = typeof cue.line === 'number' ? cue.line : NaN;
+			if (!isNaN(vLine)) {
+				topPct = cue.snapToLines === false ?
+					Math.max(0, Math.min(100, vLine)) :
+					(vLine < 0 ? Math.max(0, 100 + vLine * 5) : Math.min(100, vLine * 5));
+			} else {
+				topPct = 88;
+			}
+			leftPct = typeof cue.position === 'number' ? Math.max(0, Math.min(100, cue.position)) : 50;
+			const vAlign = cue.align || 'center';
+			cssAlign = vAlign === 'start' ? 'left' : vAlign === 'end' ? 'right' : 'center';
+			transformX = cssAlign === 'left' ? '0%' : cssAlign === 'right' ? '-100%' : '-50%';
+			transformY = '-50%';
+		}
+
+		// Clamp positions so cue always stays within the visible overlay 
+		// This prevents off-screen placement that causes 1-char-wide wrapping.
+		leftPct = Math.max(0, Math.min(100, leftPct));
+		topPct = Math.max(0, Math.min(100, topPct));
+
+		// Max-width: for positioned ASS cues use generous width so text doesn't
+		// wrap character-by-character. Never trust cue.size from VTT (FFmpeg often
+		// sets it to tiny values for sign subtitles).
+		const hasAssPos = assData && posX !== null;
+		const maxW = hasAssPos ? 90 : Math.max(50, Math.min(90, cue.size || 80));
+
+		const wrapper = document.createElement('div');
+		// 'wrap' class enables word-wrap for multi-line dialogue.
+		// Single-line positioned signs use nowrap (default) to prevent char-by-char stacking.
+		const isMultiLine = text.includes('\n');
+		wrapper.className = 'subtitle-cue' + (isMultiLine ? ' wrap' : '');
+		wrapper.style.cssText = [
+			'left:' + leftPct.toFixed(3) + '%',
+			'top:' + topPct.toFixed(3) + '%',
+			'transform:translate(' + transformX + ',' + transformY + ')',
+			'text-align:' + cssAlign,
+			'max-width:' + maxW + '%',
+		].join(';');
+
+		// Color: apply wrapper-level style only for non-segmented cues.
+		// For ASS segment cues, each <span> already carries its own color — applying
+		// a wrapper color would override per-segment colors via CSS inheritance.
+		const useSegments = bestEvent && Array.isArray(bestEvent.segments) && bestEvent.segments.length > 0;
+		const isWhite = c => !c || /^#(?:f{6}|fff)$/i.test(c);
+		if (!useSegments && !isWhite(cueColor)) {
+			wrapper.style.color = cueColor;
+		}
+		// Bold / italic / underline: only set on wrapper for non-segmented cues.
+		if (!useSegments) {
+			if (cueBold) wrapper.style.fontWeight = 'bold';
+			if (cueItalic) wrapper.style.fontStyle = 'italic';
+			if (cueUnderline) wrapper.style.textDecoration = 'underline';
+		}
+		if (cueFontName) wrapper.style.fontFamily = '"' + cueFontName + '",Fira Sans,sans-serif';
+
+		// Font size: scale ASS canvas pixels → actual video display pixels 
+		// ASS FontSize is relative to PlayResY (the subtitle canvas height).
+		// We must scale to the VIDEO's rendered height — NOT the overlay div height —
+		// because the video is letterboxed inside the container.
+		if (cueFontSize > 0) {
+			const videoH = _getVideoDisplayHeight();
+			const scaledFs = pResY > 0 ? Math.round((cueFontSize / pResY) * videoH) : cueFontSize;
+			if (scaledFs > 0) wrapper.style.fontSize = scaledFs + 'px';
+		}
+
+		// Text shadow: ASS Outline + Shadow → CSS text-shadow
+		// BorderStyle=3 = opaque box background (no outline/shadow, use bg instead).
+		if (cueBorderStyle === 3) {
+			// Opaque box: use a solid background color instead of text-shadow outline
+			const boxBg = cueShadowColor || 'rgba(0,0,0,0.85)';
+			wrapper.style.backgroundColor = boxBg;
+			wrapper.style.padding = '2px 6px';
+			wrapper.style.borderRadius = '2px';
+		} else {
+			const videoH = _getVideoDisplayHeight();
+			const ts = _buildAssTextShadow(cueOutline, cueShadow, cueOutlineColor, cueShadowColor, pResY, videoH);
+			if (ts) wrapper.style.textShadow = ts;
+		}
+
+		// Build inner HTML
+		// Prefer ASS segments (multi-color support) over plain VTT text.
+		// bestEvent.segments is set by main.js for ASS/SSA tracks; it is
+		// undefined for plain SRT/VTT tracks — fall back to _vttToHtml in that case.
+		let innerHtml;
+		if (bestEvent && Array.isArray(bestEvent.segments) && bestEvent.segments.length > 0) {
+			// ASS path: render every segment with its own inline color/bold/italic
+			// Use actual VIDEO display height (not overlay height) for correct font scaling
+			const videoH = _getVideoDisplayHeight();
+			innerHtml = _renderAssSegments(bestEvent.segments, pResY, videoH);
+		} else {
+			// VTT/SRT path: convert <b>/<i>/<u> VTT tags to HTML
+			innerHtml = text.split('\n')
+				.map(line => '<span class="subtitle-line">' + _vttToHtml(line.trim()) + '</span>')
+				.join('<br>');
+		}
+		wrapper.innerHTML = innerHtml;
+		disp.appendChild(wrapper);
+	});
+}
+
+// Attach cuechange + seeked listeners once cues are confirmed loaded.
+function _attachSubtitleListeners(track) {
+	_subCueHandler = () => _renderCues(track.activeCues);
+	_subSeekHandler = () => _renderCues(track.activeCues);
+	track.addEventListener('cuechange', _subCueHandler);
+	video.addEventListener('seeked', _subSeekHandler);
+	// Render immediately in case video is mid-cue
+	_renderCues(track.activeCues);
+}
+
+function switchSubtitleTrack(index) {
+	currentSubtitleIndex = index;
+	_subtitleTeardown();
+
+	// UI highlight
+	document.querySelectorAll('.subtitle-item').forEach(el =>
+		el.classList.toggle('active', parseInt(el.dataset.index) === index)
+	);
+
+	if (index === -1) {
+		showStatusMessage('Subtitles Off');
+		return;
+	}
+
+	const track = Array.from(video.textTracks)[index];
+	if (!track) {
+		console.warn('[Sub] No textTrack at index', index);
+		return;
+	}
+
+	// mode = 'hidden' → browser parses cues into memory, suppresses native rendering
+	track.mode = 'hidden';
+	_subTrack = track;
+
+	// Blob URLs are served from local memory — cues parse almost instantly,
+	// but the browser does it async. Poll until cues arrive (max 5 s).
+	if (track.cues && track.cues.length > 0) {
+		_attachSubtitleListeners(track);
+		showStatusMessage('Subtitle: ' + (track.label || `Track ${index + 1}`));
+		return;
+	}
+
+	let waited = 0;
+	_subReadyTimer = setInterval(() => {
+		waited += 80;
+		if (track.cues && track.cues.length > 0) {
+			clearInterval(_subReadyTimer);
+			_subReadyTimer = null;
+			_attachSubtitleListeners(track);
+			showStatusMessage('Subtitle: ' + (track.label || `Track ${index + 1}`));
+		} else if (waited >= 5000) {
+			clearInterval(_subReadyTimer);
+			_subReadyTimer = null;
+			console.warn('[Sub] Cues never loaded for track', index);
+			showStatusMessage('Subtitle: no cues found');
+		}
+	}, 80);
+}
+
+// Fullscreen — adjust subtitle position class
+document.addEventListener('fullscreenchange', () => {
+	const disp = document.getElementById('subtitle-display');
+	if (disp) disp.classList.toggle('fullscreen', !!document.fullscreenElement);
+});
 
 // Handle click on dropdowns to toggle visibility
 document.querySelectorAll(".sub-dropdown").forEach((subDropdown) => {
@@ -3788,18 +5122,6 @@ document.querySelector("#window-close").addEventListener("click", () => {
 	savePlaybackAndQuit();
 });
 
-// Show loader
-function showLoader() {
-	const loader = document.getElementById("loader");
-	if (loader) loader.style.display = "block";
-}
-
-// Hide loader
-function hideLoader() {
-	const loader = document.getElementById("loader");
-	if (loader) loader.style.display = "none";
-}
-
 // ✅ Modified function to handle file open from system
 window.electron.onFileOpen((filePath) => {
 	if (filePath) {
@@ -3826,28 +5148,31 @@ window.electron.onFileOpen((filePath) => {
 
 // ✅ Modified function for folder open from context menu
 window.electron.openFolderFromContext(async (folderPath) => {
-    try {
-        const receivedFiles = await window.electron.invoke("open-folder", folderPath);
+	try {
+		const receivedFiles = await window.electron.invoke("open-folder", folderPath);
 
-        if (Array.isArray(receivedFiles) && receivedFiles.length > 0) {
-            // Always REPLACE old playlist with the new folder's files
-            mediaFiles = receivedFiles;
-            currentVideoIndex = 0;
-            isFirstFileOpened = true;
-            updatePlaylistDropdown(mediaFiles);
-            playMediaFile(mediaFiles[currentVideoIndex]);
-            showStatusMessage(`Loaded ${receivedFiles.length} video(s) from folder`);
-        }
-    } catch (error) {
-        console.error("❌ Error loading folder:", error);
-    }
+		if (Array.isArray(receivedFiles) && receivedFiles.length > 0) {
+			// Always REPLACE old playlist with the new folder's files
+			mediaFiles = receivedFiles;
+			currentVideoIndex = 0;
+			isFirstFileOpened = true;
+			updatePlaylistDropdown(mediaFiles);
+			playMediaFile(mediaFiles[currentVideoIndex]);
+			showStatusMessage(`Loaded ${receivedFiles.length} video(s) from folder`);
+		}
+	} catch (error) {
+		console.error("❌ Error loading folder:", error);
+	}
 });
 
 // Update Dialog Functions
 const updateDialog = {
+	_snoozeTimer: null,
+
 	init: function() {
-		this.dialog = document.getElementById('updateDialog');
-		this.updateNowBtn = document.getElementById('updateNowBtn');
+		this.dialog    = document.getElementById('updateDialog');
+		this.versionEl = document.getElementById('updateVersionLabel');
+		this.updateNowBtn  = document.getElementById('updateNowBtn');
 		this.updateLaterBtn = document.getElementById('updateLaterBtn');
 
 		this.updateNowBtn.addEventListener('click', () => {
@@ -3855,31 +5180,25 @@ const updateDialog = {
 			this.hide();
 		});
 
+		// "Later" snoozes for 10 minutes then reminds again
 		this.updateLaterBtn.addEventListener('click', () => {
 			this.hide();
+			if (this._snoozeTimer) clearTimeout(this._snoozeTimer);
+			this._snoozeTimer = setTimeout(() => this.show(), 10 * 60 * 1000);
 		});
 	},
 
-	show: function() {
+	show: function(version) {
+		if (version && this.versionEl) {
+			this.versionEl.textContent = `v${version}`;
+			this.versionEl.style.display = 'inline';
+		}
 		this.dialog.classList.add('active');
-		// Trigger reflow to enable animation
-		void this.dialog.offsetWidth;
-		this.dialog.style.transform = 'translate(-50%, -50%) scale(1)';
-		this.dialog.style.opacity = '1';
+		void this.dialog.offsetWidth; // force reflow
 	},
 
 	hide: function() {
-		this.dialog.style.transform = 'translate(-50%, -50%) scale(0.9)';
-		this.dialog.style.opacity = '0';
-
-		// Remove active class after animation completes
-		this.dialog.addEventListener('transitionend', () => {
-			if (this.dialog.style.opacity === '0') {
-				this.dialog.classList.remove('active');
-			}
-		}, {
-			once: true
-		});
+		this.dialog.classList.remove('active');
 	}
 };
 
@@ -3887,12 +5206,13 @@ const updateDialog = {
 document.addEventListener('DOMContentLoaded', () => {
 	updateDialog.init();
 
-	window.electron.onUpdateAvailable(() => {
-		updateDialog.show();
+	window.electron.onUpdateAvailable((_, info) => {
+		updateDialog.show(info?.version);
 	});
 
-	window.electron.onUpdateError((error) => {
-		console.error(`Update failed: ${error}`);
+	window.electron.onUpdateError((_, errMsg) => {
+		console.error('Update failed:', errMsg);
+		showStatusMessage('⚠️ Update failed — will retry later', 5000);
 	});
 });
 
@@ -3909,6 +5229,21 @@ window.electron.onInitialPlayState((state) => {
 	window.electron.sendPlayPauseStateForTray(state || "paused");
 	window.electron.sendPlayPauseStateForThumbar(state || "playing");
 });
+
+// GPU info: fetch at startup, show briefly as status message
+(async () => {
+	try {
+		const gpuInfo = await window.electron.invoke('get-gpu-info');
+		if (gpuInfo && gpuInfo.vendor !== 'unknown') {
+			const gpuName = (gpuInfo.gpus && gpuInfo.gpus[0]) ?
+				(gpuInfo.gpus[0].description || gpuInfo.gpus[0].model || gpuInfo.vendor.toUpperCase()) :
+				gpuInfo.vendor.toUpperCase();
+			const hwLabel = gpuInfo.hwAccel !== 'none' ? ` · ${gpuInfo.hwAccel}` : '';
+			showStatusMessage(`GPU: ${gpuName}${hwLabel}`);
+		}
+	} catch (e) {
+		/* silent */ }
+})();
 
 // Handle playNext action from tray
 window.electron.onNext(() => {
@@ -3945,4 +5280,438 @@ window.electron.onShuffleState(() => {
 // Handle repeat action from tray
 window.electron.onRepeatState(() => {
 	toggleRepeat();
+});
+
+//  AUDIO EFFECTS  (Auto / Coding / Movie / Music / Comfort)
+
+const EQ_PRESETS = {
+	auto: {
+		label: 'Auto',
+		filters: [{
+				type: 'highpass',
+				frequency: 40,
+				Q: 0.7,
+				gain: 0
+			},
+			{
+				type: 'peaking',
+				frequency: 3000,
+				Q: 1.5,
+				gain: 2.5
+			},
+			{
+				type: 'peaking',
+				frequency: 8000,
+				Q: 1.5,
+				gain: 1.5
+			},
+			{
+				type: 'lowpass',
+				frequency: 18000,
+				Q: 0.7,
+				gain: 0
+			},
+		],
+		compThreshold: -40,
+		compRatio: 2,
+		panValue: 0,
+	},
+	coding: {
+		label: 'Coding',
+		filters: [{
+				type: 'highpass',
+				frequency: 60,
+				Q: 0.7,
+				gain: 0
+			},
+			{
+				type: 'peaking',
+				frequency: 200,
+				Q: 1.0,
+				gain: -3
+			},
+			{
+				type: 'peaking',
+				frequency: 1000,
+				Q: 1.0,
+				gain: 0
+			},
+			{
+				type: 'peaking',
+				frequency: 6000,
+				Q: 1.0,
+				gain: 1
+			},
+			{
+				type: 'lowpass',
+				frequency: 16000,
+				Q: 0.7,
+				gain: 0
+			},
+		],
+		compThreshold: -50,
+		compRatio: 1.5,
+		panValue: 0,
+	},
+	movie: {
+		label: 'Movie',
+		filters: [{
+				type: 'lowshelf',
+				frequency: 80,
+				Q: 1.0,
+				gain: 5
+			},
+			{
+				type: 'peaking',
+				frequency: 300,
+				Q: 1.0,
+				gain: -2
+			},
+			{
+				type: 'peaking',
+				frequency: 3500,
+				Q: 1.5,
+				gain: 4
+			},
+			{
+				type: 'highshelf',
+				frequency: 10000,
+				Q: 1.0,
+				gain: 3
+			},
+		],
+		compThreshold: -30,
+		compRatio: 4,
+		panValue: 0,
+	},
+	music: {
+		label: 'Music',
+		filters: [{
+				type: 'lowshelf',
+				frequency: 100,
+				Q: 1.0,
+				gain: 4
+			},
+			{
+				type: 'peaking',
+				frequency: 500,
+				Q: 0.8,
+				gain: -1
+			},
+			{
+				type: 'peaking',
+				frequency: 4000,
+				Q: 1.0,
+				gain: 3
+			},
+			{
+				type: 'highshelf',
+				frequency: 12000,
+				Q: 1.0,
+				gain: 4
+			},
+		],
+		compThreshold: -35,
+		compRatio: 3,
+		panValue: 0,
+	},
+	comfort: {
+		label: 'Comfort',
+		filters: [{
+				type: 'lowshelf',
+				frequency: 100,
+				Q: 1.0,
+				gain: -2
+			},
+			{
+				type: 'peaking',
+				frequency: 800,
+				Q: 1.0,
+				gain: 2
+			},
+			{
+				type: 'peaking',
+				frequency: 3000,
+				Q: 1.2,
+				gain: 1
+			},
+			{
+				type: 'highshelf',
+				frequency: 9000,
+				Q: 1.0,
+				gain: -4
+			},
+		],
+		compThreshold: -50,
+		compRatio: 1.8,
+		panValue: 0,
+	},
+};
+
+let _eqFilterNodes = [];
+let _activeEffectKey = null;
+
+function applyAudioEffect(key) {
+	const preset = EQ_PRESETS[key];
+	if (!preset) return;
+	// Guard: if AudioContext nodes not ready yet, skip silently
+	if (typeof audioContext === 'undefined' || typeof gainNode === 'undefined') return;
+
+	const now = audioContext.currentTime;
+
+	// 1. Disconnect old EQ nodes (no leaks)
+	_eqFilterNodes.forEach(f => {
+		try {
+			f.disconnect();
+		} catch (_) {}
+	});
+	_eqFilterNodes = [];
+
+	// 2. Resume if suspended 
+	if (audioContext.state === 'suspended') audioContext.resume();
+
+	// 3. Build new filter chain 
+	const filters = preset.filters.map(cfg => {
+		const f = audioContext.createBiquadFilter();
+		f.type = cfg.type;
+		f.frequency.setValueAtTime(cfg.frequency, now);
+		f.Q.setValueAtTime(cfg.Q ?? 1.0, now);
+		if (cfg.gain !== undefined) f.gain.setValueAtTime(cfg.gain, now);
+		return f;
+	});
+	if (filters.length > 1) filters.reduce((p, c) => {
+		p.connect(c);
+		return c;
+	});
+
+	// 4. Re-wire: compressor → [EQ chain] → gainNode
+	// Safely disconnect existing connections without crashing
+	try {
+		audioAnalyser.disconnect();
+	} catch (_) {}
+	try {
+		compressor.disconnect();
+	} catch (_) {}
+
+	if (filters.length > 0) {
+		compressor.connect(filters[0]);
+		filters[filters.length - 1].connect(gainNode);
+	} else {
+		compressor.connect(gainNode);
+	}
+	// Keep analyser alive in parallel
+	compressor.connect(audioAnalyser);
+	audioAnalyser.connect(gainNode);
+
+	_eqFilterNodes = filters;
+
+	// 5. Compressor & panner tweaks 
+	if (typeof compressor !== 'undefined') {
+		compressor.threshold.linearRampToValueAtTime(preset.compThreshold, now + 0.15);
+		compressor.ratio.linearRampToValueAtTime(preset.compRatio, now + 0.15);
+	}
+	if (typeof stereoPanner !== 'undefined') {
+		stereoPanner.pan.linearRampToValueAtTime(preset.panValue, now + 0.15);
+	}
+
+	_activeEffectKey = key;
+	_updateEffectUI(key);
+	if (typeof showStatusMessage === 'function') showStatusMessage(`Audio Effect: ${preset.label}`);
+}
+
+function _updateEffectUI(activeKey) {
+	document.querySelectorAll('.audio-effect-option').forEach(el => {
+		const isActive = el.dataset.effect === activeKey;
+		el.classList.toggle('effect-active', isActive);
+		// Update cm-check icon (context menu)
+		const cmCheck = el.querySelector('.cm-check');
+		if (cmCheck) cmCheck.innerHTML = isActive ? '<i class="fa-solid fa-check"></i>' : '';
+		// Update nav-effect-check icon (nav bar)
+		const navCheck = el.querySelector('.nav-effect-check');
+		if (navCheck) navCheck.innerHTML = isActive ? '<i class="fa-solid fa-check"></i>' : '';
+	});
+}
+
+// Wire nav-bar effect menu items
+const _effectIdMap = {
+	AutoToggle: 'auto',
+	CodingAudioToggle: 'coding',
+	MovieAudioToggle: 'movie',
+	MusicAudioToggle: 'music',
+	comfortModeToggle: 'comfort',
+};
+Object.entries(_effectIdMap).forEach(([id, key]) => {
+	const el = document.getElementById(id);
+	if (!el) return;
+	el.dataset.effect = key;
+	el.classList.add('audio-effect-option');
+	el.addEventListener('click', () => applyAudioEffect(key));
+});
+
+// Apply default — call directly (script runs after DOM is parsed in <body> bottom)
+applyAudioEffect('auto');
+
+
+
+//  AUDIO DEVICE DETECTION & SWITCHING
+//  FIX: populate ONCE on load + on actual devicechange only.
+//       No more getUserMedia on every mouseenter.
+
+
+let currentAudioDeviceId = 'default';
+let _devicesPopulated = false; // populate only once unless devices change
+
+async function populateAudioDevices() {
+	const lists = document.querySelectorAll('.audio-device-list');
+	if (!lists.length) return;
+
+	let devices = [];
+	try {
+		// Only enumerate — never call getUserMedia().
+		// getUserMedia({audio:true}) triggers the OS microphone indicator
+		// even though we only need OUTPUT (speaker) devices for setSinkId().
+		const all = await navigator.mediaDevices.enumerateDevices();
+		devices = all.filter(d => d.kind === 'audiooutput');
+	} catch (e) {
+		console.warn('[AudioDevice] enumerateDevices failed:', e);
+	}
+
+	_devicesPopulated = true;
+
+	lists.forEach(list => {
+		list.innerHTML = '';
+		const deviceList = devices.length ? devices : [{
+			deviceId: 'default',
+			label: 'Default'
+		}];
+
+		deviceList.forEach(device => {
+			const id = device.deviceId || 'default';
+			const label = device.label || (id === 'default' ? 'Default' : `Speaker (${id.slice(0,6)})`);
+			const a = document.createElement('a');
+			a.href = 'javascript:void(0)';
+			a.className = 'device-item' + (id === currentAudioDeviceId ? ' device-active' : '');
+
+			const ic = document.createElement('span');
+			ic.className = 'cm-icon';
+			ic.textContent = id === currentAudioDeviceId ? '●' : '';
+
+			const tx = document.createElement('span');
+			tx.className = 'cm-text';
+			tx.textContent = label;
+
+			a.append(ic, tx);
+			// Use closure-safe reference — create once per item
+			a.addEventListener('click', (function(devId) {
+				return () => switchAudioDevice(devId);
+			})(id));
+
+			list.appendChild(a);
+		});
+	});
+}
+
+async function switchAudioDevice(deviceId) {
+	currentAudioDeviceId = deviceId;
+	if (typeof video.setSinkId === 'function') {
+		try {
+			await video.setSinkId(deviceId);
+		} catch (e) {}
+	}
+	const ap = document.getElementById('audioTrackPlayer');
+	if (ap && typeof ap.setSinkId === 'function') {
+		try {
+			await ap.setSinkId(deviceId);
+		} catch (e) {}
+	}
+	populateAudioDevices(); // refresh active-dot only
+}
+
+// Populate once on load; refresh only when actual hardware changes
+if (navigator.mediaDevices) {
+	navigator.mediaDevices.addEventListener('devicechange', () => {
+		_devicesPopulated = false; // force re-enumerate
+		populateAudioDevices();
+	});
+	populateAudioDevices();
+}
+
+
+
+//  EMPTY SUBMENU PLACEHOLDER
+//  FIX: separate observer per list; re-entrancy guard prevents
+//       infinite mutation loop when placeholder is inserted.
+
+
+let _checkingSubmenus = false; // re-entrancy guard
+
+function checkEmptySubmenus() {
+	if (_checkingSubmenus) return;
+	_checkingSubmenus = true;
+
+	document.querySelectorAll('.context-menu .cm-sub-item').forEach(li => {
+		const dyn = li.querySelector('.cm-dynamic-list');
+		if (!dyn) return;
+
+		// Count real children (ignore existing placeholder)
+		const realCount = Array.from(dyn.children).filter(c => !c.classList.contains('cm-empty-placeholder')).length;
+		const existing = dyn.querySelector('.cm-empty-placeholder');
+
+		if (realCount === 0 && !existing) {
+			const p = document.createElement('div');
+			p.className = 'cm-empty-placeholder';
+			p.textContent = 'No items';
+			dyn.appendChild(p);
+		} else if (realCount > 0 && existing) {
+			existing.remove();
+		}
+	});
+
+	_checkingSubmenus = false;
+}
+
+// Watch only track/subtitle/playlist — NOT audio-device-list
+// (populateAudioDevices rebuilds that; watching it would infinite-loop)
+const _checkTargets = '.audio-track-list, .subtitle-track-list, .play-list';
+document.querySelectorAll(_checkTargets).forEach(el => {
+	new MutationObserver(() => {
+		if (!_checkingSubmenus) checkEmptySubmenus();
+	}).observe(el, {
+		childList: true
+	});
+});
+
+// Initial check after a short delay
+setTimeout(checkEmptySubmenus, 600);
+
+
+
+//  SPEED CONTROLS
+
+
+const SPEED_STEPS = {
+	'faster': 0.5,
+	'faster-fine': 0.1,
+	'normal': null,
+	'slower-fine': -0.1,
+	'slower': -0.5,
+};
+
+function applySpeedOption(key) {
+	const step = SPEED_STEPS[key];
+	video.playbackRate = (step === null) ?
+		1.0 :
+		Math.max(0.1, Math.min(4.0, Math.round((video.playbackRate + step) * 100) / 100));
+	const ap = document.getElementById('audioTrackPlayer');
+	if (ap) ap.playbackRate = video.playbackRate;
+	if (typeof showStatusMessage === 'function') showStatusMessage(`Speed: ${video.playbackRate.toFixed(2)}×`);
+}
+
+document.querySelectorAll('.speed-option').forEach(el => {
+	el.addEventListener('click', e => {
+		e.stopPropagation();
+		applySpeedOption(el.dataset.speed);
+		const cm = document.getElementById('contextMenu');
+		if (cm) cm.style.display = 'none';
+	});
 });

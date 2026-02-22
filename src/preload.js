@@ -48,15 +48,22 @@ contextBridge.exposeInMainWorld('electron', {
   },
 
   invoke: (channel, ...args) => {
-    const validChannels = ["load-playback-time", "get-audio-thumbnail", "open-folder", "read-file-buffer","set-stream-file", "get-audio-tracks", "get-subtitle-tracks", "get-file-dates"]; // Add here
+    const validChannels = ["load-playback-time", "get-audio-thumbnail", "get-fullscreen-state","open-folder", "read-file-buffer","set-stream-file", "get-audio-tracks", "get-subtitle-tracks", "get-file-dates", "open-subtitle-dialog", "get-gpu-info"]; // Add here
     if (validChannels.includes(channel)) {
       return ipcRenderer.invoke(channel, ...args);
     }
   },
 
+  // GPU info
+  onGpuInfo: (callback) => ipcRenderer.on('gpu-info', (_, info) => callback(info)),
+
   onAppClosing: (callback) => ipcRenderer.on("app-closing", callback),
 
   loadPlaybackTime: (callback) => ipcRenderer.on('load-playback-time', (event, playbackData) => callback(playbackData)),
+
+  // Chapter Management
+  loadChapters: (filePath) => ipcRenderer.invoke('load-chapters', filePath),
+  onChaptersLoaded: (callback) => ipcRenderer.on('chapters-loaded', (_, chapters) => callback(chapters)),
 
   // File Open Handling
   openFileDialog: () => ipcRenderer.invoke("open-file-dialog"),

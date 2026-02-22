@@ -7,12 +7,21 @@
 </head>
 <body>
   <div class="updater-container">
-    <img src="../../assets/icons/icon.png" class="updater-logo">
-    <div class="updater-status">Downloading update</div>
-    <div class="progress-container">
-      <div id="progress-bar" class="progress-bar"></div>
+    <img src="../../assets/icons/icon.png" class="updater-logo" draggable="false">
+    <div class="updater-info">
+      <div class="updater-status" id="updater-status">Downloading update…</div>
+      <div class="updater-version" id="updater-version"></div>
     </div>
-    <div id="progress-text" class="progress-text">0%</div>
+    <div class="progress-wrap">
+      <div class="progress-container">
+        <div id="progress-bar" class="progress-bar"></div>
+      </div>
+      <div class="progress-meta">
+        <span id="progress-percent">0%</span>
+        <span id="progress-speed"></span>
+      </div>
+    </div>
+    <div class="updater-eta" id="updater-eta"></div>
   </div>
   <script src="updater.js"></script>
 </body>

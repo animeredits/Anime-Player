@@ -3,15 +3,36 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="description" content="Anime Player is an advanced player for anime enthusiasts. Enjoy your favorite anime with enhanced controls and Hands-free voice commands navigation." />
-    <meta name="keywords" content="anime player, media player, anime streaming, video player, customizable audio tracks, fixed navigation bar, seamless playback, anime controls, intuitive navigation" />
+
+    <!-- ── Primary SEO ─────────────────────────────────────────────────── -->
+    <title>Anime Player — Advanced Media Player for Anime</title>
+    <meta name="description" content="Anime Player is a free, open-source desktop media player built for anime. Supports MKV, MP4, EAC3, DTS audio, ASS/SSA subtitles, multi-audio tracks, chapters and more." />
+    <meta name="keywords" content="anime player, mkv player, media player, subtitle support, ass subtitles, multi audio track, eac3, dts, open source, windows, mac, linux" />
     <meta name="author" content="animeredits" />
+    <meta name="robots" content="noindex, nofollow" /><!-- app shell — not meant for search indexing -->
+
+    <!-- ── Open Graph (Discord, Telegram, Facebook link previews) ─────── -->
+    <meta property="og:type"        content="website" />
+    <meta property="og:title"       content="Anime Player — Advanced Media Player for Anime" />
+    <meta property="og:description" content="Free desktop media player with full subtitle, multi-audio, EAC3/DTS and chapter support. Built for anime on Windows, macOS and Linux." />
+    <meta property="og:image"       content="../assets/icons/icon.png" />
+    <meta property="og:url"         content="https://github.com/animeredits/Anime-Player" />
+    <meta property="og:site_name"   content="Anime Player" />
+
+    <!-- ── Twitter / X card ───────────────────────────────────────────── -->
+    <meta name="twitter:card"        content="summary" />
+    <meta name="twitter:title"       content="Anime Player" />
+    <meta name="twitter:description" content="Advanced open-source media player for anime enthusiasts." />
+    <meta name="twitter:image"       content="../assets/icons/icon.png" />
+
+    <!-- ── Security ───────────────────────────────────────────────────── -->
     <meta http-equiv="Content-Security-Policy" content="script-src 'self' 'unsafe-inline';" />
-    <title>Anime Player</title>
-    <!-- Fonts and Icons -->
-    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,300,0,0" />
-    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@24,300,0,0" />
-    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Sharp:opsz,wght,FILL,GRAD@20,100,0,0" />
+    <meta http-equiv="X-Content-Type-Options"  content="nosniff" />
+
+    <!-- ── Fonts and Icons ────────────────────────────────────────────── -->
+    <!-- Combine all 3 Material Symbols variants into one request -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,300,0,0&family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@24,300,0,0&family=Material+Symbols+Sharp:opsz,wght,FILL,GRAD@20,100,0,0" />
     <link rel="stylesheet" href="https://site-assets.fontawesome.com/releases/v6.4.2/css/all.css" />
     <link rel="stylesheet" href="styles.css" />
   </head>
@@ -27,79 +48,140 @@
           <li class="dropdown">
             <a href="javascript:void(0)" class="dropbtn">Media</a>
             <div class="dropdown-content">
-              <a id="openFileButton">Open Files... <span class="shortcut">Ctrl + O</span>
+              <a id="openFileButton" class="nav-row">
+                <span class="nav-row-icon"><i class="fa-solid fa-file-video"></i></span>
+                <span class="nav-row-text">Open Files...</span>
+                <span class="nav-row-shortcut">Ctrl+O</span>
               </a>
-              <a id="openFolderButton">Open Folder... <span class="shortcut">Ctrl + F</span>
+              <a id="openFolderButton" class="nav-row">
+                <span class="nav-row-icon"><i class="fa-solid fa-folder-open"></i></span>
+                <span class="nav-row-text">Open Folder...</span>
+                <span class="nav-row-shortcut">Ctrl+F</span>
               </a>
-              <a class="quit">Quit... <span class="shortcut">Ctrl + Q</span>
+              <a class="quit nav-row">
+                <span class="nav-row-icon"><i class="fa-solid fa-right-from-bracket"></i></span>
+                <span class="nav-row-text">Quit...</span>
+                <span class="nav-row-shortcut">Ctrl+Q</span>
               </a>
             </div>
           </li>
           <li class="dropdown">
             <a href="javascript:void(0)" class="dropbtn">Playback</a>
             <div class="dropdown-content">
+              <!-- Speed sub-menu -->
               <div class="sub-dropdown">
-                <a href="javascript:void(0)" class="sub-dropbtn">📜 Playlist</a>
-                <div class="sub-dropdown-content play-list">
-                  <!-- Play list will be dynamically inserted here -->
+                <a href="javascript:void(0)" class="sub-dropbtn nav-row">
+                  <span class="nav-row-icon"><i class="fa-solid fa-gauge-high"></i></span>
+                  <span class="nav-row-text">Speed</span>
+                </a>
+                <div class="sub-dropdown-content">
+                  <a href="javascript:void(0)" class="speed-option nav-row" data-speed="faster"><span class="nav-row-icon"><i class="fa-solid fa-forward-fast"></i></span><span class="nav-row-text">Faster</span></a>
+                  <a href="javascript:void(0)" class="speed-option nav-row" data-speed="faster-fine"><span class="nav-row-icon"><i class="fa-solid fa-forward"></i></span><span class="nav-row-text">Faster (fine)</span></a>
+                  <a href="javascript:void(0)" class="speed-option nav-row" data-speed="normal"><span class="nav-row-icon"><i class="fa-solid fa-play"></i></span><span class="nav-row-text">Normal Speed</span></a>
+                  <a href="javascript:void(0)" class="speed-option nav-row" data-speed="slower-fine"><span class="nav-row-icon"><i class="fa-solid fa-backward"></i></span><span class="nav-row-text">Slower (fine)</span></a>
+                  <a href="javascript:void(0)" class="speed-option nav-row" data-speed="slower"><span class="nav-row-icon"><i class="fa-solid fa-backward-fast"></i></span><span class="nav-row-text">Slower</span></a>
                 </div>
               </div>
+              <!-- Playlist -->
               <div class="sub-dropdown">
-                <a href="javascript:void(0)" class="sub-dropbtn">🔀 Sort By</a>
+                <a href="javascript:void(0)" class="sub-dropbtn nav-row">
+                  <span class="nav-row-icon"><i class="fa-solid fa-list"></i></span>
+                  <span class="nav-row-text">Playlist</span>
+                </a>
+                <div class="sub-dropdown-content play-list"></div>
+              </div>
+              <!-- Sort By -->
+              <div class="sub-dropdown">
+                <a href="javascript:void(0)" class="sub-dropbtn nav-row">
+                  <span class="nav-row-icon"><i class="fa-solid fa-sort"></i></span>
+                  <span class="nav-row-text">Sort By</span>
+                </a>
                 <div class="sub-dropdown-content sort-dropdown">
-                  <a href="javascript:void(0)" data-sort="name" class="sort-option active">
-                    <span class="sort-icon">📝</span> Name
+                  <a href="javascript:void(0)" data-sort="name" class="sort-option active nav-row">
+                    <span class="nav-row-icon nav-sort-check"><i class="fa-solid fa-check"></i></span><span class="nav-row-text">Name</span><span class="nav-row-shortcut">Alt+N</span>
                   </a>
-                  <a href="javascript:void(0)" data-sort="date" class="sort-option">
-                    <span class="sort-icon">📅</span> Date
+                  <a href="javascript:void(0)" data-sort="date" class="sort-option nav-row">
+                    <span class="nav-row-icon nav-sort-check"></span><span class="nav-row-text">Date</span><span class="nav-row-shortcut">Alt+D</span>
                   </a>
                   <div class="sort-divider"></div>
-                  <a href="javascript:void(0)" data-sort="ascending" class="sort-order active">
-                    <span class="sort-icon">⬆️</span> Ascending
+                  <a href="javascript:void(0)" data-sort="ascending" class="sort-order active nav-row">
+                    <span class="nav-row-icon nav-sort-check"><i class="fa-solid fa-check"></i></span><span class="nav-row-text">Ascending</span>
                   </a>
-                  <a href="javascript:void(0)" data-sort="descending" class="sort-order">
-                    <span class="sort-icon">⬇️</span> Descending
+                  <a href="javascript:void(0)" data-sort="descending" class="sort-order nav-row">
+                    <span class="nav-row-icon nav-sort-check"></span><span class="nav-row-text">Descending</span>
                   </a>
-                  <a href="javascript:void(0)" class="toggle-sort-order">
-                    <span class="sort-icon">🔄</span> Toggle Order
+                  <div class="sort-divider"></div>
+                  <a href="javascript:void(0)" class="toggle-sort-order nav-row">
+                    <span class="nav-row-icon"><i class="fa-solid fa-arrow-right-arrow-left"></i></span><span class="nav-row-text">Toggle Order</span><span class="nav-row-shortcut">Alt+O</span>
                   </a>
                 </div>
               </div>
-              <a href="javascript:void(0)" class="">▶️ Play</a>
-              <a href="javascript:void(0)" class="nextbtn">⏭️ Next <span class="shortcut">N</span></a>
-              <a href="javascript:void(0)" class="previousbtn">⏮️ Previous <span class="shortcut">P</span></a>
-              <a href="javascript:void(0)" class="stopPlayback">⏹️ Stop</a>
-              <a href="javascript:void(0)" id="sleep-timer">⏱️ Sleep Timer <span class="shortcut">Ctrl+T</span></a>
+              <div class="sort-divider"></div>
+              <a href="javascript:void(0)" class="nav-row">
+                <span class="nav-row-icon"><i class="fa-solid fa-play"></i></span>
+                <span class="nav-row-text">Play</span>
+              </a>
+              <a href="javascript:void(0)" class="nextbtn nav-row">
+                <span class="nav-row-icon"><i class="fa-solid fa-forward-step"></i></span>
+                <span class="nav-row-text">Next</span>
+                <span class="nav-row-shortcut">N</span>
+              </a>
+              <a href="javascript:void(0)" class="previousbtn nav-row">
+                <span class="nav-row-icon"><i class="fa-solid fa-backward-step"></i></span>
+                <span class="nav-row-text">Previous</span>
+                <span class="nav-row-shortcut">P</span>
+              </a>
+              <a href="javascript:void(0)" class="stopPlayback nav-row">
+                <span class="nav-row-icon"><i class="fa-solid fa-stop"></i></span>
+                <span class="nav-row-text">Stop</span>
+              </a>
+              <a href="javascript:void(0)" id="sleep-timer" class="nav-row">
+                <span class="nav-row-icon"><i class="fa-solid fa-clock"></i></span>
+                <span class="nav-row-text">Sleep Timer</span>
+                <span class="nav-row-shortcut">Ctrl+T</span>
+              </a>
             </div>
           </li>
           <li class="dropdown">
             <a href="javascript:void(0)" class="dropbtn">Audio</a>
             <div class="dropdown-content">
               <div class="sub-dropdown">
-                <a href="javascript:void(0)" class="sub-dropbtn">Audio Track</a>
-                <div class="sub-dropdown-content audio-track-list">
-                  <!-- Tracks will be dynamically inserted here -->
-                </div>
+                <a href="javascript:void(0)" class="sub-dropbtn nav-row">
+                  <span class="nav-row-icon"><i class="fa-solid fa-music"></i></span>
+                  <span class="nav-row-text">Audio Track</span>
+                </a>
+                <div class="sub-dropdown-content audio-track-list"></div>
               </div>
-              <!-- Audio Logo Selection -->
+              <div class="sub-dropdown" id="audioDeviceDropdown">
+                <a href="javascript:void(0)" class="sub-dropbtn nav-row">
+                  <span class="nav-row-icon"><i class="fa-solid fa-volume-high"></i></span>
+                  <span class="nav-row-text">Audio Device</span>
+                </a>
+                <div class="sub-dropdown-content audio-device-list"></div>
+              </div>
               <div class="sub-dropdown" id="audioLogoDropdown">
-                <a href="javascript:void(0)" class="sub-dropbtn">Visualization</a>
+                <a href="javascript:void(0)" class="sub-dropbtn nav-row">
+                  <span class="nav-row-icon"><i class="fa-solid fa-waveform-lines"></i></span>
+                  <span class="nav-row-text">Visualization</span>
+                </a>
                 <div class="sub-dropdown-content" id="logoOptions">
-                  <!-- Default Logos Sub-dropdown -->
                   <div class="sub-dropdown">
-                    <a href="javascript:void(0)" class="sub-dropbtn">Default Visualization</a>
+                    <a href="javascript:void(0)" class="sub-dropbtn nav-row">
+                      <span class="nav-row-icon"><i class="fa-solid fa-image"></i></span>
+                      <span class="nav-row-text">Default Visualization</span>
+                    </a>
                     <div class="sub-dropdown-content">
                       <a href="javascript:void(0)" data-src="../assets/icons/icon.png">None</a>
                       <a href="javascript:void(0)" data-src="../assets/icons/icon.png">Default</a>
                       <a href="javascript:void(0)" data-src="../assets/gif/download.gif">Yamate Kyoko D4dj</a>
                       <a href="javascript:void(0)" data-src="../assets/gif/Ghost in Shell.gif">Ghost in Shell</a>
                       <a href="javascript:void(0)" data-src="../assets/gif/10006971374054297431.gif">Danmachi and Kekkai</a>
-                      <a href="javascript:void(0)" data-src="../assets/gif/10623970183937040275.gif">Shikanoko Nokonoko </a>
+                      <a href="javascript:void(0)" data-src="../assets/gif/10623970183937040275.gif">Shikanoko Nokonoko</a>
                       <a href="javascript:void(0)" data-src="../assets/gif/10690612485779226054.gif">Kyoma dance</a>
                       <a href="javascript:void(0)" data-src="../assets/gif/14893715557068450646.gif">Takanashi Rikka</a>
                       <a href="javascript:void(0)" data-src="../assets/gif/1700499298878234638.gif">Partyhard Homealone</a>
                       <a href="javascript:void(0)" data-src="../assets/gif/3245754771082903423.gif">Honey pie!</a>
-                      <a href="javascript:void(0)" data-src="../assets/gif/6858083560546435565.gif">Shikanoko Nokonoko </a>
+                      <a href="javascript:void(0)" data-src="../assets/gif/6858083560546435565.gif">Shikanoko Nokonoko</a>
                       <a href="javascript:void(0)" data-src="../assets/gif/7464694309340495606.gif">Obito</a>
                       <a href="javascript:void(0)" data-src="../assets/gif/8752356467101843848.gif">Oshi No Ko</a>
                       <a href="javascript:void(0)" data-src="../assets/gif/9497885369133574502.gif">Chika dance</a>
@@ -109,55 +191,93 @@
                       </div>
                     </div>
                   </div>
-                  <!-- Custom Logos Sub-dropdown -->
                   <div class="sub-dropdown">
-                    <a href="javascript:void(0)" class="sub-dropbtn" id="customLogoLink">Upload Visualization</a>
-                    <input type="file" id="customLogoInput" accept="image/*,image/gif" style="display: none;" />
+                    <a href="javascript:void(0)" class="sub-dropbtn nav-row" id="customLogoLink">
+                      <span class="nav-row-icon"><i class="fa-solid fa-upload"></i></span>
+                      <span class="nav-row-text">Upload Visualization</span>
+                    </a>
+                    <input type="file" id="customLogoInput" accept="image/*,image/gif" style="display:none;" />
                   </div>
                 </div>
               </div>
-              <a class="increase-volume">Increase Volume</a>
-              <a class="decrease-volume">Decrease Volume</a>
-              <!-- <a id="mic-access-button">Start Voice Recognition</a> -->
-              <a class="mute-btn">Mute</a>
+              <a class="increase-volume nav-row">
+                <span class="nav-row-icon"><i class="fa-solid fa-volume-high"></i></span>
+                <span class="nav-row-text">Increase Volume</span>
+                <span class="nav-row-shortcut">&#8679;</span>
+              </a>
+              <a class="decrease-volume nav-row">
+                <span class="nav-row-icon"><i class="fa-solid fa-volume-low"></i></span>
+                <span class="nav-row-text">Decrease Volume</span>
+                <span class="nav-row-shortcut">&#8681;</span>
+              </a>
+              <a class="mute-btn nav-row">
+                <span class="nav-row-icon" style="color:rgba(220,80,80,0.9)"><i class="fa-solid fa-volume-xmark"></i></span>
+                <span class="nav-row-text">Mute</span>
+                <span class="nav-row-shortcut">M</span>
+              </a>
             </div>
           </li>
           <li class="dropdown">
             <a href="javascript:void(0)" class="dropbtn">Video</a>
             <div class="dropdown-content">
-              <a class="fullscreen-button">Full Screen</a>
+              <a class="fullscreen-button nav-row" id="nav-fullscreen-btn">
+                <span class="nav-row-icon"><i class="fa-solid fa-expand"></i></span>
+                <span class="nav-row-text">Full Screen</span>
+                <span class="nav-row-shortcut">F</span>
+              </a>
               <div class="sub-dropdown">
-                <a href="javascript:void(0)" class="sub-dropbtn">Zoom</a>
-                <div class="sub-dropdown-content" id="zoom-track-list">
-                  <a>1.3x</a>
-                  <a>1.5x</a>
-                  <a>2x</a>
-                  <a>2.5x</a>
-                  <a>3x</a>
-                  <a>Reset</a>
+                <a href="javascript:void(0)" class="sub-dropbtn nav-row">
+                  <span class="nav-row-icon"><i class="fa-solid fa-magnifying-glass-plus"></i></span>
+                  <span class="nav-row-text">Zoom</span>
+                </a>
+                <div class="sub-dropdown-content zoom-track-list" id="zoom-track-list">
+                  <a data-zoom-level="0" class="nav-row"><span class="nav-row-icon"></span><span class="nav-row-text">1.3×</span></a>
+                  <a data-zoom-level="1" class="nav-row"><span class="nav-row-icon"></span><span class="nav-row-text">1.5×</span></a>
+                  <a data-zoom-level="2" class="nav-row"><span class="nav-row-icon"></span><span class="nav-row-text">2×</span></a>
+                  <a data-zoom-level="3" class="nav-row"><span class="nav-row-icon"></span><span class="nav-row-text">2.5×</span></a>
+                  <a data-zoom-level="4" class="nav-row"><span class="nav-row-icon"></span><span class="nav-row-text">3×</span></a>
+                  <a data-zoom-level="5" class="nav-row"><span class="nav-row-icon"><i class="fa-solid fa-rotate-left"></i></span><span class="nav-row-text">Reset</span></a>
                 </div>
               </div>
-              <!-- <div class="sub-dropdown"><a href="javascript:void(0)" class="sub-dropbtn">Aspect Ratio / Crop</a><div class="sub-dropdown-content" id="aspect-ratio-list"><a data-aspect="default">Default</a><a data-aspect="16:10">16:10</a><a data-aspect="16:9">16:9</a><a data-aspect="4:3">4:3</a><a data-aspect="1.85:1">1.85:1</a><a data-aspect="2.21:1">2.21:1</a><a data-aspect="2.35:1">2.35:1</a><a data-aspect="2.39:1">2.39:1</a><a data-aspect="5:4">5:4</a><a data-aspect="5:1">5:1</a></div></div> -->
             </div>
           </li>
-          <!-- <li class="dropdown"><a href="javascript:void(0)" class="dropbtn">Subtitle</a><div class="dropdown-content"><a class="">Add Subtitle file...</a><div class="sub-dropdown"><a href="javascript:void(0)" class="sub-dropbtn">Subtitle Track</a><div class="sub-dropdown-content subtitle-track-list">
-                Subtitle tracks will be dynamically inserted here 
-                </div></div></div></li> -->
+          <li class="dropdown">
+            <a href="javascript:void(0)" class="dropbtn">Subtitle</a>
+            <div class="dropdown-content">
+              <a class="nav-row">
+                <span class="nav-row-icon"><i class="fa-solid fa-plus"></i></span>
+                <span class="nav-row-text">Add Subtitle file...</span>
+              </a>
+              <div class="sub-dropdown">
+                <a href="javascript:void(0)" class="sub-dropbtn nav-row">
+                  <span class="nav-row-icon"><i class="fa-solid fa-closed-captioning"></i></span>
+                  <span class="nav-row-text">Subtitle Track</span>
+                </a>
+                <div class="sub-dropdown-content subtitle-track-list"></div>
+              </div>
+            </div>
+          </li>
           <li class="dropdown">
             <a href="javascript:void(0)" class="dropbtn">Tools</a>
             <div class="dropdown-content">
               <div class="sub-dropdown">
-                <a href="javascript:void(0)" class="sub-dropbtn">Audio Effects</a>
+                <a href="javascript:void(0)" class="sub-dropbtn nav-row">
+                  <span class="nav-row-icon"><i class="fa-solid fa-sliders"></i></span>
+                  <span class="nav-row-text">Audio Effects</span>
+                </a>
                 <div class="sub-dropdown-content">
-                  <a href="javascript:void(0)" id="AutoToggle">Auto</a>
-                  <a href="javascript:void(0)" id="CodingAudioToggle">Coding</a>
-                  <a href="javascript:void(0)" id="MovieAudioToggle">Movie</a>
-                  <a href="javascript:void(0)" id="MusicAudioToggle">Music</a>
-                  <a href="javascript:void(0)" id="comfortModeToggle">Comfort</a>
+                  <a href="javascript:void(0)" id="AutoToggle" class="nav-row"><span class="nav-row-icon nav-effect-check"></span><span class="nav-row-text">Auto</span></a>
+                  <a href="javascript:void(0)" id="CodingAudioToggle" class="nav-row"><span class="nav-row-icon nav-effect-check"></span><span class="nav-row-text">Coding</span></a>
+                  <a href="javascript:void(0)" id="MovieAudioToggle" class="nav-row"><span class="nav-row-icon nav-effect-check"></span><span class="nav-row-text">Movie</span></a>
+                  <a href="javascript:void(0)" id="MusicAudioToggle" class="nav-row"><span class="nav-row-icon nav-effect-check"></span><span class="nav-row-text">Music</span></a>
+                  <a href="javascript:void(0)" id="comfortModeToggle" class="nav-row"><span class="nav-row-icon nav-effect-check"></span><span class="nav-row-text">Comfort</span></a>
                 </div>
               </div>
               <div class="sub-dropdown">
-                <a href="javascript:void(0)" class="videoEffectBtn sub-dropbtn">Video Effect</a>
+                <a href="javascript:void(0)" class="videoEffectBtn sub-dropbtn nav-row">
+                  <span class="nav-row-icon"><i class="fa-solid fa-palette"></i></span>
+                  <span class="nav-row-text">Video Effect</span>
+                </a>
                 <div class="sub-dropdown-content">
                   <div class="saturationModal" id="saturationModal">
                     <div class="saturation-modal-header">
@@ -176,7 +296,10 @@
           <li class="dropdown">
             <a href="javascript:void(0)" class="dropbtn">Help</a>
             <div class="dropdown-content">
-              <a id="showShortcuts">Shortcuts <span class="shortcut">Shift + /</span>
+              <a id="showShortcuts" class="nav-row">
+                <span class="nav-row-icon"><i class="fa-solid fa-keyboard"></i></span>
+                <span class="nav-row-text">Shortcuts</span>
+                <span class="nav-row-shortcut">Shift+/</span>
               </a>
             </div>
           </li>
@@ -292,175 +415,266 @@
         <!-- Context Menu -->
         <div id="contextMenu" class="context-menu">
           <ul>
+
+            <!-- Group 1: Playback Controls -->
             <li>
               <a id="contextTogglePlayPause">
-                <span class="icon">&#9658;</span>
-                <span class="text">Play</span>
-              </a>
-            </li>
-            <li>
-              <a class="nextbtn">
-                <span class="icon">⏭️</span>
-                <span class="text">Next</span>
-                <span class="shortcut">N</span>
-              </a>
-            </li>
-            <li>
-              <a class="previousbtn">
-                <span class="icon">⏮️</span>
-                <span class="text">Previous</span>
-                <span class="shortcut">P</span>
+                <span class="cm-icon"><i class="fa-solid fa-play"></i></span>
+                <span class="cm-text">Play</span>
               </a>
             </li>
             <li>
               <a class="stopPlayback">
-                <span class="icon">⏹️</span>
-                <span class="text">Stop</span>
+                <span class="cm-icon"><i class="fa-solid fa-stop"></i></span>
+                <span class="cm-text">Stop</span>
               </a>
             </li>
-            <li id="context-menu-audio-track" class="sub-dropdown">
-              <a href="javascript:void(0)" class="sub-dropbtn">
-                <span class="icon">🎵</span>
-                <span class="text">Audio</span>
-              </a>
-              <div class="sub-dropdown-content">
-                <div class="sub-dropdown">
-                  <a href="javascript:void(0)" class="sub-dropbtn">
-                    <span class="icon">🎧</span>
-                    <span class="text">Audio Track</span>
-                    <span class="shortcut">B</span>
-                  </a>
-                  <div class="sub-dropdown-content audio-track-list">
-                    <!-- Tracks will be dynamically inserted here -->
-                  </div>
-                </div>
-                <a class="increase-volume">
-                  <span class="icon">🔊</span>
-                  <span class="text">Increase Volume</span>
-                  <span class="shortcut">↑</span>
-                </a>
-                <a class="decrease-volume">
-                  <span class="icon">🔉</span>
-                  <span class="text">Decrease Volume</span>
-                  <span class="shortcut">↓</span>
-                </a>
-                <!-- <a id="mic-access-button"><span class="icon">&#127908;</span><span class="text">Start Voice Recognition</span></a> -->
-                <a class="mute">
-                  <span class="icon">🔇</span>
-                  <span class="text">Mute</span>
-                  <span class="shortcut">M</span>
-                </a>
-              </div>
-            </li>
-            <li class="sub-dropdown">
-              <a href="javascript:void(0)" class="sub-dropbtn">
-                <span class="icon">🎞️</span>
-                <span class="text">Video</span>
-              </a>
-              <div class="sub-dropdown-content">
-                <a class="fullscreen-button">
-                  <span class="icon">⛶</span>
-                  <span class="text">Full Screen</span>
-                  <span class="shortcut">F</span>
-                </a>
-                <div class="sub-dropdown">
-                  <a href="javascript:void(0)" class="sub-dropbtn">
-                    <span class="icon">🔍</span>
-                    <span class="text">Zoom</span>
-                    <span class="shortcut">Z</span>
-                  </a>
-                  <div class="sub-dropdown-content" id="zoom-track-list">
-                    <a><span class="icon">🔍</span> 1.3x</a>
-                    <a><span class="icon">🔍</span> 1.5x</a>
-                    <a><span class="icon">🔍</span> 2x</a>
-                    <a><span class="icon">🔍</span> 2.5x</a>
-                    <a><span class="icon">🔍</span> 3x</a>
-                    <a><span class="icon">↺</span> Reset</a>
-                  </div>
-                </div>
-              </div>
-            </li>
-            <!-- <li><a><span class="icon">&#128250;</span><span class="text">Subtitle Track</span></a></li> -->
             <li>
-              <a id="context-menu-shutdown-timer">
-                <span class="icon">⏱️</span>
-                <span class="text">Sleep Timer</span>
-                <span class="shortcut">Ctrl+T</span>
+              <a class="previousbtn">
+                <span class="cm-icon"><i class="fa-solid fa-backward-step"></i></span>
+                <span class="cm-text">Previous</span>
+                <span class="cm-shortcut">P</span>
               </a>
             </li>
-            <li id="context-menu-playlist" class="sub-dropdown">
-              <a href="javascript:void(0)" class="sub-dropbtn">
-                <span class="icon">📜</span>
-                <span class="text" id="context-play-list">Playlist</span>
+            <li>
+              <a class="nextbtn">
+                <span class="cm-icon"><i class="fa-solid fa-forward-step"></i></span>
+                <span class="cm-text">Next</span>
+                <span class="cm-shortcut">N</span>
               </a>
-              <div class="sub-dropdown-content play-list">
-                <!-- Play list will be dynamically inserted here -->
+            </li>
+
+            <li class="cm-divider"></li>
+
+            <!-- Group 2: Tracks & Media -->
+            <li id="context-menu-audio-track" class="cm-sub-item">
+              <a href="javascript:void(0)">
+                <span class="cm-icon"><i class="fa-solid fa-headphones"></i></span>
+                <span class="cm-text">Audio</span>
+                <span class="cm-arrow"><i class="fa-solid fa-chevron-right"></i></span>
+              </a>
+              <div class="cm-submenu">
+                <ul>
+                  <li class="cm-sub-item">
+                    <a href="javascript:void(0)">
+                      <span class="cm-icon"><i class="fa-solid fa-music"></i></span>
+                      <span class="cm-text">Audio Track</span>
+                      <span class="cm-arrow"><i class="fa-solid fa-chevron-right"></i></span>
+                    </a>
+                    <div class="cm-submenu">
+                      <div class="audio-track-list cm-dynamic-list">
+                        <!-- Tracks will be dynamically inserted here -->
+                      </div>
+                    </div>
+                  </li>
+                  <li class="cm-sub-item" id="cm-audio-device-item">
+                    <a href="javascript:void(0)">
+                      <span class="cm-icon"><i class="fa-solid fa-volume-high"></i></span>
+                      <span class="cm-text">Audio Device</span>
+                      <span class="cm-arrow"><i class="fa-solid fa-chevron-right"></i></span>
+                    </a>
+                    <div class="cm-submenu">
+                      <div class="audio-device-list cm-dynamic-list">
+                        <!-- Devices populated by JS -->
+                      </div>
+                    </div>
+                  </li>
+                  <li class="cm-divider"></li>
+                  <li>
+                    <a class="increase-volume">
+                      <span class="cm-icon"><i class="fa-solid fa-volume-high" style="opacity:0.9"></i></span>
+                      <span class="cm-text">Increase Volume</span>
+                      <span class="cm-shortcut">&#8679;</span>
+                    </a>
+                  </li>
+                  <li>
+                    <a class="decrease-volume">
+                      <span class="cm-icon"><i class="fa-solid fa-volume-low"></i></span>
+                      <span class="cm-text">Decrease Volume</span>
+                      <span class="cm-shortcut">&#8681;</span>
+                    </a>
+                  </li>
+                  <li>
+                    <a class="mute">
+                      <span class="cm-icon cm-icon-mute"><i class="fa-solid fa-volume-xmark"></i></span>
+                      <span class="cm-text">Mute</span>
+                      <span class="cm-shortcut">M</span>
+                    </a>
+                  </li>
+                </ul>
               </div>
             </li>
-            <li class="sub-dropdown">
-              <a href="javascript:void(0)" class="sub-dropbtn">
-                <span class="icon">🔀</span>
-                <span class="text">Sort By</span>
+
+            <li class="cm-sub-item">
+              <a href="javascript:void(0)">
+                <span class="cm-icon"><i class="fa-solid fa-film"></i></span>
+                <span class="cm-text">Video</span>
+                <span class="cm-arrow"><i class="fa-solid fa-chevron-right"></i></span>
               </a>
-              <div class="sub-dropdown-content sort-dropdown">
-                <a href="javascript:void(0)" data-sort="name" class="sort-option active">
-                  <span class="icon">📝</span>
-                  <span class="text">Name</span>
-                  <span class="shortcut">Alt+N</span>
-                </a>
-                <a href="javascript:void(0)" data-sort="date" class="sort-option">
-                  <span class="icon">📅</span>
-                  <span class="text">Date</span>
-                  <span class="shortcut">Alt+D</span>
-                </a>
-                <div class="sort-divider"></div>
-                <a href="javascript:void(0)" data-sort="ascending" class="sort-order active">
-                  <span class="icon">⬆️</span>
-                  <span class="text">Ascending</span>
-                </a>
-                <a href="javascript:void(0)" data-sort="descending" class="sort-order">
-                  <span class="icon">⬇️</span>
-                  <span class="text">Descending</span>
-                </a>
-                <a href="javascript:void(0)" class="toggle-sort-order">
-                  <span class="icon">🔄</span>
-                  <span class="text">Toggle Order</span>
-                  <span class="shortcut">Alt+O</span>
-                </a>
+              <div class="cm-submenu">
+                <ul>
+                  <li>
+                    <a class="fullscreen-button">
+                      <span class="cm-icon"><i class="fa-solid fa-expand"></i></span>
+                      <span class="cm-text">Full Screen</span>
+                      <span class="cm-shortcut">F</span>
+                    </a>
+                  </li>
+                  <li class="cm-divider"></li>
+                  <li class="cm-sub-item">
+                    <a href="javascript:void(0)">
+                      <span class="cm-icon"><i class="fa-solid fa-magnifying-glass-plus"></i></span>
+                      <span class="cm-text">Zoom</span>
+                      <span class="cm-arrow"><i class="fa-solid fa-chevron-right"></i></span>
+                    </a>
+                    <div class="cm-submenu">
+                      <ul class="zoom-track-list" id="zoom-track-list">
+                        <li><a data-zoom-level="0"><span class="cm-icon"></span><span class="cm-text">1.3×</span></a></li>
+                        <li><a data-zoom-level="1"><span class="cm-icon"></span><span class="cm-text">1.5×</span></a></li>
+                        <li><a data-zoom-level="2"><span class="cm-icon"></span><span class="cm-text">2×</span></a></li>
+                        <li><a data-zoom-level="3"><span class="cm-icon"></span><span class="cm-text">2.5×</span></a></li>
+                        <li><a data-zoom-level="4"><span class="cm-icon"></span><span class="cm-text">3×</span></a></li>
+                        <li class="cm-divider"></li>
+                        <li><a data-zoom-level="5"><span class="cm-icon"><i class="fa-solid fa-rotate-left"></i></span><span class="cm-text">Reset</span></a></li>
+                      </ul>
+                    </div>
+                  </li>
+                </ul>
               </div>
             </li>
-            <li class="sub-dropdown">
-              <a href="javascript:void(0)" class="sub-dropbtn">
-                <span class="icon">📂</span>
-                <span class="text">Open Media</span>
+
+            <li class="cm-sub-item">
+              <a href="javascript:void(0)">
+                <span class="cm-icon"><i class="fa-solid fa-closed-captioning"></i></span>
+                <span class="cm-text">Subtitle</span>
+                <span class="cm-arrow"><i class="fa-solid fa-chevron-right"></i></span>
               </a>
-              <div class="sub-dropdown-content">
-                <a id="contextOpenFile">
-                  <span class="icon">🎬</span>
-                  <span class="text">Open File</span>
-                  <span class="shortcut">Ctrl+O</span>
-                </a>
-                <a id="contextOpenFolder">
-                  <span class="icon">📁</span>
-                  <span class="text">Open Folder</span>
-                  <span class="shortcut">Ctrl+F</span>
-                </a>
+              <div class="cm-submenu">
+                <div class="subtitle-track-list cm-dynamic-list">
+                  <!-- populated by JS -->
+                </div>
               </div>
             </li>
+
+            <li class="cm-sub-item">
+              <a href="javascript:void(0)">
+                <span class="cm-icon"><i class="fa-solid fa-forward"></i></span>
+                <span class="cm-text">Playback</span>
+                <span class="cm-arrow"><i class="fa-solid fa-chevron-right"></i></span>
+              </a>
+              <div class="cm-submenu">
+                <ul>
+                  <!-- Speed sub-menu -->
+                  <li class="cm-sub-item">
+                    <a href="javascript:void(0)">
+                      <span class="cm-icon"><i class="fa-solid fa-gauge-high"></i></span>
+                      <span class="cm-text">Speed</span>
+                      <span class="cm-arrow"><i class="fa-solid fa-chevron-right"></i></span>
+                    </a>
+                    <div class="cm-submenu">
+                      <ul>
+                        <li><a href="javascript:void(0)" class="speed-option" data-speed="faster"><span class="cm-icon"><i class="fa-solid fa-forward-fast"></i></span><span class="cm-text">Faster</span></a></li>
+                        <li><a href="javascript:void(0)" class="speed-option" data-speed="faster-fine"><span class="cm-icon"><i class="fa-solid fa-forward"></i></span><span class="cm-text">Faster (fine)</span></a></li>
+                        <li><a href="javascript:void(0)" class="speed-option" data-speed="normal"><span class="cm-icon"><i class="fa-solid fa-play"></i></span><span class="cm-text">Normal Speed</span></a></li>
+                        <li><a href="javascript:void(0)" class="speed-option" data-speed="slower-fine"><span class="cm-icon"><i class="fa-solid fa-backward"></i></span><span class="cm-text">Slower (fine)</span></a></li>
+                        <li><a href="javascript:void(0)" class="speed-option" data-speed="slower"><span class="cm-icon"><i class="fa-solid fa-backward-fast"></i></span><span class="cm-text">Slower</span></a></li>
+                      </ul>
+                    </div>
+                  </li>
+                  <li class="cm-divider"></li>
+                  <!-- Sort By -->
+                  <li class="cm-sub-item">
+                    <a href="javascript:void(0)">
+                      <span class="cm-icon"><i class="fa-solid fa-sort"></i></span>
+                      <span class="cm-text">Sort By</span>
+                      <span class="cm-arrow"><i class="fa-solid fa-chevron-right"></i></span>
+                    </a>
+                    <div class="cm-submenu">
+                      <ul class="sort-dropdown">
+                        <li><a href="javascript:void(0)" data-sort="name" class="sort-option active"><span class="cm-icon cm-check"><i class="fa-solid fa-check"></i></span><span class="cm-text">Name</span><span class="cm-shortcut">Alt+N</span></a></li>
+                        <li><a href="javascript:void(0)" data-sort="date" class="sort-option"><span class="cm-icon cm-check"></span><span class="cm-text">Date</span><span class="cm-shortcut">Alt+D</span></a></li>
+                        <li class="cm-divider"></li>
+                        <li><a href="javascript:void(0)" data-sort="ascending" class="sort-order active"><span class="cm-icon cm-check"><i class="fa-solid fa-check"></i></span><span class="cm-text">Ascending</span></a></li>
+                        <li><a href="javascript:void(0)" data-sort="descending" class="sort-order"><span class="cm-icon cm-check"></span><span class="cm-text">Descending</span></a></li>
+                        <li class="cm-divider"></li>
+                        <li><a href="javascript:void(0)" class="toggle-sort-order"><span class="cm-icon"><i class="fa-solid fa-arrow-right-arrow-left"></i></span><span class="cm-text">Toggle Order</span><span class="cm-shortcut">Alt+O</span></a></li>
+                      </ul>
+                    </div>
+                  </li>
+                  <!-- Sleep Timer -->
+                  <li>
+                    <a id="context-menu-shutdown-timer">
+                      <span class="cm-icon"><i class="fa-solid fa-clock"></i></span>
+                      <span class="cm-text">Sleep Timer</span>
+                      <span class="cm-shortcut">Ctrl+T</span>
+                    </a>
+                  </li>
+                </ul>
+              </div>
+            </li>
+
+            <li class="cm-divider"></li>
+
+            <!-- Group 3: Playlist & Media -->
+            <li id="context-menu-playlist" class="cm-sub-item">
+              <a href="javascript:void(0)">
+                <span class="cm-icon"><i class="fa-solid fa-list"></i></span>
+                <span class="cm-text" id="context-play-list">Playlist</span>
+                <span class="cm-arrow"><i class="fa-solid fa-chevron-right"></i></span>
+              </a>
+              <div class="cm-submenu">
+                <div class="play-list cm-dynamic-list">
+                  <!-- Play list will be dynamically inserted here -->
+                </div>
+              </div>
+            </li>
+
+            <li class="cm-sub-item">
+              <a href="javascript:void(0)">
+                <span class="cm-icon"><i class="fa-solid fa-folder-open"></i></span>
+                <span class="cm-text">Open Media</span>
+                <span class="cm-arrow"><i class="fa-solid fa-chevron-right"></i></span>
+              </a>
+              <div class="cm-submenu">
+                <ul>
+                  <li>
+                    <a id="contextOpenFile">
+                      <span class="cm-icon"><i class="fa-solid fa-file-video"></i></span>
+                      <span class="cm-text">Open File</span>
+                      <span class="cm-shortcut">Ctrl+O</span>
+                    </a>
+                  </li>
+                  <li>
+                    <a id="contextOpenFolder">
+                      <span class="cm-icon"><i class="fa-solid fa-folder"></i></span>
+                      <span class="cm-text">Open Folder</span>
+                      <span class="cm-shortcut">Ctrl+F</span>
+                    </a>
+                  </li>
+                </ul>
+              </div>
+            </li>
+
+            <li class="cm-divider"></li>
+
+            <!-- Group 4: Quit -->
             <li>
               <a id="quit">
-                <span class="icon">🚪</span>
-                <span class="text quit">Quit</span>
-                <span class="shortcut">Ctrl+Q</span>
+                <span class="cm-icon"><i class="fa-solid fa-right-from-bracket"></i></span>
+                <span class="cm-text quit">Quit</span>
+                <span class="cm-shortcut">Ctrl+Q</span>
               </a>
             </li>
+
           </ul>
         </div>
-        <!-- Media -->
         <video id="media" preload="auto">
           <source id="videoSource" />
           <source id="audioSource" />
         </video>
+        <!-- Hidden audio element for non-native codec tracks (EAC3, AC3, DTS…) -->
+        <!-- ffmpeg transcodes the selected track to Opus/WebM and feeds it here -->
+        <audio id="audioTrackPlayer" style="display:none" preload="none"></audio>
         <div id="noMediaLogo">
           <img src="../assets/icons/icon256.png" alt="No Media" />
         </div>
@@ -487,6 +701,7 @@
             </div>
           </div>
         </div>
+        <div id="subtitle-display"></div>
         <!-- Navigation Arrows -->
         <div class="nav-arrows">
           <button id="prevVideo" class="card arrow-button left-arrow tooltip-btn" data-tooltip="Previous Video">
@@ -526,9 +741,10 @@
           <div id="seek-bar-container">
             <span id="current-time" class="tooltip-btn" data-tooltip="Current Time">0:00</span>
             <div id="seek-bar-wrapper" role="slider" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" aria-label="Seek bar">
-              <div id="seek-bar">
-                <div id="seek-bar-handle" tabindex="0"></div>
-              </div>
+              <div id="chapters-markers-container" class="chapters-markers"></div>
+              <div id="seek-bar"></div>
+              <div id="seek-bar-handle" tabindex="0"></div>
+              <div id="chapter-tooltip" class="chapter-tooltip" style="display: none;"></div>
             </div>
             <span id="video-duration" class="tooltip-btn" data-tooltip="Duration">0:00</span>
           </div>
@@ -544,6 +760,9 @@
             </div>
             <div class="card tooltip-btn" data-tooltip="Shuffle">
               <img id="shuffle-button" src="../assets/icons/no-shuffle.png" alt="Shuffle" />
+            </div>
+            <div class="card tooltip-btn" id="chapters-button" data-tooltip="Chapters (C)">
+              <img src="../assets/icons/chapters.png" alt="Chapters" style="filter: brightness(1.2);" />
             </div>
             <input type="range" class="range blue" id="volume-slider" min="0" max="200" value="100" step="1">
           </div>
@@ -566,6 +785,14 @@
               <img src="../assets/icons/picture-in-picture.png" alt="Picture in Picture">
             </div>
           </div>
+        </div>
+        <!-- Chapters Dropdown -->
+        <div id="chapters-dropdown" class="chapters-dropdown" style="display: none;">
+          <div class="chapters-header">
+            <h3>📋 Chapters</h3>
+            <button class="chapters-close" id="chapters-close-btn">×</button>
+          </div>
+          <div class="chapters-list"></div>
         </div>
         <!-- Shortcut Modal  -->
         <div id="shortcutsModal" class="modal">
@@ -776,6 +1003,81 @@
                   <div class="keys">
                     <span class="key">Ctrl</span>
                     <span class="key">`</span>
+                  </div>
+                </div>
+                <div class="shortcut">
+                  <div class="description">Next Chapter</div>
+                  <div class="keys">
+                    <span class="key">]</span>
+                  </div>
+                </div>
+                <div class="shortcut">
+                  <div class="description">Previous Chapter</div>
+                  <div class="keys">
+                    <span class="key">[</span>
+                  </div>
+                </div>
+                <div class="shortcut">
+                  <div class="description">Toggle Chapters List</div>
+                  <div class="keys">
+                    <span class="key">C</span>
+                  </div>
+                </div>
+                <div class="shortcut">
+                  <div class="description">Cycle Zoom Level</div>
+                  <div class="keys">
+                    <span class="key">Z</span>
+                  </div>
+                </div>
+                <div class="shortcut">
+                  <div class="description">Show Current Time</div>
+                  <div class="keys">
+                    <span class="key">T</span>
+                  </div>
+                </div>
+                <div class="shortcut">
+                  <div class="description">Increase Speed</div>
+                  <div class="keys">
+                    <span class="key">+</span>
+                  </div>
+                </div>
+                <div class="shortcut">
+                  <div class="description">Decrease Speed</div>
+                  <div class="keys">
+                    <span class="key">-</span>
+                  </div>
+                </div>
+                <div class="shortcut">
+                  <div class="description">Reset Speed</div>
+                  <div class="keys">
+                    <span class="key">=</span>
+                  </div>
+                </div>
+                <div class="shortcut">
+                  <div class="description">Sort by Name</div>
+                  <div class="keys">
+                    <span class="key">Alt</span>
+                    <span class="key">N</span>
+                  </div>
+                </div>
+                <div class="shortcut">
+                  <div class="description">Sort by Date</div>
+                  <div class="keys">
+                    <span class="key">Alt</span>
+                    <span class="key">D</span>
+                  </div>
+                </div>
+                <div class="shortcut">
+                  <div class="description">Toggle Sort Order</div>
+                  <div class="keys">
+                    <span class="key">Alt</span>
+                    <span class="key">O</span>
+                  </div>
+                </div>
+                <div class="shortcut">
+                  <div class="description">Show Shortcuts</div>
+                  <div class="keys">
+                    <span class="key">?</span>
                   </div>
                 </div>
               </div>
