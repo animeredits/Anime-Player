@@ -5126,21 +5126,20 @@ document.querySelector("#window-close").addEventListener("click", () => {
 window.electron.onFileOpen((filePath) => {
 	if (filePath) {
 		if (!isFirstFileOpened) {
-			// First file - initialize playlist
+			// First file - initialize playlist and start playing it
 			mediaFiles = [filePath];
 			currentVideoIndex = 0;
 			isFirstFileOpened = true;
 			updatePlaylistDropdown(mediaFiles);
 			playMediaFile(filePath, filePath.split("/").pop());
 		} else {
-			// Subsequent files - add to playlist
+			// Subsequent files (e.g. multi-select from Explorer / second-instance) —
+			// add to playlist but do NOT auto-play. The first file already started;
+			// overriding it here would cause the last-received file to win instead.
 			if (!mediaFiles.includes(filePath)) {
 				mediaFiles.push(filePath);
 				updatePlaylistDropdown(mediaFiles);
-
-				//  auto-play the new file
-				currentVideoIndex = mediaFiles.length - 1;
-				playMediaFile(filePath, filePath.split("/").pop());
+				// Do not call playMediaFile here — first file stays playing.
 			}
 		}
 	}

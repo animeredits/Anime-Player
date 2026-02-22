@@ -272,15 +272,26 @@ const streamServer = http.createServer((req, res) => {
   }
 });
 
-streamServer.listen(STREAM_PORT, '127.0.0.1', () => {
-  console.log(`Stream server running on http://127.0.0.1:${STREAM_PORT}`);
-});
-
 // Initialize app
 function initApp() {
   ensureDirectories();
   app.setPath('userData', animePlayerPath);
   resolveBinaryPaths();
+
+  // ── Start stream server only in the primary instance ──────────────────────
+  // Previously this ran at module load time (before the single-instance lock
+  // check), so every second instance tried to bind port 54321 and crashed with
+  // EADDRINUSE. Moving it here ensures it only runs once we know we hold the lock.
+  streamServer.listen(STREAM_PORT, '127.0.0.1', () => {
+    console.log(`Stream server running on http://127.0.0.1:${STREAM_PORT}`);
+  });
+  streamServer.on('error', (err) => {
+    if (err.code === 'EADDRINUSE') {
+      console.error(`[Stream] Port ${STREAM_PORT} already in use — is another instance running?`);
+    } else {
+      console.error('[Stream] Server error:', err.message);
+    }
+  });
   // ── Register app so NVIDIA GeForce Experience / NVIDIA App can detect it ──
   // The NVIDIA overlay identifies apps by their AppUserModelId (Windows) and
   // the executable path. Setting a consistent ID ensures it shows in GPU settings.
@@ -1688,7 +1699,14 @@ function createUpdaterWindow() {
 }
 
 app.on('will-quit', () => {
-  globalShortcut.unregisterAll();
+  // globalShortcut can only be used after the app is ready.
+  // When a second instance is blocked by the single-instance lock it calls
+  // app.quit() before app.whenReady() fires, so 'will-quit' fires in a
+  // not-yet-ready state. Guard against that to prevent the crash:
+  // "globalShortcut cannot be used before the app is ready"
+  if (app.isReady()) {
+    globalShortcut.unregisterAll();
+  }
 });
 
 app.on('before-quit', (event) => {
@@ -1734,19 +1752,22 @@ if (!appState.gotTheLock) {
     if (appState.win) {
       if (appState.win.isMinimized()) appState.win.restore();
       appState.win.focus();
-  
-      // Open file passed to second instance
-      const filePath = commandLine.find(arg =>
+
+      // Collect ALL media files passed to the second instance (user may have
+      // selected multiple files in Explorer and opened them at once).
+      const filePaths = commandLine.filter(arg =>
         typeof arg === 'string' && MEDIA_EXTENSIONS.includes(path.extname(arg).toLowerCase())
-      );
-      if (filePath) {
-        // Wait for window to be ready before sending
+      ).map(p => path.normalize(p));
+
+      if (filePaths.length > 0) {
+        const send = () => {
+          // Send each file individually so the renderer can enqueue them all.
+          filePaths.forEach(fp => appState.win.webContents.send("open-file", fp));
+        };
         if (appState.win.webContents.isLoading()) {
-          appState.win.webContents.once('did-finish-load', () => {
-            appState.win.webContents.send("open-file", path.normalize(filePath));
-          });
+          appState.win.webContents.once('did-finish-load', send);
         } else {
-          appState.win.webContents.send("open-file", path.normalize(filePath));
+          send();
         }
       }
     }
