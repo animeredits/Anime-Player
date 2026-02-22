@@ -135,6 +135,14 @@
                 <span class="nav-row-icon"><i class="fa-solid fa-stop"></i></span>
                 <span class="nav-row-text">Stop</span>
               </a>
+              <div class="sub-dropdown" id="navChaptersDropdown">
+                <a href="javascript:void(0)" class="sub-dropbtn nav-row" id="nav-chapters-btn">
+                  <span class="nav-row-icon"><i class="fa-solid fa-list-ol"></i></span>
+                  <span class="nav-row-text">Chapters</span>
+                  <span class="nav-row-shortcut">C</span>
+                </a>
+                <div class="sub-dropdown-content chapters-list-nav" id="chaptersListNav"></div>
+              </div>
               <a href="javascript:void(0)" id="sleep-timer" class="nav-row">
                 <span class="nav-row-icon"><i class="fa-solid fa-clock"></i></span>
                 <span class="nav-row-text">Sleep Timer</span>
@@ -164,40 +172,80 @@
                   <span class="nav-row-icon"><i class="fa-solid fa-waveform-lines"></i></span>
                   <span class="nav-row-text">Visualization</span>
                 </a>
-                <div class="sub-dropdown-content" id="logoOptions">
-                  <div class="sub-dropdown">
-                    <a href="javascript:void(0)" class="sub-dropbtn nav-row">
-                      <span class="nav-row-icon"><i class="fa-solid fa-image"></i></span>
-                      <span class="nav-row-text">Default Visualization</span>
-                    </a>
-                    <div class="sub-dropdown-content">
-                      <a href="javascript:void(0)" data-src="../assets/icons/icon.png">None</a>
-                      <a href="javascript:void(0)" data-src="../assets/icons/icon.png">Default</a>
-                      <a href="javascript:void(0)" data-src="../assets/gif/download.gif">Yamate Kyoko D4dj</a>
-                      <a href="javascript:void(0)" data-src="../assets/gif/Ghost in Shell.gif">Ghost in Shell</a>
-                      <a href="javascript:void(0)" data-src="../assets/gif/10006971374054297431.gif">Danmachi and Kekkai</a>
-                      <a href="javascript:void(0)" data-src="../assets/gif/10623970183937040275.gif">Shikanoko Nokonoko</a>
-                      <a href="javascript:void(0)" data-src="../assets/gif/10690612485779226054.gif">Kyoma dance</a>
-                      <a href="javascript:void(0)" data-src="../assets/gif/14893715557068450646.gif">Takanashi Rikka</a>
-                      <a href="javascript:void(0)" data-src="../assets/gif/1700499298878234638.gif">Partyhard Homealone</a>
-                      <a href="javascript:void(0)" data-src="../assets/gif/3245754771082903423.gif">Honey pie!</a>
-                      <a href="javascript:void(0)" data-src="../assets/gif/6858083560546435565.gif">Shikanoko Nokonoko</a>
-                      <a href="javascript:void(0)" data-src="../assets/gif/7464694309340495606.gif">Obito</a>
-                      <a href="javascript:void(0)" data-src="../assets/gif/8752356467101843848.gif">Oshi No Ko</a>
-                      <a href="javascript:void(0)" data-src="../assets/gif/9497885369133574502.gif">Chika dance</a>
-                      <div id="playAllButtonContainer"></div>
-                      <div id="logoPreviewContainer" class="logo-preview-container">
-                        <img id="logoPreviewImage" class="logo-preview-image" alt="Logo Preview">
-                      </div>
+                <div class="sub-dropdown-content viz-panel" id="logoOptions">
+                  <!-- GIF Search Bar -->
+                  <div class="viz-search-bar" id="gifSearchContainer">
+                    <div class="viz-search-inner">
+                      <i class="fa-solid fa-magnifying-glass viz-search-icon"></i>
+                      <input type="text" class="viz-search-input" id="gifSearchInput" placeholder="Search GIFs on Giphy…" autocomplete="off" />
+                      <button class="viz-search-clear" id="gifSearchClear" title="Clear">&#x2715;</button>
                     </div>
                   </div>
-                  <div class="sub-dropdown">
-                    <a href="javascript:void(0)" class="sub-dropbtn nav-row" id="customLogoLink">
-                      <span class="nav-row-icon"><i class="fa-solid fa-upload"></i></span>
-                      <span class="nav-row-text">Upload Visualization</span>
-                    </a>
-                    <input type="file" id="customLogoInput" accept="image/*,image/gif" style="display:none;" />
+                  <!-- GIF Results (skeleton → real) -->
+                  <div id="gifResultsContainer"></div>
+                  <!-- Default presets -->
+                  <div class="viz-section-label">Built-in</div>
+                  <div class="viz-presets" id="vizPresets">
+                    <div class="viz-preset-item" data-src="../assets/icons/icon.png" data-label="None">
+                      <div class="viz-thumb-wrap"><img src="../assets/icons/icon.png" loading="lazy"/></div>
+                      <span>None</span>
+                    </div>
+                    <div class="viz-preset-item" data-src="../assets/icons/icon.png" data-label="Default">
+                      <div class="viz-thumb-wrap"><img src="../assets/icons/icon.png" loading="lazy"/></div>
+                      <span>Default</span>
+                    </div>
+                    <div class="viz-preset-item" data-src="../assets/gif/download.gif" data-label="Yamate Kyoko">
+                      <div class="viz-thumb-wrap"><img src="../assets/gif/download.gif" loading="lazy"/></div>
+                      <span>Yamate Kyoko</span>
+                    </div>
+                    <div class="viz-preset-item" data-src="../assets/gif/Ghost in Shell.gif" data-label="Ghost in Shell">
+                      <div class="viz-thumb-wrap"><img src="../assets/gif/Ghost in Shell.gif" loading="lazy"/></div>
+                      <span>Ghost in Shell</span>
+                    </div>
+                    <div class="viz-preset-item" data-src="../assets/gif/10006971374054297431.gif" data-label="Danmachi">
+                      <div class="viz-thumb-wrap"><img src="../assets/gif/10006971374054297431.gif" loading="lazy"/></div>
+                      <span>Danmachi</span>
+                    </div>
+                    <div class="viz-preset-item" data-src="../assets/gif/10623970183937040275.gif" data-label="Shikanoko">
+                      <div class="viz-thumb-wrap"><img src="../assets/gif/10623970183937040275.gif" loading="lazy"/></div>
+                      <span>Shikanoko</span>
+                    </div>
+                    <div class="viz-preset-item" data-src="../assets/gif/10690612485779226054.gif" data-label="Kyoma dance">
+                      <div class="viz-thumb-wrap"><img src="../assets/gif/10690612485779226054.gif" loading="lazy"/></div>
+                      <span>Kyoma dance</span>
+                    </div>
+                    <div class="viz-preset-item" data-src="../assets/gif/14893715557068450646.gif" data-label="Takanashi Rikka">
+                      <div class="viz-thumb-wrap"><img src="../assets/gif/14893715557068450646.gif" loading="lazy"/></div>
+                      <span>Rikka</span>
+                    </div>
+                    <div class="viz-preset-item" data-src="../assets/gif/1700499298878234638.gif" data-label="Partyhard">
+                      <div class="viz-thumb-wrap"><img src="../assets/gif/1700499298878234638.gif" loading="lazy"/></div>
+                      <span>Partyhard</span>
+                    </div>
+                    <div class="viz-preset-item" data-src="../assets/gif/3245754771082903423.gif" data-label="Honey pie">
+                      <div class="viz-thumb-wrap"><img src="../assets/gif/3245754771082903423.gif" loading="lazy"/></div>
+                      <span>Honey pie!</span>
+                    </div>
+                    <div class="viz-preset-item" data-src="../assets/gif/7464694309340495606.gif" data-label="Obito">
+                      <div class="viz-thumb-wrap"><img src="../assets/gif/7464694309340495606.gif" loading="lazy"/></div>
+                      <span>Obito</span>
+                    </div>
+                    <div class="viz-preset-item" data-src="../assets/gif/8752356467101843848.gif" data-label="Oshi No Ko">
+                      <div class="viz-thumb-wrap"><img src="../assets/gif/8752356467101843848.gif" loading="lazy"/></div>
+                      <span>Oshi No Ko</span>
+                    </div>
+                    <div class="viz-preset-item" data-src="../assets/gif/9497885369133574502.gif" data-label="Chika dance">
+                      <div class="viz-thumb-wrap"><img src="../assets/gif/9497885369133574502.gif" loading="lazy"/></div>
+                      <span>Chika dance</span>
+                    </div>
                   </div>
+                  <div id="playAllButtonContainer"></div>
+                  <!-- Upload -->
+                  <div class="viz-section-label">Custom</div>
+                  <a href="javascript:void(0)" class="viz-upload-btn" id="customLogoLink">
+                    <i class="fa-solid fa-upload"></i> Upload GIF / Image
+                  </a>
+                  <input type="file" id="customLogoInput" accept="image/*,image/gif" style="display:none;" />
                 </div>
               </div>
               <a class="increase-volume nav-row">
@@ -244,7 +292,7 @@
           <li class="dropdown">
             <a href="javascript:void(0)" class="dropbtn">Subtitle</a>
             <div class="dropdown-content">
-              <a class="nav-row">
+              <a class="nav-row add-subtitle-btn">
                 <span class="nav-row-icon"><i class="fa-solid fa-plus"></i></span>
                 <span class="nav-row-text">Add Subtitle file...</span>
               </a>
@@ -303,34 +351,32 @@
               </a>
             </div>
           </li>
-          <!-- GIF Search Section within the Visualization sub-dropdown -->
-          <div id="gifSearchContainer">
-            <div class="search-box">
-              <button class="btn-search" id="gifSearchButton">
-                <img src="../assets//icons//search.png" alt="Search Icon" />
-              </button>
-              <input type="text" class="input-search" id="gifSearchInput" placeholder="Search GIFs...">
-            </div>
-            <!-- Results will show up here -->
-            <div id="gifResultsContainer" style="display: none; background: none"></div>
-          </div>
+          <!-- GIF search moved into Visualization panel -->
         </ul>
       </nav>
       <main>
         <!-- Custom Confirm Dialog -->
         <div id="customConfirmDialog" class="gif-modal">
-          <div class="gif-modal-content" style="--m-shadow: 0 0 10rem 0">
-            <h1 class="modal__title">Do you want to save this logo as a default dropdown?</h1>
-            <div class="checkbox-wrapper-43">
+          <div class="gif-modal-content">
+            <div class="gif-modal-icon"><i class="fa-solid fa-floppy-disk"></i></div>
+            <h2 class="gif-modal-title">Save as Default Logo?</h2>
+            <p class="gif-modal-subtitle">This image will appear in the audio visualization dropdown.</p>
+            <div class="gif-modal-checkbox">
               <input type="checkbox" id="cbx-43">
-              <label for="cbx-43" class="check modal__text ">
-                <svg width="18px" height="15px" viewBox="0 0 18 18">
+              <label for="cbx-43">
+                <svg width="14px" height="12px" viewBox="0 0 18 18">
                   <path d="M1,9 L1,3.5 C1,2 2,1 3.5,1 L14.5,1 C16,1 17,2 17,3.5 L17,14.5 C17,16 16,17 14.5,17 L3.5,17 C2,17 1,16 1,14.5 L1,9 Z"></path>
                   <polyline points="1 9 7 14 15 4"></polyline>
-                </svg>Automatically save logo without asking </label>
+                </svg>
+                Always save without asking
+              </label>
             </div>
-            <button id="confirmButton" class="modal__btn">Yes</button>
-            <button id="cancelButton" class="modal__btn">No</button>
+            <div class="gif-modal-actions">
+              <button id="cancelButton" class="gif-modal-btn gif-modal-btn--cancel">Cancel</button>
+              <button id="confirmButton" class="gif-modal-btn gif-modal-btn--confirm">
+                <i class="fa-solid fa-check"></i>&nbsp;Save
+              </button>
+            </div>
           </div>
         </div>
         <!-- Window Controls -->
@@ -479,6 +525,34 @@
                       </div>
                     </div>
                   </li>
+                  <li class="cm-sub-item" id="cm-viz-item">
+                    <a href="javascript:void(0)">
+                      <span class="cm-icon"><i class="fa-solid fa-waveform-lines"></i></span>
+                      <span class="cm-text">Visualization</span>
+                      <span class="cm-arrow"><i class="fa-solid fa-chevron-right"></i></span>
+                    </a>
+                    <div class="cm-submenu cm-viz-panel">
+                      <div class="viz-search-bar viz-search-bar--cm">
+                        <div class="viz-search-inner">
+                          <i class="fa-solid fa-magnifying-glass viz-search-icon"></i>
+                          <input type="text" class="viz-search-input" id="gifSearchInputCM" placeholder="Search GIFs…" autocomplete="off" />
+                        </div>
+                      </div>
+                      <div id="gifResultsContainerCM" class="cm-gif-results"></div>
+                      <div class="viz-section-label">Built-in</div>
+                      <div class="viz-presets viz-presets--sm" id="vizPresetsCM">
+                        <div class="viz-preset-item" data-src="../assets/icons/icon.png"><div class="viz-thumb-wrap"><img src="../assets/icons/icon.png" loading="lazy"/></div><span>None</span></div>
+                        <div class="viz-preset-item" data-src="../assets/gif/download.gif"><div class="viz-thumb-wrap"><img src="../assets/gif/download.gif" loading="lazy"/></div><span>Yamate</span></div>
+                        <div class="viz-preset-item" data-src="../assets/gif/Ghost in Shell.gif"><div class="viz-thumb-wrap"><img src="../assets/gif/Ghost in Shell.gif" loading="lazy"/></div><span>GitS</span></div>
+                        <div class="viz-preset-item" data-src="../assets/gif/9497885369133574502.gif"><div class="viz-thumb-wrap"><img src="../assets/gif/9497885369133574502.gif" loading="lazy"/></div><span>Chika</span></div>
+                        <div class="viz-preset-item" data-src="../assets/gif/7464694309340495606.gif"><div class="viz-thumb-wrap"><img src="../assets/gif/7464694309340495606.gif" loading="lazy"/></div><span>Obito</span></div>
+                        <div class="viz-preset-item" data-src="../assets/gif/8752356467101843848.gif"><div class="viz-thumb-wrap"><img src="../assets/gif/8752356467101843848.gif" loading="lazy"/></div><span>Oshi No Ko</span></div>
+                      </div>
+                      <a href="javascript:void(0)" class="viz-upload-btn" id="customLogoLinkCM">
+                        <i class="fa-solid fa-upload"></i> Upload
+                      </a>
+                    </div>
+                  </li>
                   <li class="cm-divider"></li>
                   <li>
                     <a class="increase-volume">
@@ -528,7 +602,7 @@
                       <span class="cm-arrow"><i class="fa-solid fa-chevron-right"></i></span>
                     </a>
                     <div class="cm-submenu">
-                      <ul class="zoom-track-list" id="zoom-track-list">
+                      <ul class="zoom-track-list">
                         <li><a data-zoom-level="0"><span class="cm-icon"></span><span class="cm-text">1.3×</span></a></li>
                         <li><a data-zoom-level="1"><span class="cm-icon"></span><span class="cm-text">1.5×</span></a></li>
                         <li><a data-zoom-level="2"><span class="cm-icon"></span><span class="cm-text">2×</span></a></li>
@@ -550,6 +624,15 @@
                 <span class="cm-arrow"><i class="fa-solid fa-chevron-right"></i></span>
               </a>
               <div class="cm-submenu">
+                <ul>
+                  <li>
+                    <a class="add-subtitle-btn">
+                      <span class="cm-icon"><i class="fa-solid fa-plus"></i></span>
+                      <span class="cm-text">Add Subtitle File...</span>
+                    </a>
+                  </li>
+                  <li class="cm-divider"></li>
+                </ul>
                 <div class="subtitle-track-list cm-dynamic-list">
                   <!-- populated by JS -->
                 </div>
@@ -599,6 +682,19 @@
                         <li class="cm-divider"></li>
                         <li><a href="javascript:void(0)" class="toggle-sort-order"><span class="cm-icon"><i class="fa-solid fa-arrow-right-arrow-left"></i></span><span class="cm-text">Toggle Order</span><span class="cm-shortcut">Alt+O</span></a></li>
                       </ul>
+                    </div>
+                  </li>
+                  <!-- Chapters sub-menu -->
+                  <li class="cm-sub-item" id="cm-chapters-item">
+                    <a href="javascript:void(0)">
+                      <span class="cm-icon"><i class="fa-solid fa-list-ol"></i></span>
+                      <span class="cm-text">Chapters</span>
+                      <span class="cm-arrow"><i class="fa-solid fa-chevron-right"></i></span>
+                    </a>
+                    <div class="cm-submenu">
+                      <div class="chapters-list-cm cm-dynamic-list" id="chaptersListCM">
+                        <div class="cm-no-chapters">No chapters available</div>
+                      </div>
                     </div>
                   </li>
                   <!-- Sleep Timer -->
@@ -761,9 +857,6 @@
             <div class="card tooltip-btn" data-tooltip="Shuffle">
               <img id="shuffle-button" src="../assets/icons/no-shuffle.png" alt="Shuffle" />
             </div>
-            <div class="card tooltip-btn" id="chapters-button" data-tooltip="Chapters (C)">
-              <img src="../assets/icons/chapters.png" alt="Chapters" style="filter: brightness(1.2);" />
-            </div>
             <input type="range" class="range blue" id="volume-slider" min="0" max="200" value="100" step="1">
           </div>
           <div class="playback-controls">
@@ -786,14 +879,7 @@
             </div>
           </div>
         </div>
-        <!-- Chapters Dropdown -->
-        <div id="chapters-dropdown" class="chapters-dropdown" style="display: none;">
-          <div class="chapters-header">
-            <h3>📋 Chapters</h3>
-            <button class="chapters-close" id="chapters-close-btn">×</button>
-          </div>
-          <div class="chapters-list"></div>
-        </div>
+        <!-- Chapters accessible via Playback menu and context menu -->
         <!-- Shortcut Modal  -->
         <div id="shortcutsModal" class="modal">
           <div class="modal-content">
@@ -1077,7 +1163,8 @@
                 <div class="shortcut">
                   <div class="description">Show Shortcuts</div>
                   <div class="keys">
-                    <span class="key">?</span>
+                    <span class="key">Shift</span>
+                    <span class="key">/</span>                  
                   </div>
                 </div>
               </div>

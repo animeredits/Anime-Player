@@ -22,7 +22,9 @@ const speedOptions = {
 	decrease: [0.75, 0.5, 0.25],
 };
 const zoomTrackList = document.getElementById("zoom-track-list");
-const zoomOptions = zoomTrackList.querySelectorAll("a");
+// Select from BOTH navbar AND context menu zoom items using data-zoom-level attribute
+// (getElementById only finds the first duplicate ID, so context menu zoom was broken)
+const zoomOptions = document.querySelectorAll("[data-zoom-level]");
 const seekBarContainer = document.getElementById("seek-bar-container");
 const seekBarWrapper = document.getElementById("seek-bar-wrapper");
 const seekBar = document.getElementById("seek-bar");
@@ -47,10 +49,14 @@ const customLogoInput = document.getElementById("customLogoInput");
 const deleteLogoButton = document.getElementById("deleteLogoButton");
 const logoPreviewContainers = document.querySelectorAll(".logo-preview-container");
 const logoPreviewImages = document.querySelectorAll(".logo-preview-image");
+// GIF search elements (navbar viz panel)
 const gifSearchInput = document.getElementById("gifSearchInput");
-const gifSearchButton = document.getElementById("gifSearchButton");
+const gifSearchClear = document.getElementById("gifSearchClear");
 const gifResultsContainer = document.getElementById("gifResultsContainer");
 const gifSearchContainer = document.getElementById("gifSearchContainer");
+// GIF search elements (context menu viz panel)
+const gifSearchInputCM = document.getElementById("gifSearchInputCM");
+const gifResultsContainerCM = document.getElementById("gifResultsContainerCM");
 const statusMessage = document.getElementById("statusMessage");
 const subtitleDisplay = document.getElementById('subtitle-display');
 
@@ -125,14 +131,14 @@ let isShutdownAtPlaylistEndEnabled = false;
 
 
 // ✅ Function to show the temporary status message
+let _statusTimeout = null;
 function showStatusMessage(text) {
+	if (!text) return;
 	statusMessage.innerText = text;
-	statusMessage.style.opacity = '1';
-	statusMessage.style.transition = "font-size 0.15s ease-out";
-
-	// Hide the message after 1.5 seconds
-	setTimeout(() => {
-		statusMessage.style.opacity = '0';
+	statusMessage.classList.add('visible');
+	clearTimeout(_statusTimeout);
+	_statusTimeout = setTimeout(() => {
+		statusMessage.classList.remove('visible');
 	}, 1800);
 }
 
@@ -204,6 +210,7 @@ customLogoInput.addEventListener("change", async function(event) {
 				// console.log("GIF saved successfully at:", response.path);
 				saveCustomLogo(response.path, fileName);
 				loadCustomLogos(); // ✅ Refresh the list
+				closeVizDropdown(); // Close panel so only the selected logo shows
 			} else {
 				console.error("Failed to save GIF:", response.error);
 			}
@@ -218,6 +225,7 @@ customLogoInput.addEventListener("change", async function(event) {
 					// console.log("GIF saved successfully at:", response.path);
 					saveCustomLogo(response.path, fileName);
 					loadCustomLogos(); // ✅ Refresh the list
+					closeVizDropdown(); // Close panel so only the selected logo shows
 					if (autoSave) {
 						localStorage.setItem("autoSaveLogo", JSON.stringify(true));
 					}
@@ -485,107 +493,162 @@ defaultLogoLinks.forEach((link) => {
 	});
 });
 
-// ✅ Function to search GIFs using the Giphy API
-function searchGifs() {
-	const searchTerm = gifSearchInput.value.trim();
-	if (!searchTerm) return;
+// ── GIF Search (shared logic for navbar + context menu panels) ──────────────
 
-	clearGifResults();
-	gifResultsContainer.innerHTML = `<div class="loading">Loading...</div>`;
-	gifResultsContainer.style.display = "block";
-
-	fetch(`https://api.giphy.com/v1/gifs/search?api_key=${API_KEY}&q=${encodeURIComponent(searchTerm)}&limit=100`)
-		.then((response) => response.json())
-		.then((data) => {
-			displayGifResults(data.data);
-		})
-		.catch((error) => {
-			console.error("Error fetching GIFs:", error);
-			gifResultsContainer.innerHTML = `<div class="no-results">Error fetching results. Please try again later.</div>`;
-		});
+function _gifShowSkeletons(container, count = 9) {
+	container.innerHTML = "";
+	for (let i = 0; i < count; i++) {
+		const sk = document.createElement("div");
+		sk.className = "gif-skeleton";
+		container.appendChild(sk);
+	}
 }
 
-// ✅ Display GIF results
-function displayGifResults(gifs) {
-	gifResultsContainer.innerHTML = ""; // Clear previous results
-	if (gifs.length === 0) {
-		gifResultsContainer.innerHTML = `<div class="no-results">No results found.</div>`;
+function _gifShowResults(container, gifs) {
+	container.innerHTML = "";
+	if (!gifs || gifs.length === 0) {
+		const msg = document.createElement("div");
+		msg.className = "viz-msg";
+		msg.textContent = "No results found";
+		container.appendChild(msg);
 		return;
 	}
-
 	gifs.forEach(gif => {
-		const gifUrl = gif.images.fixed_height.url;
-		const gifPreview = document.createElement("img");
-		gifPreview.src = gifUrl;
-		gifPreview.alt = gif.title || "GIF preview";
-		gifPreview.classList.add("gif-preview");
-
-		// Add click event for downloading the GIF
-		gifPreview.addEventListener("click", function() {
-			downloadAndSaveGif(gifUrl, gif.title);
-		});
-
-		gifResultsContainer.appendChild(gifPreview);
+		const url = gif.images.fixed_height_small
+			? gif.images.fixed_height_small.url
+			: gif.images.fixed_height.url;
+		const origUrl = gif.images.original.url;
+		const img = document.createElement("img");
+		img.className = "gif-result-img";
+		img.alt = gif.title || "GIF";
+		img.loading = "lazy";
+		// Show skeleton until loaded
+		const skWrap = document.createElement("div");
+		skWrap.className = "gif-skeleton";
+		container.appendChild(skWrap);
+		img.onload = () => skWrap.replaceWith(img);
+		img.onerror = () => skWrap.remove();
+		img.addEventListener("click", () => downloadAndSaveGif(origUrl, gif.title));
+		img.src = url;
 	});
 }
 
-// ✅ Function to clear GIF results and free up network resources
-function clearGifResults() {
-	const gifElements = gifResultsContainer.querySelectorAll("img"); // Select all GIFs
-	gifElements.forEach((gif) => {
-		if (gif.src.startsWith("blob:")) {
-			URL.revokeObjectURL(gif.src); // Revoke blob URLs to free memory
+function _gifShowError(container) {
+	container.innerHTML = '<div class="viz-msg">Could not load GIFs. Check connection.</div>';
+}
+
+let _gifDebounceNav = null;
+let _gifDebounceCM = null;
+
+function searchGifsIn(inputEl, container, debounceRef, setRef) {
+	clearTimeout(debounceRef);
+	const ref = setTimeout(async () => {
+		const term = inputEl.value.trim();
+		if (!term) { container.innerHTML = ""; return; }
+		_gifShowSkeletons(container, 9);
+		try {
+			const res = await fetch(
+				`https://api.giphy.com/v1/gifs/search?api_key=${API_KEY}&q=${encodeURIComponent(term)}&limit=30`
+			);
+			const data = await res.json();
+			_gifShowResults(container, data.data);
+		} catch(e) {
+			console.error("GIF fetch error:", e);
+			_gifShowError(container);
+		}
+	}, 400);
+	setRef(ref);
+}
+
+// Wire up navbar panel
+if (gifSearchInput) {
+	gifSearchInput.addEventListener("input", () => {
+		const hasVal = gifSearchInput.value.trim().length > 0;
+		if (gifSearchClear) gifSearchClear.classList.toggle("visible", hasVal);
+		searchGifsIn(gifSearchInput, gifResultsContainer,
+			_gifDebounceNav, v => _gifDebounceNav = v);
+	});
+	gifSearchInput.addEventListener("keydown", e => {
+		// Prevent global hotkeys from triggering while typing
+		e.stopPropagation();
+		if (e.key === "Escape") {
+			gifSearchInput.value = "";
+			if (gifSearchClear) gifSearchClear.classList.remove("visible");
+			gifResultsContainer.innerHTML = "";
 		}
 	});
-
-	gifResultsContainer.innerHTML = ""; // Clear all child elements
-	gifResultsContainer.style.display = "none"; // Hide the container
+	// Prevent dropdown from closing when user clicks inside the search bar
+	gifSearchInput.addEventListener("click", e => e.stopPropagation());
+}
+if (gifSearchClear) {
+	gifSearchClear.addEventListener("click", e => {
+		e.stopPropagation();
+		gifSearchInput.value = "";
+		gifSearchClear.classList.remove("visible");
+		gifResultsContainer.innerHTML = "";
+	});
+}
+// Search button — click focuses input and triggers search
+const gifSearchBtn = document.getElementById("gifSearchBtn");
+if (gifSearchBtn) {
+	gifSearchBtn.addEventListener("click", e => {
+		e.stopPropagation();
+		if (gifSearchInput) {
+			gifSearchInput.focus();
+			gifSearchInput.dispatchEvent(new Event("input"));
+		}
+	});
 }
 
-// Event listeners
-gifSearchInput.addEventListener("input", function() {
-	clearTimeout(debounceTimeout);
-	debounceTimeout = setTimeout(searchGifs, 300); // Debounce search
-});
+// Wire up context menu panel
+if (gifSearchInputCM) {
+	gifSearchInputCM.addEventListener("input", () => {
+		searchGifsIn(gifSearchInputCM, gifResultsContainerCM,
+			_gifDebounceCM, v => _gifDebounceCM = v);
+	});
+	gifSearchInputCM.addEventListener("keydown", e => e.stopPropagation());
+	gifSearchInputCM.addEventListener("click", e => e.stopPropagation());
+}
 
-gifSearchInput.addEventListener("keydown", function(event) {
-	if (event.key === "Enter") {
-		event.preventDefault();
-		searchGifs();
+// Helper to close the navbar viz dropdown panel
+function closeVizDropdown() {
+	if (audioLogoDropdown) {
+		const panel = audioLogoDropdown.querySelector('.sub-dropdown-content');
+		if (panel) panel.style.display = 'none';
 	}
+}
+
+// Preset tiles click handler (works for both panels)
+document.querySelectorAll(".viz-preset-item").forEach(item => {
+	item.addEventListener("click", () => {
+		const src = item.dataset.src;
+		if (!src) return;
+		updateLogo(src);
+		document.querySelectorAll(".viz-preset-item").forEach(i => i.classList.remove("active"));
+		item.classList.add("active");
+		showStatusMessage("Visualization: " + (item.dataset.label || item.querySelector("span").textContent));
+		// Close navbar viz panel after selection so panel thumbnails don't show alongside audioImage
+		closeVizDropdown();
+	});
 });
 
-// Hide the results container and clear results when clicking outside
-document.addEventListener("click", function(event) {
-	if (!gifSearchContainer.contains(event.target)) {
-		clearGifResults(); // Clean up GIFs when clicking outside
-		gifSearchInput.value = ""; // Optionally clear the search input
-	}
-});
+// Context menu custom logo link
+const customLogoLinkCM = document.getElementById("customLogoLinkCM");
+if (customLogoLinkCM) {
+	customLogoLinkCM.addEventListener("click", () => {
+		document.getElementById("customLogoInput").click();
+	});
+}
 
-// Prevent container from closing when clicked inside
-gifSearchContainer.addEventListener("click", function(event) {
-	event.stopPropagation();
-});
-
-// Allow gif scrolling when mouse is over it
-gifSearchContainer.addEventListener("wheel", (event) => {
-	if (isMouseOver) {
-		event.stopPropagation();
-	}
-});
-
-// Detect mouse enter/leave events for the Gif container
-gifResultsContainer.addEventListener("mouseenter", () => {
-	isMouseOver = true;
-});
-gifResultsContainer.addEventListener("mouseleave", () => {
-	isMouseOver = false;
-});
-
-gifSearchButton.addEventListener("mouseover", () => {
-
-})
+// Compatibility shims for old references
+function searchGifs() {
+	if (gifSearchInput) searchGifsIn(gifSearchInput, gifResultsContainer,
+		_gifDebounceNav, v => _gifDebounceNav = v);
+}
+function clearGifResults() {
+	if (gifResultsContainer) gifResultsContainer.innerHTML = "";
+	if (gifResultsContainerCM) gifResultsContainerCM.innerHTML = "";
+}
 
 // Download and save the GIF
 async function downloadAndSaveGif(gifUrl, gifName) {
@@ -757,12 +820,27 @@ async function loadMediaFile(filePath, fileName) {
 			document.getElementById("audioLogo").style.display = "none";
 			audioLogoDropdown.style.pointerEvents = "none";
 			audioLogoDropdown.style.opacity = "0.5";
+			// Force-close the viz panel if it was open (so the grid doesn't stay visible)
+			const vizPanel = audioLogoDropdown.querySelector('.sub-dropdown-content');
+			if (vizPanel) vizPanel.style.display = 'none';
+			// Disable the navbar viz button text visually
+			const vizBtn = audioLogoDropdown.querySelector('.sub-dropbtn');
+			if (vizBtn) vizBtn.setAttribute('tabindex', '-1');
+			// Disable visualization in context menu for video files (mirrors navbar behaviour)
+			const cmVizItem = document.getElementById("cm-viz-item");
+			if (cmVizItem) { cmVizItem.style.opacity = "0.4"; cmVizItem.style.pointerEvents = "none"; }
 		} else if (audioFormats.includes(fileExtension)) {
 			document.getElementById("audioLogo").style.display = "block";
 			audioImage.style.display = "block";
 			loadCustomLogos();
 			audioLogoDropdown.style.pointerEvents = "auto";
 			audioLogoDropdown.style.opacity = "1";
+			// Restore viz button
+			const vizBtn = audioLogoDropdown.querySelector('.sub-dropbtn');
+			if (vizBtn) vizBtn.removeAttribute('tabindex');
+			// Re-enable visualization in context menu for audio files
+			const cmVizItem = document.getElementById("cm-viz-item");
+			if (cmVizItem) { cmVizItem.style.opacity = ""; cmVizItem.style.pointerEvents = ""; }
 			const savedLogo = localStorage.getItem("selectedLogo");
 			if (savedLogo) {
 				setSelectedLogo(savedLogo);
@@ -866,6 +944,20 @@ function playMediaFile(filePath) {
 // ✅ Function to play a video by its index
 function playVideoByIndex(index) {
 	if (index < 0 || index >= mediaFiles.length) return;
+
+	// Track navigation history so Previous button works after manual playlist selections
+	if (currentVideoIndex !== null &&
+		currentVideoIndex !== index &&
+		navigationHistory[navigationHistory.length - 1] !== currentVideoIndex) {
+		navigationHistory.push(currentVideoIndex);
+	}
+	// In shuffle mode also push to lastPlayedStack
+	if (isShuffle && currentVideoIndex !== null && currentVideoIndex !== index) {
+		if (lastPlayedStack[lastPlayedStack.length - 1] !== currentVideoIndex) {
+			lastPlayedStack.push(currentVideoIndex);
+		}
+	}
+
 	currentVideoIndex = index;
 	lastPlayedIndex = index;
 
@@ -949,6 +1041,49 @@ openFolderButton.addEventListener("click", async () => {
 	} catch (error) {
 		console.error("Error opening folder:", error);
 	}
+});
+
+// ── Add Subtitle File (navbar & context menu) ──────────────────────────────
+document.querySelectorAll('.add-subtitle-btn').forEach(btn => {
+	btn.addEventListener('click', async () => {
+		try {
+			const filePath = await window.electron.invoke('open-subtitle-dialog');
+			if (!filePath) return;
+			// Inject as an external VTT/SRT/ASS track
+			const ext = filePath.split('.').pop().toLowerCase();
+			const blobUrl = filePath.startsWith('blob:') ? filePath
+				: await window.electron.invoke('read-file-buffer', filePath).then(buf => {
+					const blob = new Blob([new Uint8Array(buf)], { type: 'text/plain' });
+					return URL.createObjectURL(blob);
+				});
+			const trackEl = document.createElement('track');
+			trackEl.kind = 'subtitles';
+			trackEl.label = filePath.split(/[\\/]/).pop();
+			trackEl.src = blobUrl;
+			trackEl.default = true;
+			video.appendChild(trackEl);
+			// Update all subtitle lists
+			const subtitleLists = document.querySelectorAll('.subtitle-track-list');
+			subtitleLists.forEach(list => {
+				const a = document.createElement('a');
+				a.className = 'subtitle-item';
+				a.dataset.trackIndex = video.textTracks.length - 1;
+				a.textContent = trackEl.label;
+				a.addEventListener('click', () => {
+					for (let t of video.textTracks) t.mode = 'disabled';
+					video.textTracks[parseInt(a.dataset.trackIndex)].mode = 'showing';
+					document.querySelectorAll('.subtitle-item').forEach(el => el.classList.remove('active'));
+					a.classList.add('active');
+					showStatusMessage(`Subtitle: ${trackEl.label}`);
+				});
+				list.appendChild(a);
+			});
+			showStatusMessage(`Subtitle added: ${trackEl.label}`);
+		} catch (err) {
+			console.error('Subtitle open error:', err);
+			showStatusMessage('Could not open subtitle file');
+		}
+	});
 });
 
 // Functions to toggle play/pause icon
@@ -1061,9 +1196,16 @@ function playNext() {
 		navigationHistory.push(currentVideoIndex);
 	}
 
-	// Mark current video as played (only in shuffle mode)
-	if (isShuffle && !playedVideos.includes(currentVideoIndex)) {
-		playedVideos.push(currentVideoIndex);
+	// Mark current video as played and track history for shuffle mode
+	// lastPlayedStack drives playPrevious in shuffle, so push here (VLC-style)
+	if (isShuffle) {
+		if (!playedVideos.includes(currentVideoIndex)) {
+			playedVideos.push(currentVideoIndex);
+		}
+		// Only push if not already the last item (avoid duplicates on rapid clicks)
+		if (lastPlayedStack[lastPlayedStack.length - 1] !== currentVideoIndex) {
+			lastPlayedStack.push(currentVideoIndex);
+		}
 	}
 
 	currentVideoIndex = nextIndex;
@@ -1443,6 +1585,8 @@ function updatePlaylistDropdown(mediaFiles) {
 			fileLink.addEventListener("click", () => {
 				playVideoByIndex(index);
 				highlightCurrentVideo(realFileName);
+				// Close context menu if open (playlist lives in both navbar & CM)
+				if (window._hideContextMenu) window._hideContextMenu();
 			});
 
 			playlistContainer.appendChild(fileLink);
@@ -1741,10 +1885,10 @@ document.addEventListener('click', (e) => {
 
 // Initialize DOM elements (delay to ensure they exist)
 function initChaptersDOM() {
-	chaptersDropdown = document.getElementById('chapters-dropdown');
-	chaptersButton = document.getElementById('chapters-button');
-	chaptersCloseBtn = document.getElementById('chapters-close-btn');
-	chaptersList = document.querySelector('.chapters-list');
+	chaptersDropdown = null; // removed — chapters now in Playback menus
+	chaptersButton = null;   // removed — chapters button removed from controls
+	chaptersCloseBtn = null;
+	chaptersList = null;     // legacy panel removed
 	chapterTooltip = document.getElementById('chapter-tooltip');
 	chaptersMarkersContainer = document.getElementById('chapters-markers-container');
 
@@ -1825,43 +1969,72 @@ function renderChapterMarkers() {
 	// console.log(`[Chapters] Rendered ${currentChapters.length} markers`);
 }
 
-// Render chapters list in dropdown
+// Render chapters list in dropdown + navbar menu + context menu
 function renderChaptersList() {
-	if (!chaptersList) {
-		console.warn('[Chapters] List container not found');
-		return;
+	// legacy floating panel (may be null now)
+	if (chaptersList) {
+		chaptersList.innerHTML = "";
 	}
 
-	chaptersList.innerHTML = '';
+	// Helper to build a chapter anchor element
+	function makeChapterAnchor(chapter, index, onClickExtra) {
+		const a = document.createElement("a");
+		a.className = "chapter-item";
+		a.id = `chapter-item-${index}`;
+		a.href = "javascript:void(0)";
 
-	currentChapters.forEach((chapter, index) => {
-		const item = document.createElement('a');
-		item.className = 'chapter-item';
-		item.id = `chapter-item-${index}`;
+		const name = document.createElement("span");
+		name.textContent = chapter.name;
+		a.appendChild(name);
 
-		const nameSpan = document.createElement('span');
-		nameSpan.className = 'chapter-item-name';
-		nameSpan.textContent = chapter.name;
+		const badge = document.createElement("span");
+		badge.className = "chapter-time-badge";
+		badge.textContent = formatChapterTime(chapter.start);
+		a.appendChild(badge);
 
-		const timeSpan = document.createElement('span');
-		timeSpan.className = 'chapter-item-time';
-		timeSpan.textContent = formatChapterTime(chapter.start);
-
-		item.appendChild(nameSpan);
-		item.appendChild(timeSpan);
-
-		item.addEventListener('click', (e) => {
+		a.addEventListener("click", (e) => {
 			e.preventDefault();
 			jumpToChapter(index);
-			if (chaptersDropdown) {
-				chaptersDropdown.style.display = 'none';
-			}
+			if (typeof onClickExtra === "function") onClickExtra();
 		});
+		return a;
+	}
 
-		chaptersList.appendChild(item);
+	// Populate legacy list if it still exists
+	if (chaptersList) {
+		currentChapters.forEach((ch, i) => chaptersList.appendChild(makeChapterAnchor(ch, i)));
+	}
+
+	// Populate navbar Playback > Chapters sub-dropdown
+	const navList = document.getElementById("chaptersListNav");
+	if (navList) {
+		navList.innerHTML = "";
+		if (currentChapters.length === 0) {
+			navList.innerHTML = '<a style="color:rgba(255,255,255,0.35);pointer-events:none;padding:8px 12px;font-size:11px">No chapters</a>';
+		} else {
+			currentChapters.forEach((ch, i) =>
+				navList.appendChild(makeChapterAnchor(ch, i)));
+		}
+	}
+
+	// Populate context menu Playback > Chapters list
+	const cmList = document.getElementById("chaptersListCM");
+	if (cmList) {
+		cmList.innerHTML = "";
+		if (currentChapters.length === 0) {
+			cmList.innerHTML = '<div class="cm-no-chapters">No chapters available</div>';
+		} else {
+			currentChapters.forEach((ch, i) =>
+				cmList.appendChild(makeChapterAnchor(ch, i, () => { if (window._hideContextMenu) window._hideContextMenu(); })));
+		}
+	}
+}
+
+// Update active chapter highlight in nav/cm lists
+function highlightActiveChapterInMenus(index) {
+	document.querySelectorAll("#chaptersListNav .chapter-item, #chaptersListCM .chapter-item").forEach((el, i) => {
+		el.classList.toggle("active-chapter", i === index);
 	});
-
-	// console.log(`[Chapters] Rendered ${currentChapters.length} chapter items`);
 }
 
 // Show chapter tooltip on hover
@@ -1960,20 +2133,13 @@ function clearChapters() {
 	if (chapterTooltip) chapterTooltip.style.display = 'none';
 }
 
-// Toggle chapters dropdown
+// Toggle chapters — now chapters live in Playback menus; C key shows status
 function toggleChaptersDropdown() {
-	if (!chaptersDropdown) {
-		console.warn('[Chapters] Dropdown not found');
+	if (!currentChapters || currentChapters.length === 0) {
+		showStatusMessage("No chapters available");
 		return;
 	}
-
-	if (chaptersDropdown.style.display === 'none' || chaptersDropdown.style.display === '') {
-		chaptersDropdown.style.display = 'flex';
-		if (chaptersButton) chaptersButton.classList.add('active');
-	} else {
-		chaptersDropdown.style.display = 'none';
-		if (chaptersButton) chaptersButton.classList.remove('active');
-	}
+	showStatusMessage(`Chapters: ${currentChapters.length} — use Playback menu`);
 }
 
 // Format time for chapters
@@ -2571,8 +2737,8 @@ function updateVolume(newVolume, source = null) {
 		volumeSlider.value = Math.round(newVolume * 100); // Ensure integer values for the slider
 	}
 
-	// Show tooltip with precise percentage
-	showTooltip(newVolume);
+	// Tooltip shown by callers that have mouse context (slider/wheel/hover);
+	// keyboard/menu callers show the status pill instead — no double messages.
 
 	// Save the exact volume setting
 	saveVolumeSetting(newVolume);
@@ -2610,11 +2776,11 @@ function showTooltip(volume, event = null) {
 volumeSlider.addEventListener("input", (event) => {
 	const exactVolume = parseFloat(event.target.value) / 100;
 	updateVolume(exactVolume, 'slider');
-	showTooltip(exactVolume, event);
+	showTooltip(exactVolume, event); // tooltip near cursor only — no status pill
 });
 
 volumeSlider.addEventListener("mouseenter", () => {
-	showTooltip(gainNode.gain.value);
+	showTooltip(gainNode.gain.value); // hover shows tooltip only
 });
 
 volumeSlider.addEventListener("mouseleave", () => {
@@ -2638,7 +2804,7 @@ volumeSlider.addEventListener("wheel", (e) => {
 
 	const exactVolume = parseFloat(newValue / 100).toFixed(2);
 	updateVolume(exactVolume, 'wheel');
-	showTooltip(exactVolume, e);
+	showTooltip(exactVolume, e); // tooltip near mouse only — no status pill
 });
 
 // Initialize tooltip for font size
@@ -2702,7 +2868,6 @@ mediaPlayer.addEventListener("wheel", (event) => {
 		}
 
 		videoTitleElement.style.fontSize = `${fontSize}px`;
-		statusMessage.style.fontSize = `${fontSize}px`;
 		fontSizeTooltip.style.fontSize = `${fontSize}px`;
 		// Update subtitle font size via CSS custom property
 		document.documentElement.style.setProperty('--subtitle-font-size', `${fontSize}px`);
@@ -3268,6 +3433,8 @@ document.addEventListener("DOMContentLoaded", function() {
 		contextMenu.style.display = "none";
 		contextMenu.style.visibility = "visible";
 	}
+	// Expose globally so functions outside this closure (renderChaptersList, etc.) can close the menu
+	window._hideContextMenu = hideContextMenu;
 
 	// Attach event listeners
 	mediaPlayer.addEventListener("contextmenu", showContextMenu);
@@ -3309,19 +3476,28 @@ document.addEventListener("DOMContentLoaded", function() {
 		item.addEventListener("click", (event) => {
 			const target = event.target;
 
-			// Don't close if clicking a sub-menu trigger
-			if (target.closest(".cm-sub-item")) {
+			// Handle specific leaf actions first (even if inside a sub-item)
+			if (target.closest("#contextOpenFile")) {
+				hideContextMenu();
+				openFileButton.click();
+				return;
+			} else if (target.closest("#contextOpenFolder")) {
+				hideContextMenu();
+				openFolderButton.click();
+				return;
+			} else if (target.closest("#contextTogglePlayPause")) {
+				togglePlayPause();
+				hideContextMenu();
+				return;
+			} else if (target.closest("#context-menu-shutdown-timer")) {
+				showTimerContainer(true);
+				hideContextMenu();
 				return;
 			}
 
-			if (target.closest("#contextOpenFile")) {
-				openFileButton.click();
-			} else if (target.closest("#contextOpenFolder")) {
-				openFolderButton.click();
-			} else if (target.closest("#contextTogglePlayPause")) {
-				togglePlayPause();
-			} else if (target.closest("#context-menu-shutdown-timer")) {
-				showTimerContainer(true);
+			// Don't close if clicking a sub-menu trigger
+			if (target.closest(".cm-sub-item")) {
+				return;
 			}
 
 			hideContextMenu();
@@ -3517,18 +3693,6 @@ document.querySelectorAll(".quit").forEach((element) => {
 	});
 });
 
-document.querySelectorAll(".increase-volume").forEach((element) => {
-	element.addEventListener("click", () => {
-		updateVolume(gainNode.gain.value + 0.1)
-	});
-});
-
-document.querySelectorAll(".decrease-volume").forEach((element) => {
-	element.addEventListener("click", () => {
-		updateVolume(gainNode.gain.value - 0.1)
-	});
-});
-
 // Event listeners for all nav components
 document.querySelectorAll(".quit").forEach((element) => {
 	element.addEventListener("click", () => {
@@ -3536,15 +3700,20 @@ document.querySelectorAll(".quit").forEach((element) => {
 	});
 });
 
+// Volume menu buttons — show status pill (no cursor = no tooltip)
 document.querySelectorAll(".increase-volume").forEach((element) => {
 	element.addEventListener("click", () => {
-		updateVolume(gainNode.gain.value + 0.1)
+		const newVol = Math.min(2, parseFloat((gainNode.gain.value + 0.1).toFixed(2)));
+		updateVolume(newVol);
+		showStatusMessage(`Volume: ${Math.round(newVol * 100)}%`);
 	});
 });
 
 document.querySelectorAll(".decrease-volume").forEach((element) => {
 	element.addEventListener("click", () => {
-		updateVolume(gainNode.gain.value - 0.1)
+		const newVol = Math.max(0, parseFloat((gainNode.gain.value - 0.1).toFixed(2)));
+		updateVolume(newVol);
+		showStatusMessage(`Volume: ${Math.round(newVol * 100)}%`);
 	});
 });
 
@@ -3622,12 +3791,14 @@ document.addEventListener("keydown", (event) => {
 
 	if (event.key === "ArrowUp") {
 		event.preventDefault();
-		updateVolume(Math.min(2, gainNode.gain.value + 0.05));
-		showStatusMessage(`Volume: ${(Math.min(2, gainNode.gain.value + 0.05) * 100).toFixed(0)}%`);
+		const newVol = Math.min(2, parseFloat((gainNode.gain.value + 0.05).toFixed(2)));
+		updateVolume(newVol);
+		showStatusMessage(`Volume: ${Math.round(newVol * 100)}%`);
 	} else if (event.key === "ArrowDown") {
 		event.preventDefault();
-		updateVolume(Math.max(0, gainNode.gain.value - 0.05));
-		showStatusMessage(`Volume: ${(Math.max(0, gainNode.gain.value - 0.05) * 100).toFixed(0)}%`);
+		const newVol = Math.max(0, parseFloat((gainNode.gain.value - 0.05).toFixed(2)));
+		updateVolume(newVol);
+		showStatusMessage(`Volume: ${Math.round(newVol * 100)}%`);
 	}
 
 	if (event.ctrlKey && event.key === ";") {
@@ -3786,9 +3957,12 @@ document.addEventListener("keydown", (event) => {
 });
 
 // Function to handle zoom menu clicks
-zoomOptions.forEach((option, index) => {
+// Uses data-zoom-level attribute so both navbar AND context menu items resolve correctly
+zoomOptions.forEach((option) => {
 	option.addEventListener("click", () => {
-		// Update the scale based on the clicked menu option
+		// Read zoom level from attribute — not forEach index — so duplicate selectors
+		// from navbar vs. context menu don't cause index mismatches
+		const index = parseInt(option.dataset.zoomLevel, 10);
 		scale = zoomLevels[index];
 		currentZoomIndex = index;
 
@@ -5256,14 +5430,16 @@ window.electron.onPrevious(() => {
 
 // Handle volume increase action from tray
 window.electron.onIncreaseVolume(() => {
-	updateVolume(gainNode.gain.value + 0.1) // Increase volume
-	showStatusMessage(`Volume: ${(gainNode.gain.value * 100).toFixed(0)}%`);
+	const newVol = Math.min(2, parseFloat((gainNode.gain.value + 0.1).toFixed(2)));
+	updateVolume(newVol);
+	showStatusMessage(`Volume: ${Math.round(newVol * 100)}%`);
 });
 
 // Handle volume decrease action from tray
 window.electron.onDecreaseVolume(() => {
-	updateVolume(gainNode.gain.value - 0.1); // Decrease volume
-	showStatusMessage(`Volume: ${(gainNode.gain.value * 100).toFixed(0)}%`);
+	const newVol = Math.max(0, parseFloat((gainNode.gain.value - 0.1).toFixed(2)));
+	updateVolume(newVol);
+	showStatusMessage(`Volume: ${Math.round(newVol * 100)}%`);
 });
 
 // Handle mute action from tray

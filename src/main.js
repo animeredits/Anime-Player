@@ -350,6 +350,14 @@ function createWindow() {
   appState.win.webContents.on('did-finish-load', () => {
     // Handle any files passed at startup
     handleFileOpenFromArg();
+    // Re-send initial window states after load finishes.
+    // On some systems ready-to-show fires before the renderer's IPC listener
+    // is registered, so this guarantees the maximize/fullscreen icons are correct
+    // on first paint without relying on a separate invoke round-trip.
+    appState.win.webContents.send('initial-window-states', {
+      isMaximized: appState.win.isMaximized(),
+      isFullscreen: appState.win.isFullScreen()
+    });
   });
 
   appState.win.loadFile(path.join(__dirname, 'index.html'));
@@ -674,6 +682,21 @@ function setupIPCHandlers() {
   ipcMain.handle("open-file-dialog", handleOpenFileDialog);
   ipcMain.handle("open-folder-dialog", handleOpenFolderDialog);
   ipcMain.handle("delete-file", handleDeleteFile);
+
+  // Subtitle file dialog
+  ipcMain.handle("open-subtitle-dialog", async () => {
+    const { dialog } = require('electron');
+    const result = await dialog.showOpenDialog({
+      title: 'Open Subtitle File',
+      filters: [
+        { name: 'Subtitle Files', extensions: ['srt', 'vtt', 'ass', 'ssa', 'sub', 'idx'] },
+        { name: 'All Files', extensions: ['*'] }
+      ],
+      properties: ['openFile']
+    });
+    if (result.canceled || result.filePaths.length === 0) return null;
+    return result.filePaths[0];
+  });
 
   // Playback time
   ipcMain.on('save-playback-time', handleSavePlaybackTime);
