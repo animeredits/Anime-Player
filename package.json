@@ -182,9 +182,13 @@
         "linux": {
             "icon": "assets/icons/icon.png",
             "target": [
-                "AppImage"
-            ],
-            "category": "Video"
+                {
+                    "target": "AppImage",
+                    "arch": [
+                        "x64"
+                    ]
+                }
+            ]
         }
     }
 }
