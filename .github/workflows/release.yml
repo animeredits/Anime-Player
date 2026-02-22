@@ -23,7 +23,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v3
         with:
-          node-version: 18
+          node-version: 20
 
       - name: Install Dependencies
         run: npm ci
@@ -51,7 +51,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v3
         with:
-          node-version: 18
+          node-version: 20
 
       - name: Install Dependencies
         run: npm ci
@@ -126,4 +126,4 @@ jobs:
         if: env.TAG_EXISTS == '0'
         run: |
           git tag -a "$VERSION" -m "Release $VERSION"
-          git push origin "$VERSION"  
+          git push origin "$VERSION"
