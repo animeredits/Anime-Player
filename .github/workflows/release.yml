@@ -98,6 +98,7 @@ jobs:
         run: npm run dist:win
 
       - name: Upload Windows artifacts
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: windows-dist
@@ -130,10 +131,12 @@ jobs:
           # Signing is fully disabled — no Apple Developer account needed.
           # Users will see a one-time Gatekeeper warning on first launch;
           # they right-click → Open to bypass it. Everything works normally after that.
-          CSC_IDENTITY_AUTO_DISCOVERY: "false"
+          CSC_IDENTITY_AUTO_DISCOVERY: 'false'
+          CSC_KEY_PASSWORD: ''
         run: npm run dist:mac
 
       - name: Upload macOS artifacts
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: mac-dist
@@ -183,6 +186,7 @@ jobs:
         run: npm run dist:linux
 
       - name: Upload Linux artifacts
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: linux-dist
