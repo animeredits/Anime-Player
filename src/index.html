@@ -139,7 +139,6 @@
                 <a href="javascript:void(0)" class="sub-dropbtn nav-row" id="nav-chapters-btn">
                   <span class="nav-row-icon"><i class="fa-solid fa-list-ol"></i></span>
                   <span class="nav-row-text">Chapters</span>
-                  <span class="nav-row-shortcut">C</span>
                 </a>
                 <div class="sub-dropdown-content chapters-list-nav" id="chaptersListNav"></div>
               </div>
@@ -186,12 +185,12 @@
                   <!-- Default presets -->
                   <div class="viz-section-label">Built-in</div>
                   <div class="viz-presets" id="vizPresets">
-                    <div class="viz-preset-item" data-src="../assets/icons/icon.png" data-label="None">
-                      <div class="viz-thumb-wrap"><img src="../assets/icons/icon.png" loading="lazy"/></div>
+                    <div class="viz-preset-item" data-label="None">
+                      <div class="viz-thumb-wrap"></div>
                       <span>None</span>
                     </div>
-                    <div class="viz-preset-item" data-src="../assets/icons/icon.png" data-label="Default">
-                      <div class="viz-thumb-wrap"><img src="../assets/icons/icon.png" loading="lazy"/></div>
+                    <div class="viz-preset-item" data-src="../assets/icons/icon.ico" data-label="Default">
+                      <div class="viz-thumb-wrap"><img src="../assets/icons/icon.ico" loading="lazy"/></div>
                       <span>Default</span>
                     </div>
                     <div class="viz-preset-item" data-src="../assets/gif/download.gif" data-label="Yamate Kyoko">
@@ -321,24 +320,16 @@
                   <a href="javascript:void(0)" id="comfortModeToggle" class="nav-row"><span class="nav-row-icon nav-effect-check"></span><span class="nav-row-text">Comfort</span></a>
                 </div>
               </div>
-              <div class="sub-dropdown">
-                <a href="javascript:void(0)" class="videoEffectBtn sub-dropbtn nav-row">
-                  <span class="nav-row-icon"><i class="fa-solid fa-palette"></i></span>
-                  <span class="nav-row-text">Video Effect</span>
-                </a>
-                <div class="sub-dropdown-content">
-                  <div class="saturationModal" id="saturationModal">
-                    <div class="saturation-modal-header">
-                      <div class="saturation-modal-title">Saturation Adjustment</div>
-                      <button class="saturation-reset-btn" id="saturation-resetBtn">↻</button>
-                    </div>
-                    <div class="slider-container">
-                      <input type="range" min="0" max="200" value="120" class="slider" id="saturationSlider">
-                      <span class="value-display" id="saturationValue">120%</span>
-                    </div>
-                  </div>
-                </div>
-              </div>
+              <a href="javascript:void(0)" id="openVideoEffectsBtn" class="nav-row">
+                <span class="nav-row-icon"><i class="fa-solid fa-palette"></i></span>
+                <span class="nav-row-text">Video Effects</span>
+                <span class="nav-row-shortcut">Ctrl+E</span>
+              </a>
+              <a href="javascript:void(0)" id="openSyncToolBtn" class="nav-row">
+                <span class="nav-row-icon"><i class="fa-solid fa-sliders-h"></i></span>
+                <span class="nav-row-text">Track Sync</span>
+                <span class="nav-row-shortcut">Ctrl+Y</span>
+              </a>
             </div>
           </li>
           <li class="dropdown">
@@ -348,6 +339,15 @@
                 <span class="nav-row-icon"><i class="fa-solid fa-keyboard"></i></span>
                 <span class="nav-row-text">Shortcuts</span>
                 <span class="nav-row-shortcut">Shift+/</span>
+              </a>
+              <div class="sort-divider"></div>
+              <a href="javascript:void(0)" id="checkUpdateBtn" class="nav-row">
+                <span class="nav-row-icon"><i class="fa-solid fa-rotate"></i></span>
+                <span class="nav-row-text">Check for Updates</span>
+              </a>
+              <a href="javascript:void(0)" id="showAboutBtn" class="nav-row">
+                <span class="nav-row-icon"><i class="fa-solid fa-circle-info"></i></span>
+                <span class="nav-row-text">About</span>
               </a>
             </div>
           </li>
@@ -376,6 +376,191 @@
               <button id="confirmButton" class="gif-modal-btn gif-modal-btn--confirm">
                 <i class="fa-solid fa-check"></i>&nbsp;Save
               </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- ── Video Effects Modal ───────────────────────────────────────── -->
+        <div id="videoEffectsModal" class="tool-modal" style="display:none;">
+          <div class="tool-modal-inner">
+            <div class="tool-modal-header">
+              <div class="tool-modal-title-wrap">
+                <i class="fa-solid fa-palette tool-modal-icon"></i>
+                <span class="tool-modal-title">Video Effects</span>
+              </div>
+              <button class="tool-modal-close" id="videoEffectsClose"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <div class="tool-modal-body">
+              <div class="tme-grid">
+                <!-- Left column -->
+                <div class="tme-col">
+                  <div class="tme-section-label">Image Adjust</div>
+                  <div class="tme-row">
+                    <label class="tme-label">Hue</label>
+                    <input type="range" class="tme-slider" id="hueSlider" min="-180" max="180" value="0">
+                    <span class="tme-value" id="hueValue">0°</span>
+                    <button class="tme-reset-btn" data-target="hueSlider" data-default="0" title="Reset">↻</button>
+                  </div>
+                  <div class="tme-row">
+                    <label class="tme-label">Brightness</label>
+                    <input type="range" class="tme-slider" id="brightnessSlider" min="0" max="200" value="100">
+                    <span class="tme-value" id="brightnessValue">100%</span>
+                    <button class="tme-reset-btn" data-target="brightnessSlider" data-default="100" title="Reset">↻</button>
+                  </div>
+                  <div class="tme-row">
+                    <label class="tme-label">Contrast</label>
+                    <input type="range" class="tme-slider" id="contrastSlider" min="0" max="200" value="100">
+                    <span class="tme-value" id="contrastValue">100%</span>
+                    <button class="tme-reset-btn" data-target="contrastSlider" data-default="100" title="Reset">↻</button>
+                  </div>
+                  <div class="tme-row">
+                    <label class="tme-label">Saturation</label>
+                    <input type="range" class="tme-slider" id="saturationSlider" min="0" max="200" value="100">
+                    <span class="tme-value" id="saturationValue">100%</span>
+                    <button class="tme-reset-btn" data-target="saturationSlider" data-default="100" title="Reset">↻</button>
+                  </div>
+                  <div class="tme-row">
+                    <label class="tme-label">Gamma</label>
+                    <input type="range" class="tme-slider" id="gammaSlider" min="10" max="300" value="100">
+                    <span class="tme-value" id="gammaValue">1.00</span>
+                    <button class="tme-reset-btn" data-target="gammaSlider" data-default="100" title="Reset">↻</button>
+                  </div>
+                </div>
+                <!-- Right column -->
+                <div class="tme-col">
+                  <div class="tme-section-label">Enhancements</div>
+                  <div class="tme-row">
+                    <label class="tme-label tme-label--toggle">
+                      <input type="checkbox" id="sharpenToggle" class="tme-checkbox"> Sharpen
+                    </label>
+                  </div>
+                  <div class="tme-row tme-row--dep" id="sharpenRow">
+                    <label class="tme-label">Sigma</label>
+                    <input type="range" class="tme-slider" id="sharpenSlider" min="0" max="100" value="0">
+                    <span class="tme-value" id="sharpenValue">0</span>
+                    <button class="tme-reset-btn" data-target="sharpenSlider" data-default="0" title="Reset">↻</button>
+                  </div>
+                  <div class="tme-divider"></div>
+                  <div class="tme-row">
+                    <label class="tme-label tme-label--toggle">
+                      <input type="checkbox" id="blurToggle" class="tme-checkbox"> Blur
+                    </label>
+                  </div>
+                  <div class="tme-row tme-row--dep" id="blurRow">
+                    <label class="tme-label">Radius</label>
+                    <input type="range" class="tme-slider" id="blurSlider" min="0" max="20" value="0">
+                    <span class="tme-value" id="blurValue">0px</span>
+                    <button class="tme-reset-btn" data-target="blurSlider" data-default="0" title="Reset">↻</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="tool-modal-footer">
+              <button class="tool-modal-btn tool-modal-btn--secondary" id="videoEffectsResetAll">Reset All</button>
+              <button class="tool-modal-btn tool-modal-btn--primary" id="videoEffectsClose2">Close</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- ── Track Sync Modal ──────────────────────────────────────────── -->
+        <div id="syncToolModal" class="tool-modal" style="display:none;">
+          <div class="tool-modal-inner tool-modal-inner--sync">
+            <div class="tool-modal-header">
+              <div class="tool-modal-title-wrap">
+                <i class="fa-solid fa-sliders-h tool-modal-icon"></i>
+                <span class="tool-modal-title">Adjustments &amp; Sync</span>
+              </div>
+              <button class="tool-modal-close" id="syncToolClose"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <!-- Tabs -->
+            <div class="sync-tabs">
+              <button class="sync-tab active" data-tab="audio">Audio</button>
+              <button class="sync-tab" data-tab="video">Video</button>
+              <button class="sync-tab" data-tab="subtitle">Subtitle</button>
+            </div>
+            <!-- Tab: Audio -->
+            <div class="sync-pane active" id="syncPane-audio">
+              <div class="sync-section-label">Audio / Video Sync</div>
+              <div class="sync-row">
+                <label class="sync-label">Audio delay</label>
+                <div class="sync-spinbox">
+                  <button class="sync-spin-btn" data-delta="-0.1" data-target="audioDelayVal">−</button>
+                  <span class="sync-spin-val" id="audioDelayVal">0.000</span>
+                  <span class="sync-spin-unit">s</span>
+                  <button class="sync-spin-btn" data-delta="0.1" data-target="audioDelayVal">+</button>
+                </div>
+                <div class="sync-shortcuts-hint"><span class="key-badge">G</span> slower &nbsp; <span class="key-badge">H</span> faster</div>
+              </div>
+            </div>
+            <!-- Tab: Video -->
+            <div class="sync-pane" id="syncPane-video">
+              <div class="sync-section-label">Video Delay</div>
+              <div class="sync-row">
+                <label class="sync-label">Video offset</label>
+                <div class="sync-spinbox">
+                  <button class="sync-spin-btn" data-delta="-0.05" data-target="videoOffsetVal">−</button>
+                  <span class="sync-spin-val" id="videoOffsetVal">0.000</span>
+                  <span class="sync-spin-unit">s</span>
+                  <button class="sync-spin-btn" data-delta="0.05" data-target="videoOffsetVal">+</button>
+                </div>
+              </div>
+            </div>
+            <!-- Tab: Subtitle -->
+            <div class="sync-pane" id="syncPane-subtitle">
+              <div class="sync-section-label">Subtitle / Video Sync</div>
+              <div class="sync-row">
+                <label class="sync-label">Subtitle delay</label>
+                <div class="sync-spinbox">
+                  <button class="sync-spin-btn" data-delta="-0.5" data-target="subDelayVal">−</button>
+                  <span class="sync-spin-val" id="subDelayVal">0.000</span>
+                  <span class="sync-spin-unit">s</span>
+                  <button class="sync-spin-btn" data-delta="0.5" data-target="subDelayVal">+</button>
+                </div>
+                <div class="sync-shortcuts-hint"><span class="key-badge">D</span> delay &nbsp; <span class="key-badge">E</span> advance</div>
+              </div>
+              <div class="sync-section-label" style="margin-top:14px;">Subtitle Speed</div>
+              <div class="sync-row">
+                <label class="sync-label">Speed factor</label>
+                <div class="sync-spinbox">
+                  <button class="sync-spin-btn" data-delta="-0.1" data-target="subSpeedVal">−</button>
+                  <span class="sync-spin-val" id="subSpeedVal">1.000</span>
+                  <span class="sync-spin-unit">fps</span>
+                  <button class="sync-spin-btn" data-delta="0.1" data-target="subSpeedVal">+</button>
+                </div>
+              </div>
+            </div>
+            <div class="tool-modal-footer">
+              <button class="tool-modal-btn tool-modal-btn--secondary" id="syncResetBtn">Reset</button>
+              <button class="tool-modal-btn tool-modal-btn--primary" id="syncToolClose2">Close</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- ── About Modal ───────────────────────────────────────────────── -->
+        <div id="aboutModal" class="tool-modal" style="display:none;">
+          <div class="tool-modal-inner tool-modal-inner--about">
+            <div class="tool-modal-header">
+              <div class="tool-modal-title-wrap">
+                <i class="fa-solid fa-circle-info tool-modal-icon"></i>
+                <span class="tool-modal-title">About Anime Player</span>
+              </div>
+              <button class="tool-modal-close" id="aboutClose"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <div class="about-body">
+              <img src="../assets/icons/icon.ico" alt="Anime Player" class="about-icon-img">
+              <div class="about-name">Anime Player</div>
+              <div class="about-version" id="aboutVersionLabel">v1.0.0</div>
+              <p class="about-desc">Advanced open-source media player built for anime.<br>Supports MKV, MP4, EAC3, DTS, ASS/SSA subtitles and more.</p>
+              <div class="about-links">
+                <a href="https://github.com/animeredits/Anime-Player" class="about-link"><i class="fa-brands fa-github"></i> GitHub</a>
+              </div>
+              <div class="about-copy">© 2025 animeredits — MIT License</div>
+            </div>
+            <div class="tool-modal-footer">
+              <button class="tool-modal-btn tool-modal-btn--secondary" id="aboutCheckUpdate">
+                <i class="fa-solid fa-rotate"></i> Check for Updates
+              </button>
+              <button class="tool-modal-btn tool-modal-btn--primary" id="aboutClose2">Close</button>
             </div>
           </div>
         </div>
@@ -541,7 +726,7 @@
                       <div id="gifResultsContainerCM" class="cm-gif-results"></div>
                       <div class="viz-section-label">Built-in</div>
                       <div class="viz-presets viz-presets--sm" id="vizPresetsCM">
-                        <div class="viz-preset-item" data-src="../assets/icons/icon.png"><div class="viz-thumb-wrap"><img src="../assets/icons/icon.png" loading="lazy"/></div><span>None</span></div>
+                        <div class="viz-preset-item"><div class="viz-thumb-wrap"></div><span>None</span></div>
                         <div class="viz-preset-item" data-src="../assets/gif/download.gif"><div class="viz-thumb-wrap"><img src="../assets/gif/download.gif" loading="lazy"/></div><span>Yamate</span></div>
                         <div class="viz-preset-item" data-src="../assets/gif/Ghost in Shell.gif"><div class="viz-thumb-wrap"><img src="../assets/gif/Ghost in Shell.gif" loading="lazy"/></div><span>GitS</span></div>
                         <div class="viz-preset-item" data-src="../assets/gif/9497885369133574502.gif"><div class="viz-thumb-wrap"><img src="../assets/gif/9497885369133574502.gif" loading="lazy"/></div><span>Chika</span></div>
@@ -772,11 +957,11 @@
         <!-- ffmpeg transcodes the selected track to Opus/WebM and feeds it here -->
         <audio id="audioTrackPlayer" style="display:none" preload="none"></audio>
         <div id="noMediaLogo">
-          <img src="../assets/icons/icon256.png" alt="No Media" />
+          <img src="../assets/icons/icon.ico" alt="No Media" />
         </div>
         <img id="gifImage" style="display: none; max-width: 100%; max-height: 100%;" alt="GIF Animation" />
         <div id="audioLogo">
-          <img id="audioImage" src="../assets/icons/icon256.png" alt="Visualization" style="display: none;" />
+          <img id="audioImage" src="../assets/icons/icon.ico" alt="Visualization" style="display: none;" />
         </div>
         <!-- Loader -->
         <div id="loader">
@@ -821,7 +1006,7 @@
         <!-- Update Dialog -->
         <div class="update-dialog" id="updateDialog">
           <h2>
-            <img src="../assets/icons/icon.png" class="update-icon" alt="Update"> New Version Available
+            <img src="../assets/icons/icon.ico" class="update-icon" alt="Update"> New Version Available
           </h2>
           <p>A new version of Anime Player is available. Would you like to download and install it now?</p>
           <div class="update-dialog-buttons">
@@ -1165,6 +1350,44 @@
                   <div class="keys">
                     <span class="key">Shift</span>
                     <span class="key">/</span>                  
+                  </div>
+                </div>
+                <div class="shortcut">
+                  <div class="description">Video Effects</div>
+                  <div class="keys">
+                    <span class="key">Ctrl</span>
+                    <span class="key">E</span>
+                  </div>
+                </div>
+                <div class="shortcut">
+                  <div class="description">Track Sync Tool</div>
+                  <div class="keys">
+                    <span class="key">Ctrl</span>
+                    <span class="key">Y</span>
+                  </div>
+                </div>
+                <div class="shortcut">
+                  <div class="description">Audio Delay −</div>
+                  <div class="keys">
+                    <span class="key">G</span>
+                  </div>
+                </div>
+                <div class="shortcut">
+                  <div class="description">Audio Delay +</div>
+                  <div class="keys">
+                    <span class="key">H</span>
+                  </div>
+                </div>
+                <div class="shortcut">
+                  <div class="description">Subtitle Delay −</div>
+                  <div class="keys">
+                    <span class="key">D</span>
+                  </div>
+                </div>
+                <div class="shortcut">
+                  <div class="description">Subtitle Delay +</div>
+                  <div class="keys">
+                    <span class="key">E</span>
                   </div>
                 </div>
               </div>

@@ -2,11 +2,11 @@ const video = document.getElementById("media");
 const mediaPlayer = document.getElementById("mediaPlayer");
 const minimizeBtn = document.querySelector("#minimize");
 const maximizeBtn = document.querySelector("#maximize");
-const videoEffectBtn = document.querySelector('.videoEffectBtn');
-const saturationModal = document.getElementById('saturationModal');
-const saturationSlider = document.getElementById('saturationSlider');
-const saturationValue = document.getElementById('saturationValue');
-const resetBtn = document.getElementById('saturation-resetBtn');
+const videoEffectBtn = document.querySelector('.videoEffectBtn'); // kept for compat (may be null)
+const saturationModal = null; // replaced by videoEffectsModal
+const saturationSlider = null; // replaced by combined sliders
+const saturationValue = null;  // replaced
+const resetBtn = null;         // replaced
 const openFileButton = document.getElementById("openFileButton");
 const openFolderButton = document.getElementById("openFolderButton");
 const shuffleButton = document.getElementById("shuffle-button");
@@ -142,6 +142,60 @@ function showStatusMessage(text) {
 	}, 1800);
 }
 
+// ── Dynamic list visibility ──────────────────────────────────────────────────
+// Hides parent nav rows / context-menu items when a dynamic list has no items.
+function refreshDynamicListVisibility() {
+	// --- Playlist ---
+	const hasPlaylist = mediaFiles.length > 0;
+	document.querySelectorAll('.play-list').forEach(list => {
+		// Navbar: use class toggle — CSS !important beats the :hover rule
+		if (list.classList.contains('sub-dropdown-content')) {
+			list.classList.toggle('nav-list-empty', !hasPlaylist);
+		}
+		// Context menu: hide only the .cm-submenu div, not the whole li
+		const cmSubmenuDiv = list.closest('.cm-submenu');
+		if (cmSubmenuDiv) cmSubmenuDiv.style.display = hasPlaylist ? '' : 'none';
+	});
+
+	// --- Audio Track ---
+	const audioList = document.querySelector('.audio-track-list');
+	const hasAudioTracks = !!(audioList && audioList.querySelector('.track-item'));
+	document.querySelectorAll('.audio-track-list').forEach(list => {
+		// Navbar: use class toggle — CSS !important beats the :hover rule
+		if (list.classList.contains('sub-dropdown-content')) {
+			list.classList.toggle('nav-list-empty', !hasAudioTracks);
+		}
+		// Context menu: hide only the .cm-submenu div, not the whole li
+		const cmSubmenuDiv = list.closest('.cm-submenu');
+		if (cmSubmenuDiv) cmSubmenuDiv.style.display = hasAudioTracks ? '' : 'none';
+	});
+
+	// --- Subtitle Track ---
+	const subtitleList = document.querySelector('.subtitle-track-list');
+	const hasSubtitleTracks = !!(subtitleList && subtitleList.querySelector('.subtitle-item'));
+	document.querySelectorAll('.subtitle-track-list').forEach(list => {
+		// Navbar: use class toggle — CSS !important beats the :hover rule
+		if (list.classList.contains('sub-dropdown-content')) {
+			list.classList.toggle('nav-list-empty', !hasSubtitleTracks);
+		}
+		// Context menu: hide only this div (not the whole Subtitle li)
+		if (list.classList.contains('cm-dynamic-list')) {
+			list.style.display = hasSubtitleTracks ? '' : 'none';
+		}
+		// Also hide/show the cm-divider inside the <ul> directly before this list
+		const cmSubmenu = list.closest('.cm-submenu');
+		if (cmSubmenu) {
+			const ulEl = cmSubmenu.querySelector('ul');
+			if (ulEl) {
+				const lastLi = ulEl.lastElementChild;
+				if (lastLi && lastLi.classList.contains('cm-divider')) {
+					lastLi.style.display = hasSubtitleTracks ? '' : 'none';
+				}
+			}
+		}
+	});
+}
+
 // disabling the dragging behavior
 document.querySelectorAll("a ,img").forEach((link) => {
 	link.setAttribute("draggable", "false");
@@ -170,7 +224,6 @@ document.getElementById('customLogoInput').addEventListener('change', function(e
 customLogoLink.addEventListener("click", function() {
 	customLogoInput.click(); // Programmatically click the file input
 });
-
 
 // ✅ Function to show the preview
 function showLogoPreview(logoSrc) {
@@ -235,57 +288,86 @@ customLogoInput.addEventListener("change", async function(event) {
 			}
 		}
 	};
-
 	reader.onerror = function() {
 		console.error("Failed to read the file");
 	};
-
 	reader.readAsArrayBuffer(file);
 });
 
 
-// ✅ Update the saveCustomLogo function to add hover preview functionality
+// ✅ Update the saveCustomLogo function to add to BOTH navbar and context menu panels
 function saveCustomLogo(filePath, fileName) {
-	const logoOptionsContainer = document.querySelector("#logoOptions .sub-dropdown-content");
+	// Helper to create a tile and add it to a container
+	function _addToContainer(container, isCM) {
+		if (!container) return;
 
-	const newLogoDiv = document.createElement("div");
-	newLogoDiv.classList.add("logo-item", "custom");
-	newLogoDiv.setAttribute("data-filename", fileName);
+		// Remove existing item for same file to avoid duplicates
+		container.querySelectorAll(`.logo-item.custom[data-filename="${CSS.escape(fileName)}"]`)
+			.forEach(el => el.remove());
 
-	const newLogoLink = document.createElement("a");
-	newLogoLink.setAttribute("data-src", filePath);
-	newLogoLink.textContent = fileName;
+		const item = document.createElement("div");
+		item.classList.add("viz-preset-item", "logo-item", "custom");
+		item.setAttribute("data-filename", fileName);
+		item.setAttribute("data-src", filePath);
+		item.setAttribute("data-label", fileName);
 
-	// Show logo preview on hover
-	newLogoLink.addEventListener("mouseenter", function() {
-		showLogoPreview(filePath);
-	});
-	newLogoLink.addEventListener("mouseleave", function() {
-		hideLogoPreview();
-	});
+		// Thumb
+		const thumb = document.createElement("div");
+		thumb.className = "viz-thumb-wrap";
+		const img = document.createElement("img");
+		img.src = filePath;
+		img.loading = "lazy";
+		thumb.appendChild(img);
 
-	// Set the uploaded logo as selected when clicked
-	newLogoLink.addEventListener("click", function() {
-		setSelectedLogo(filePath);
-	});
+		// Label row with delete icon
+		const labelRow = document.createElement("div");
+		labelRow.style.cssText = "display:flex;align-items:center;gap:3px;width:100%;";
 
-	const deleteIcon = document.createElement("i");
-	deleteIcon.classList.add("fa-thin", "fa-trash", "delete-icon");
+		const labelSpan = document.createElement("span");
+		labelSpan.textContent = fileName.length > 10 ? fileName.substring(0,10)+'…' : fileName;
 
-	deleteIcon.addEventListener("click", function() {
-		logoOptionsContainer.removeChild(newLogoDiv);
-		removeCustomLogoFromStorage(fileName);
-		deleteCustomLogo(fileName);
-	});
+		const delIcon = document.createElement("i");
+		delIcon.className = "fa-solid fa-trash-can";
+		delIcon.style.cssText = "font-size:9px;color:rgba(255,80,80,0.7);cursor:pointer;margin-left:auto;";
+		delIcon.addEventListener("click", (e) => {
+			e.stopPropagation();
+			// Remove from both panels
+			document.querySelectorAll(`.logo-item.custom[data-filename="${CSS.escape(fileName)}"]`)
+				.forEach(el => el.remove());
+			removeCustomLogoFromStorage(fileName);
+			deleteCustomLogo(fileName);
+		});
+		labelRow.appendChild(labelSpan);
+		labelRow.appendChild(delIcon);
+		item.appendChild(thumb);
+		item.appendChild(labelRow);
 
-	newLogoDiv.appendChild(newLogoLink);
-	newLogoDiv.appendChild(deleteIcon);
-	logoOptionsContainer.appendChild(newLogoDiv);
+		// Click to select
+		item.addEventListener("click", (e) => {
+			if (e.target === delIcon || delIcon.contains(e.target)) return;
+			document.querySelectorAll(".viz-preset-item").forEach(i => i.classList.remove("active"));
+			document.querySelectorAll(`.viz-preset-item[data-filename="${CSS.escape(fileName)}"]`)
+				.forEach(i => i.classList.add("active"));
+			updateLogo(filePath);
+			localStorage.setItem('selectedLogo', filePath);
+			showStatusMessage("Visualization: " + fileName);
+		});
+		// Insert before upload button or append
+		const uploadBtn = container.querySelector('.viz-upload-btn, #customLogoLink, #customLogoLinkCM');
+		if (uploadBtn) container.insertBefore(item, uploadBtn);
+		else container.appendChild(item);
+	}
+
+	// Navbar panel
+	const navContainer = document.querySelector("#logoOptions .sub-dropdown-content");
+	_addToContainer(navContainer, false);
+
+	// Context menu panel
+	const cmContainer = document.querySelector("#vizPresetsCM");
+	_addToContainer(cmContainer, true);
 
 	saveCustomLogoToStorage(filePath, fileName);
 	checkPlayAllButton();
-
-	// ✅ Immediately select and show the new logo
 	setSelectedLogo(filePath);
 }
 
@@ -307,11 +389,9 @@ function saveCustomLogoToStorage(filePath, fileName) {
 //✅  Load custom logos from localStorage and add them to the dropdown list
 function loadCustomLogos() {
 	const logos = JSON.parse(localStorage.getItem("customLogos")) || {};
-	const logoOptionsContainer = document.querySelector("#logoOptions .sub-dropdown-content");
 
-	// Clear existing custom logo items
-	const customLogoItems = logoOptionsContainer.querySelectorAll(".logo-item.custom");
-	customLogoItems.forEach((item) => logoOptionsContainer.removeChild(item));
+	// Clear existing custom logo items from BOTH panels
+	document.querySelectorAll(".logo-item.custom").forEach(el => el.remove());
 
 	let lastLogoSrc = null;
 
@@ -672,108 +752,275 @@ async function downloadAndSaveGif(gifUrl, gifName) {
 	}
 }
 
-// ✅ Function to apply saturation effect
-function applySaturationToVideo(value) {
-	video.style.filter = `saturate(${value}%)`;
-	localStorage.setItem("saturationValue", value); // Save to localStorage
+// ── Video Effects (combined CSS filter) ─────────────────────────────────────
+const _vfx = {
+	hue:        0,     // degrees
+	brightness: 100,   // %
+	contrast:   100,   // %
+	saturation: 100,   // %
+	gamma:      1.0,   // (simulated via brightness for CSS)
+	sharpen:    false,
+	sharpenAmt: 0,
+	blur:       false,
+	blurAmt:    0,
+};
+
+function _applyVideoFilter() {
+	let f = `hue-rotate(${_vfx.hue}deg) brightness(${_vfx.brightness}%) contrast(${_vfx.contrast}%) saturate(${_vfx.saturation}%)`;
+	if (_vfx.blur && _vfx.blurAmt > 0) f += ` blur(${_vfx.blurAmt}px)`;
+	video.style.filter = f;
+	localStorage.setItem('videoEffects', JSON.stringify(_vfx));
 }
 
-// Update displayed value and apply saturation
+function _loadVideoEffects() {
+	try {
+		const saved = JSON.parse(localStorage.getItem('videoEffects'));
+		if (saved) Object.assign(_vfx, saved);
+	} catch(e) {}
+	_applyVideoFilter();
+	_syncVfxUI();
+}
+
+function _syncVfxUI() {
+	const set = (id, val, displayFn) => {
+		const el = document.getElementById(id);
+		if (el) el.value = val;
+		const vEl = document.getElementById(id.replace('Slider','Value'));
+		if (vEl) vEl.textContent = displayFn(val);
+	};
+	set('hueSlider',        _vfx.hue,                v => `${v}°`);
+	set('brightnessSlider', _vfx.brightness,          v => `${v}%`);
+	set('contrastSlider',   _vfx.contrast,            v => `${v}%`);
+	set('saturationSlider', _vfx.saturation,          v => `${v}%`);
+	set('gammaSlider',      Math.round(_vfx.gamma*100), v => (v/100).toFixed(2));
+	set('sharpenSlider',    _vfx.sharpenAmt,          v => `${v}`);
+	set('blurSlider',       _vfx.blurAmt,             v => `${v}px`);
+	const sharpenToggle = document.getElementById('sharpenToggle');
+	const blurToggle    = document.getElementById('blurToggle');
+	if (sharpenToggle) sharpenToggle.checked = _vfx.sharpen;
+	if (blurToggle)    blurToggle.checked    = _vfx.blur;
+	_updateDepRows();
+}
+
+function _updateDepRows() {
+	const sharpenRow = document.getElementById('sharpenRow');
+	const blurRow    = document.getElementById('blurRow');
+	if (sharpenRow) sharpenRow.style.opacity = _vfx.sharpen ? '1' : '0.4';
+	if (blurRow)    blurRow.style.opacity    = _vfx.blur    ? '1' : '0.4';
+}
+
+// Legacy compat — called by old code
+function applySaturationToVideo(value) { _vfx.saturation = value; _applyVideoFilter(); }
 function updateSaturation(value) {
-	saturationValue.textContent = value + '%';
+	const el = document.getElementById('saturationValue');
+	if (el) el.textContent = value + '%';
 	applySaturationToVideo(value);
 }
+function loadSaturationValue() { _loadVideoEffects(); }
 
-function loadSaturationValue() {
-	const savedValue = localStorage.getItem("saturationValue");
-	if (savedValue) {
-		saturationSlider.value = savedValue;
-		updateSaturation(savedValue);
-	}
+// Slider input events
+document.addEventListener('DOMContentLoaded', () => {
+	const sliderMap = [
+		{ id: 'hueSlider',        key: 'hue',        fmt: v => `${v}°`,           valId: 'hueValue' },
+		{ id: 'brightnessSlider', key: 'brightness',  fmt: v => `${v}%`,           valId: 'brightnessValue' },
+		{ id: 'contrastSlider',   key: 'contrast',    fmt: v => `${v}%`,           valId: 'contrastValue' },
+		{ id: 'saturationSlider', key: 'saturation',  fmt: v => `${v}%`,           valId: 'saturationValue' },
+		{ id: 'gammaSlider',      key: 'gamma',       fmt: v => (v/100).toFixed(2),valId: 'gammaValue', transform: v => v/100 },
+		{ id: 'sharpenSlider',    key: 'sharpenAmt',  fmt: v => `${v}`,            valId: 'sharpenValue' },
+		{ id: 'blurSlider',       key: 'blurAmt',     fmt: v => `${v}px`,          valId: 'blurValue' },
+	];
+	sliderMap.forEach(({ id, key, fmt, valId, transform }) => {
+		const el = document.getElementById(id);
+		if (!el) return;
+		el.addEventListener('input', () => {
+			const raw = parseFloat(el.value);
+			_vfx[key] = transform ? transform(raw) : raw;
+			const vEl = document.getElementById(valId);
+			if (vEl) vEl.textContent = fmt(raw);
+			_applyVideoFilter();
+		});
+		el.addEventListener('click', e => e.stopPropagation());
+		el.addEventListener('wheel', e => e.stopPropagation(), { passive: true });
+	});
+
+	// Toggle checkboxes
+	const sharpenToggle = document.getElementById('sharpenToggle');
+	const blurToggle    = document.getElementById('blurToggle');
+	if (sharpenToggle) sharpenToggle.addEventListener('change', () => { _vfx.sharpen = sharpenToggle.checked; _updateDepRows(); _applyVideoFilter(); });
+	if (blurToggle)    blurToggle.addEventListener('change', ()    => { _vfx.blur    = blurToggle.checked;    _updateDepRows(); _applyVideoFilter(); });
+
+	// Reset individual sliders
+	document.querySelectorAll('.tme-reset-btn').forEach(btn => {
+		btn.addEventListener('click', (e) => {
+			e.stopPropagation();
+			const targetId = btn.dataset.target;
+			const def      = parseFloat(btn.dataset.default);
+			const el = document.getElementById(targetId);
+			if (el) { el.value = def; el.dispatchEvent(new Event('input')); }
+		});
+	});
+
+	// Reset All button
+	const resetAllBtn = document.getElementById('videoEffectsResetAll');
+	if (resetAllBtn) resetAllBtn.addEventListener('click', () => {
+		Object.assign(_vfx, { hue:0, brightness:100, contrast:100, saturation:100, gamma:1.0, sharpen:false, sharpenAmt:0, blur:false, blurAmt:0 });
+		_applyVideoFilter();
+		_syncVfxUI();
+	});
+
+	// Open Video Effects Modal
+	const openVeBtn = document.getElementById('openVideoEffectsBtn');
+	if (openVeBtn) openVeBtn.addEventListener('click', () => toggleToolModal('videoEffectsModal'));
+
+	// Close buttons
+	['videoEffectsClose','videoEffectsClose2'].forEach(id => {
+		const b = document.getElementById(id);
+		if (b) b.addEventListener('click', () => { document.getElementById('videoEffectsModal').style.display = 'none'; });
+	});
+
+	// Load saved values
+	_loadVideoEffects();
+});
+
+// ── Tool Modal helper ──────────────────────────────────────────────────
+function toggleToolModal(id) {
+	const m = document.getElementById(id);
+	if (!m) return;
+	const isOpen = m.style.display !== 'none';
+	// close all first
+	['videoEffectsModal','syncToolModal','aboutModal'].forEach(mid => {
+		const mm = document.getElementById(mid);
+		if (mm) mm.style.display = 'none';
+	});
+	if (!isOpen) m.style.display = 'flex';
 }
 
-// Slider input event
-saturationSlider.addEventListener('input', function() {
-	updateSaturation(this.value);
-});
+// ── Sync Tool ─────────────────────────────────────────────────────────
+let _audioDelay    = 0;   // seconds (applied to audio track delay)
+let _subDelay      = 0;   // seconds (subtitle cue offset)
+let _subSpeed      = 1.0; // subtitle speed factor
+let _videoOffset   = 0;   // seconds (video offset, limited use in HTML5)
 
-// Mouse wheel adjustment on slider
-saturationSlider.addEventListener('wheel', function(e) {
-	e.preventDefault(); // Prevent page scrolling
-	let newValue = parseInt(this.value) + (e.deltaY > 0 ? -STEP : STEP);
-
-	// Clamp between min (0) and max (200)
-	newValue = Math.max(0, Math.min(200, newValue));
-
-	this.value = newValue;
-	updateSaturation(newValue);
-});
-
-
-// Allow saturationModal scrolling when mouse is over it
-saturationModal.addEventListener("wheel", (event) => {
-	if (isMouseOver) {
-		event.stopPropagation();
+function adjustAudioDelay(delta) {
+	_audioDelay = Math.round((_audioDelay + delta) * 1000) / 1000;
+	const el = document.getElementById('audioDelayVal');
+	if (el) el.textContent = _audioDelay.toFixed(3);
+	// Apply to audioTrackPlayer if it exists
+	const atp = document.getElementById('audioTrackPlayer');
+	if (atp && video) {
+		const targetTime = video.currentTime - _audioDelay;
+		if (isFinite(targetTime) && targetTime >= 0) atp.currentTime = Math.max(0, targetTime);
 	}
-});
+	showStatusMessage(`Audio delay: ${_audioDelay > 0 ? '+' : ''}${_audioDelay.toFixed(3)}s`);
+}
 
-// Prevent keyboard scrolling when focused on the saturationModal
-saturationModal.addEventListener("keydown", (event) => {
-	if (isMouseOver) {
-		// List of keys that typically scroll the page
-		const scrollKeys = ['ArrowLeft', 'ArrowRight'];
-
-		if (scrollKeys.includes(event.code)) {
-			event.stopPropagation();
+function adjustSubtitleDelay(delta) {
+	_subDelay = Math.round((_subDelay + delta) * 1000) / 1000;
+	const el = document.getElementById('subDelayVal');
+	if (el) el.textContent = _subDelay.toFixed(3);
+	// Apply subtitle offset to all active cues
+	for (let i = 0; i < video.textTracks.length; i++) {
+		const track = video.textTracks[i];
+		if (track.mode === 'showing' && track.cues) {
+			for (let c = 0; c < track.cues.length; c++) {
+				const cue = track.cues[c];
+				// Store original on first adjustment
+				if (cue._origStart === undefined) { cue._origStart = cue.startTime; cue._origEnd = cue.endTime; }
+				cue.startTime = cue._origStart + _subDelay;
+				cue.endTime   = cue._origEnd   + _subDelay;
+			}
 		}
 	}
-});
+	showStatusMessage(`Subtitle delay: ${_subDelay > 0 ? '+' : ''}${_subDelay.toFixed(3)}s`);
+}
 
-// Detect mouse enter/leave events for the saturationModal container
-saturationModal.addEventListener("mouseenter", () => {
-	isMouseOver = true;
-});
-saturationModal.addEventListener("mouseleave", () => {
-	isMouseOver = false;
-});
+document.addEventListener('DOMContentLoaded', () => {
+	// Sync tool open
+	const openSyncBtn = document.getElementById('openSyncToolBtn');
+	if (openSyncBtn) openSyncBtn.addEventListener('click', () => toggleToolModal('syncToolModal'));
 
-// Also handle focus/blur for keyboard users
-saturationModal.addEventListener("focus", () => {
-	isMouseOver = true;
-});
-saturationModal.addEventListener("blur", () => {
-	isMouseOver = false;
-});
+	// Sync tool close
+	['syncToolClose','syncToolClose2'].forEach(id => {
+		const b = document.getElementById(id);
+		if (b) b.addEventListener('click', () => { document.getElementById('syncToolModal').style.display = 'none'; });
+	});
 
-// Reset to default
-resetBtn.addEventListener('click', function() {
-	saturationSlider.value = DEFAULT_SATURATION;
-	updateSaturation(DEFAULT_SATURATION);
-});
+	// Sync tabs
+	document.querySelectorAll('.sync-tab').forEach(tab => {
+		tab.addEventListener('click', () => {
+			document.querySelectorAll('.sync-tab').forEach(t => t.classList.remove('active'));
+			document.querySelectorAll('.sync-pane').forEach(p => p.classList.remove('active'));
+			tab.classList.add('active');
+			const pane = document.getElementById('syncPane-' + tab.dataset.tab);
+			if (pane) pane.classList.add('active');
+		});
+	});
 
-// Open modal when button is clicked
-videoEffectBtn.addEventListener('click', function() {
-	saturationModal.style.display = 'block';
-});
+	// Spin buttons for sync
+	document.querySelectorAll('.sync-spin-btn').forEach(btn => {
+		btn.addEventListener('click', (e) => {
+			e.stopPropagation();
+			const targetId = btn.dataset.target;
+			const delta    = parseFloat(btn.dataset.delta);
+			const el       = document.getElementById(targetId);
+			if (!el) return;
+			let val = parseFloat(el.textContent) + delta;
+			val = Math.round(val * 1000) / 1000;
+			el.textContent = val.toFixed(3);
+			// Apply action
+			if (targetId === 'audioDelayVal') { _audioDelay = val; adjustAudioDelay(0); el.textContent = _audioDelay.toFixed(3); }
+			if (targetId === 'subDelayVal')   { _subDelay = val - delta; adjustSubtitleDelay(delta); }
+			if (targetId === 'videoOffsetVal'){ _videoOffset = val; }
+			if (targetId === 'subSpeedVal')   { _subSpeed = Math.max(0.1, val); el.textContent = _subSpeed.toFixed(3); }
+		});
+	});
 
-// Close modal when clicking outside
-window.addEventListener('click', function(event) {
-	if (event.target === saturationModal) {
-		saturationModal.style.display = 'none';
-	}
-});
+	// Sync reset
+	const syncResetBtn = document.getElementById('syncResetBtn');
+	if (syncResetBtn) syncResetBtn.addEventListener('click', () => {
+		_audioDelay = 0; _subDelay = 0; _videoOffset = 0; _subSpeed = 1.0;
+		const ids = { audioDelayVal:'0.000', videoOffsetVal:'0.000', subDelayVal:'0.000', subSpeedVal:'1.000' };
+		Object.entries(ids).forEach(([id, v]) => { const el=document.getElementById(id); if(el) el.textContent=v; });
+		showStatusMessage('Sync reset');
+	});
 
-// Show modal on hover
-videoEffectBtn.addEventListener('mouseover', function() {
-	saturationModal.style.display = 'block';
-});
+	// About modal
+	const aboutBtn = document.getElementById('showAboutBtn');
+	if (aboutBtn) aboutBtn.addEventListener('click', () => toggleToolModal('aboutModal'));
 
-// Hide modal when mouse leaves the container
-// Assuming the container is the modal itself or a parent element
-const modalContainer = saturationModal; // or select the container element
+	['aboutClose','aboutClose2'].forEach(id => {
+		const b = document.getElementById(id);
+		if (b) b.addEventListener('click', () => { document.getElementById('aboutModal').style.display = 'none'; });
+	});
 
-modalContainer.addEventListener('mouseleave', function() {
-	saturationModal.style.display = 'none';
+	// Check for updates button (both navbar and about modal)
+	['checkUpdateBtn','aboutCheckUpdate'].forEach(id => {
+		const b = document.getElementById(id);
+		if (b) b.addEventListener('click', () => {
+			showStatusMessage('Checking for updates…');
+			// Trigger the Electron update check if available
+			if (window.electron && window.electron.startUpdateDownload) {
+				// Re-use the ipc or just show status
+				showStatusMessage('Checking for updates…');
+			}
+		});
+	});
+
+	// Close tool modals when clicking backdrop
+	['videoEffectsModal','syncToolModal','aboutModal'].forEach(id => {
+		const m = document.getElementById(id);
+		if (!m) return;
+		m.addEventListener('click', (e) => {
+			if (e.target === m) m.style.display = 'none';
+		});
+	});
+
+	// Stop keydown propagation inside tool modals
+	['videoEffectsModal','syncToolModal','aboutModal'].forEach(id => {
+		const m = document.getElementById(id);
+		if (!m) return;
+		m.addEventListener('keydown', e => e.stopPropagation());
+	});
 });
 
 // ✅ Function to load media file
@@ -1077,7 +1324,8 @@ document.querySelectorAll('.add-subtitle-btn').forEach(btn => {
 					showStatusMessage(`Subtitle: ${trackEl.label}`);
 				});
 				list.appendChild(a);
-			});
+				});
+			refreshDynamicListVisibility(); // show subtitle track list now that a track was added
 			showStatusMessage(`Subtitle added: ${trackEl.label}`);
 		} catch (err) {
 			console.error('Subtitle open error:', err);
@@ -1539,7 +1787,10 @@ async function deleteCurrentMediaFile() {
 
 // ✅ Function to update the playlist dropdown with media files
 function updatePlaylistDropdown(mediaFiles) {
-	if (!Array.isArray(mediaFiles) || mediaFiles.length === 0) return;
+	if (!Array.isArray(mediaFiles) || mediaFiles.length === 0) {
+		refreshDynamicListVisibility(); // hide playlist rows when empty
+		return;
+	}
 
 	const playlistContainers = document.querySelectorAll(".play-list");
 
@@ -1621,6 +1872,13 @@ function updatePlaylistDropdown(mediaFiles) {
 			}
 		});
 	});
+
+	refreshDynamicListVisibility(); // show playlist rows now that files exist
+
+	// FIX: re-register scroll containers after playlist items are injected.
+	// Dynamic content added to .play-list containers must be registered with
+	// ScrollManager so wheel isolation is applied to the newly visible containers.
+	if (window.ScrollManager) window.ScrollManager.registerAll();
 }
 
 // ✅ Function to HIGHLIGHT CURRENT VIDEO (All Containers)
@@ -1685,12 +1943,20 @@ playlistContainers.forEach((playlistContainer) => {
 		}, 2000); // Adjust delay as needed
 	});
 
-	// Allow playlist scrolling when mouse is over it
+	// FIX: Use {passive: false} so e.preventDefault() is honoured in Electron/Chromium.
+	// Without this Chromium ignores preventDefault on wheel events (passive by default)
+	// and the wheel leaks to parent containers including the seek bar.
 	playlistContainer.addEventListener("wheel", (event) => {
+		event.stopPropagation(); // always stop chain
 		if (isMouseOver) {
-			event.stopPropagation();
+			const st = playlistContainer.scrollTop;
+			const sh = playlistContainer.scrollHeight;
+			const ch = playlistContainer.clientHeight;
+			const atTop    = event.deltaY < 0 && st <= 0;
+			const atBottom = event.deltaY > 0 && st + ch >= sh - 1;
+			if (atTop || atBottom) event.preventDefault(); // stop boundary leak
 		}
-	});
+	}, { passive: false }); // FIX: must be non-passive for preventDefault to work
 
 	// Detect mouse enter/leave events for the playlist container
 	playlistContainer.addEventListener("mouseenter", () => {
@@ -1748,6 +2014,10 @@ document.addEventListener("keydown", function(event) {
 	const playlistContainer = document.querySelector(".playlist-container");
 
 	if (playlistContainer && playlistContainer.classList.contains("show")) {
+		// Don't hijack arrow keys while user types in the playlist search box
+		const activeEl = document.activeElement;
+		if (activeEl && (activeEl.tagName === 'INPUT' || activeEl.tagName === 'TEXTAREA')) return;
+
 		const playlistItems = Array.from(playlistContainer.querySelectorAll(".playlist-item"));
 		if (playlistItems.length === 0) return;
 
@@ -2028,6 +2298,11 @@ function renderChaptersList() {
 				cmList.appendChild(makeChapterAnchor(ch, i, () => { if (window._hideContextMenu) window._hideContextMenu(); })));
 		}
 	}
+
+	// FIX: re-register scroll containers after dynamic chapter items are injected.
+	// Without this the new <a> elements inside chapters-list-nav / chapters-list-cm
+	// are not tracked by the ScrollManager wheel handler, so scroll events can leak.
+	if (window.ScrollManager) window.ScrollManager.registerAll();
 }
 
 // Update active chapter highlight in nav/cm lists
@@ -3394,35 +3669,60 @@ document.addEventListener("DOMContentLoaded", function() {
 			innerHeight: screenHeight
 		} = window;
 
-		// Show menu to calculate dimensions
+		// Show menu to calculate real dimensions (visibility:hidden so not visible yet)
 		contextMenu.style.display = "block";
 		contextMenu.style.visibility = "hidden";
 
+		// Reset any previously flipped submenu directions before measuring
+		contextMenu.querySelectorAll('.cm-submenu').forEach(sub => {
+			sub.style.left  = '';
+			sub.style.right = '';
+		});
+
 		// Force reflow to get accurate measurements
 		const contextMenuHeight = contextMenu.scrollHeight;
-		const contextMenuWidth = contextMenu.offsetWidth;
+		const contextMenuWidth  = contextMenu.offsetWidth;
 
-		let top = mouseY;
+		let top  = mouseY;
 		let left = mouseX;
 
-		// Smart vertical positioning
+		// ── Vertical: flip upward if not enough space below ──────────────────
 		if (mouseY + contextMenuHeight > screenHeight - 20) {
-			// Not enough space below, open upward
 			top = Math.max(10, mouseY - contextMenuHeight);
 		}
+		top = Math.max(10, Math.min(top, screenHeight - contextMenuHeight - 10));
 
-		// Smart horizontal positioning
+		// ── Horizontal: flip to the left if not enough space on right ─────────
+		// Also account for the widest possible submenu (viz panel = 280px)
+		const SUBMENU_WIDTH = 300; // conservative estimate for any submenu
+		const menuFitsRight = left + contextMenuWidth + SUBMENU_WIDTH < screenWidth - 10;
+
 		if (mouseX + contextMenuWidth > screenWidth - 20) {
-			// Not enough space on right, open to the left
+			// Menu itself doesn't fit right — shift it left
 			left = Math.max(10, mouseX - contextMenuWidth);
 		}
-
-		// Ensure menu stays within viewport bounds
-		top = Math.max(10, Math.min(top, screenHeight - contextMenuHeight - 10));
 		left = Math.max(10, Math.min(left, screenWidth - contextMenuWidth - 10));
 
+		// ── Submenus: flip to LEFT side when context menu is near right edge ──
+		// When there isn't room for a submenu to open to the right of the menu,
+		// point all submenus leftward (left:auto; right:100%).
+		const spaceForSubmenus = screenWidth - (left + contextMenuWidth);
+		if (spaceForSubmenus < SUBMENU_WIDTH) {
+			// Not enough room on the right — flip all submenus to open LEFT
+			contextMenu.querySelectorAll('.cm-submenu').forEach(sub => {
+				sub.style.left  = 'auto';
+				sub.style.right = '100%';
+			});
+		} else {
+			// Enough room on the right — use default (left:100%)
+			contextMenu.querySelectorAll('.cm-submenu').forEach(sub => {
+				sub.style.left  = '';
+				sub.style.right = '';
+			});
+		}
+
 		// Apply position and make visible
-		contextMenu.style.top = `${top}px`;
+		contextMenu.style.top  = `${top}px`;
 		contextMenu.style.left = `${left}px`;
 		contextMenu.style.visibility = "visible";
 
@@ -3720,9 +4020,38 @@ document.querySelectorAll(".decrease-volume").forEach((element) => {
 
 // keybord Shortcut
 document.addEventListener("keydown", (event) => {
-	if (gifSearchContainer.contains(document.activeElement)) {
+	// Block ALL shortcuts if user is typing in any input, textarea, or search field
+	const activeEl = document.activeElement;
+	const isTyping = activeEl && (
+		activeEl.tagName === 'INPUT' ||
+		activeEl.tagName === 'TEXTAREA' ||
+		activeEl.isContentEditable
+	);
+	if (isTyping) {
+		// Only allow Escape to close modals while typing
+		if (event.key === 'Escape') {
+			// close any open tool modal
+			['videoEffectsModal','syncToolModal','aboutModal'].forEach(id => {
+				const m = document.getElementById(id);
+				if (m && m.style.display !== 'none') m.style.display = 'none';
+			});
+			// blur the focused input
+			activeEl.blur();
+		}
 		return;
 	}
+	if (event.ctrlKey && event.key.toLowerCase() === 'e') {
+		event.preventDefault();
+		toggleToolModal('videoEffectsModal');
+		return;
+	}
+
+	if (event.ctrlKey && event.key.toLowerCase() === 'y') {
+		event.preventDefault();
+		toggleToolModal('syncToolModal');
+		return;
+	}
+
 	if (event.ctrlKey && event.key.toLowerCase() === "o") {
 		event.preventDefault();
 		openFileButton.click();
@@ -3947,7 +4276,11 @@ document.addEventListener("keydown", (event) => {
 			}
 			const next = currentSubtitleIndex + 1 >= total ? -1 : currentSubtitleIndex + 1;
 			switchSubtitleTrack(next);
-		}
+		},
+		g: () => adjustAudioDelay(-0.1),
+		h: () => adjustAudioDelay(0.1),
+		d: () => adjustSubtitleDelay(-0.5),
+		e: () => adjustSubtitleDelay(0.5),
 	};
 
 	if (keyActions[event.key]) {
@@ -4181,6 +4514,7 @@ async function populateAudioTracks() {
 
 		// Apply the auto-selected track (no src-swap, no AbortError)
 		applyAudioTrack(autoIndex);
+		refreshDynamicListVisibility(); // show audio track rows
 		return;
 	}
 
@@ -4190,6 +4524,7 @@ async function populateAudioTracks() {
 	// next file — ffprobe should always find tracks for valid media files.
 	ffprobeAudioTracks = [];
 	console.warn('[Audio] No tracks found via ffprobe — cannot populate audio menu');
+	refreshDynamicListVisibility(); // hide audio track rows (no tracks)
 }
 
 // Apply audio track selection without touching video.src
@@ -4442,6 +4777,15 @@ function syncAudioAndVideo() {
 
 // Handle key press for switching audio tracks (B key cycles through)
 function handleKeyPress(event) {
+	// Block ALL shortcuts if user is typing in any input, textarea, or contenteditable
+	const activeEl = document.activeElement;
+	const isTyping = activeEl && (
+		activeEl.tagName === 'INPUT' ||
+		activeEl.tagName === 'TEXTAREA' ||
+		activeEl.isContentEditable
+	);
+	if (isTyping) return;
+
 	if (event.key.toLowerCase() === "b") {
 		if (ffprobeAudioTracks.length > 0) {
 			// ffprobe mode — cycle through detected tracks
@@ -4622,7 +4966,10 @@ async function populateSubtitleTracks() {
 		_subtitlePopulatedForFile = null; // allow retry on error
 		return;
 	}
-	if (!result || !result.success || result.tracks.length === 0) return;
+	if (!result || !result.success || result.tracks.length === 0) {
+		refreshDynamicListVisibility(); // hide subtitle track list (no embedded tracks)
+		return;
+	}
 
 	let forcedIndex = -1;
 
@@ -4662,6 +5009,7 @@ async function populateSubtitleTracks() {
 
 	// Auto-activate forced track if present
 	if (forcedIndex !== -1) switchSubtitleTrack(forcedIndex);
+	refreshDynamicListVisibility(); // show subtitle track list (tracks found)
 }
 
 // Subtitle render engine
@@ -5813,57 +6161,7 @@ if (navigator.mediaDevices) {
 
 
 
-//  EMPTY SUBMENU PLACEHOLDER
-//  FIX: separate observer per list; re-entrancy guard prevents
-//       infinite mutation loop when placeholder is inserted.
-
-
-let _checkingSubmenus = false; // re-entrancy guard
-
-function checkEmptySubmenus() {
-	if (_checkingSubmenus) return;
-	_checkingSubmenus = true;
-
-	document.querySelectorAll('.context-menu .cm-sub-item').forEach(li => {
-		const dyn = li.querySelector('.cm-dynamic-list');
-		if (!dyn) return;
-
-		// Count real children (ignore existing placeholder)
-		const realCount = Array.from(dyn.children).filter(c => !c.classList.contains('cm-empty-placeholder')).length;
-		const existing = dyn.querySelector('.cm-empty-placeholder');
-
-		if (realCount === 0 && !existing) {
-			const p = document.createElement('div');
-			p.className = 'cm-empty-placeholder';
-			p.textContent = 'No items';
-			dyn.appendChild(p);
-		} else if (realCount > 0 && existing) {
-			existing.remove();
-		}
-	});
-
-	_checkingSubmenus = false;
-}
-
-// Watch only track/subtitle/playlist — NOT audio-device-list
-// (populateAudioDevices rebuilds that; watching it would infinite-loop)
-const _checkTargets = '.audio-track-list, .subtitle-track-list, .play-list';
-document.querySelectorAll(_checkTargets).forEach(el => {
-	new MutationObserver(() => {
-		if (!_checkingSubmenus) checkEmptySubmenus();
-	}).observe(el, {
-		childList: true
-	});
-});
-
-// Initial check after a short delay
-setTimeout(checkEmptySubmenus, 600);
-
-
-
 //  SPEED CONTROLS
-
-
 const SPEED_STEPS = {
 	'faster': 0.5,
 	'faster-fine': 0.1,
@@ -5890,3 +6188,311 @@ document.querySelectorAll('.speed-option').forEach(el => {
 		if (cm) cm.style.display = 'none';
 	});
 });
+// ══ DRAGGABLE TOOL MODALS ══════════════════════════════════════════════════
+// Allows Video Effects, Track Sync and About modals to be dragged by header.
+(function initDraggableModals() {
+  const MODAL_IDS = ['videoEffectsModal', 'syncToolModal', 'aboutModal'];
+
+  function makeDraggable(modal) {
+    const inner = modal.querySelector('.tool-modal-inner');
+    const header = modal.querySelector('.tool-modal-header');
+    if (!inner || !header) return;
+
+    let isDragging = false;
+    let startX, startY, startLeft, startTop;
+
+    function resetPosition() {
+      inner.style.position = '';
+      inner.style.left = '';
+      inner.style.top = '';
+      inner.style.margin = '';
+      modal.style.alignItems = '';
+      modal.style.justifyContent = '';
+    }
+
+    // Reset position when modal is closed (so it re-centers next open)
+    modal.addEventListener('modal-closed', resetPosition);
+
+    header.addEventListener('mousedown', (e) => {
+      if (e.target.closest('button')) return; // don't drag if clicking close btn
+      isDragging = true;
+
+      const rect = inner.getBoundingClientRect();
+      startX = e.clientX;
+      startY = e.clientY;
+      startLeft = rect.left;
+      startTop = rect.top;
+
+      // Switch to fixed absolute so we can freely reposition
+      inner.style.position = 'fixed';
+      inner.style.left = startLeft + 'px';
+      inner.style.top = startTop + 'px';
+      inner.style.margin = '0';
+      modal.style.alignItems = 'flex-start';
+      modal.style.justifyContent = 'flex-start';
+
+      document.body.style.userSelect = 'none';
+      e.preventDefault();
+    });
+
+    document.addEventListener('mousemove', (e) => {
+      if (!isDragging) return;
+      const dx = e.clientX - startX;
+      const dy = e.clientY - startY;
+      let newLeft = startLeft + dx;
+      let newTop  = startTop + dy;
+
+      // Clamp within viewport
+      const w = inner.offsetWidth;
+      const h = inner.offsetHeight;
+      newLeft = Math.max(0, Math.min(window.innerWidth - w, newLeft));
+      newTop  = Math.max(0, Math.min(window.innerHeight - h, newTop));
+
+      inner.style.left = newLeft + 'px';
+      inner.style.top  = newTop  + 'px';
+    });
+
+    document.addEventListener('mouseup', () => {
+      if (isDragging) {
+        isDragging = false;
+        document.body.style.userSelect = '';
+      }
+    });
+  }
+
+  function init() {
+    MODAL_IDS.forEach(id => {
+      const modal = document.getElementById(id);
+      if (modal) makeDraggable(modal);
+    });
+
+    // Patch close buttons to fire modal-closed event so position resets
+    const closePairs = [
+      ['videoEffectsClose',  'videoEffectsModal'],
+      ['videoEffectsClose2', 'videoEffectsModal'],
+      ['syncToolClose',      'syncToolModal'],
+      ['syncToolClose2',     'syncToolModal'],
+      ['aboutClose',         'aboutModal'],
+      ['aboutClose2',        'aboutModal'],
+    ];
+    closePairs.forEach(([btnId, modalId]) => {
+      const btn   = document.getElementById(btnId);
+      const modal = document.getElementById(modalId);
+      if (btn && modal) {
+        btn.addEventListener('click', () => modal.dispatchEvent(new Event('modal-closed')));
+      }
+    });
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', init);
+  } else {
+    init();
+  }
+})();
+
+// ── Initial visibility state ─────────────────────────────────────────────────
+// Run once after DOM is ready so playlist / audio / subtitle rows are hidden
+// before any media is loaded.
+if (document.readyState === 'loading') {
+	document.addEventListener('DOMContentLoaded', refreshDynamicListVisibility);
+} else {
+	refreshDynamicListVisibility();
+}
+// =============================================================================
+// SCROLL MANAGER — Wheel & Keyboard scroll isolation for Electron / Chromium
+// =============================================================================
+// WHY THIS IS NEEDED (3 categories of Electron-specific bugs):
+//
+//  1. SCROLL CHAINING: When a scrollable panel (chapters, playlist, gif grid,
+//     context menu) reaches its top/bottom boundary, Chromium's compositor
+//     propagates the wheel event up the DOM tree. Any ancestor with a wheel
+//     handler receives it — including renderer.js's document-level "wheel"
+//     handler that controls horizontal scrubbing, AND the seek bar wrapper.
+//
+//  2. PASSIVE WHEEL LISTENERS: Chromium registers ALL wheel events as
+//     {passive:true} by default. This means event.preventDefault() is SILENTLY
+//     IGNORED unless the listener is explicitly registered with {passive:false}.
+//     CSS overscroll-behavior:contain handles some cases but not all Electron
+//     compositor paths — JS is needed as a safety net.
+//
+//  3. DYNAMIC CONTENT: chapters, playlist, GIF results are injected at runtime.
+//     A one-shot DOMContentLoaded registration misses newly created elements.
+//     MutationObserver + re-registration solves this.
+// =============================================================================
+;(function initScrollManager() {
+  'use strict';
+
+  // ── Selectors: all containers that should scroll in isolation ──────────────
+  const SELECTORS = [
+    '.sub-dropdown-content.chapters-list-nav',
+    '.sub-dropdown-content.play-list',
+    '.sub-dropdown-content.audio-track-list',
+    '.sub-dropdown-content.subtitle-track-list',
+    '.sub-dropdown-content.audio-device-list',
+    '.viz-panel',
+    // Context menu internal scroll panels (LEAF nodes — safe to add overflow-y)
+    '.cm-viz-panel',             // viz presets + gif search inside context menu
+    '.context-menu .play-list',  // playlist sub-panel
+    '.chapters-list-cm.cm-dynamic-list',
+    // NOTE: .context-menu itself and .cm-submenu are intentionally EXCLUDED —
+    // they must NOT have overflow set (see CSS comment for explanation)
+    '.playlist-container',
+    '.tool-modal-body',
+    '.modal-body',
+  ];
+
+  // WeakSet so garbage-collected DOM nodes don't leak memory
+  const _registered = new WeakSet();
+
+  // ── Core wheel handler (must be registered as {passive:false}) ─────────────
+  // Logic: if the container CAN scroll in the wheel direction → let it scroll
+  //        but stop the event from bubbling further (stopPropagation).
+  //        If at a boundary and can't scroll → cancel entirely (preventDefault).
+  function _handleWheel(e) {
+    const el = this;
+    const scrollTop    = el.scrollTop;
+    const scrollHeight = el.scrollHeight;
+    const clientHeight = el.clientHeight;
+    const delta = e.deltaY || e.detail || (-e.wheelDelta);
+
+    // Not actually scrollable — let event bubble
+    if (scrollHeight <= clientHeight) return;
+
+    const canScrollUp   = scrollTop > 0;
+    const canScrollDown = scrollTop + clientHeight < scrollHeight - 1;
+
+    // At top and scrolling up → cancel entirely (prevents seek bar change)
+    if (delta < 0 && !canScrollUp) {
+      e.preventDefault();
+      e.stopPropagation();
+      return;
+    }
+    // At bottom and scrolling down → cancel entirely
+    if (delta > 0 && !canScrollDown) {
+      e.preventDefault();
+      e.stopPropagation();
+      return;
+    }
+
+    // Still within scrollable range → stop bubbling but allow the scroll
+    e.stopPropagation();
+  }
+
+  // ── Register single element ────────────────────────────────────────────────
+  function register(el) {
+    if (!el || _registered.has(el)) return;
+    _registered.add(el);
+    // {passive:false} is REQUIRED — without it Chromium ignores preventDefault
+    el.addEventListener('wheel', _handleWheel.bind(el), { passive: false });
+  }
+
+  // ── Register all matching elements (safe to call repeatedly) ──────────────
+  function registerAll() {
+    SELECTORS.forEach(selector => {
+      document.querySelectorAll(selector).forEach(register);
+    });
+  }
+
+  // ── Watch context menu visibility changes ─────────────────────────────────
+  // Context menu becomes display:block when right-clicked; register its panels then.
+  function _observeContextMenu() {
+    const cm = document.getElementById('contextMenu');
+    if (!cm) return;
+    new MutationObserver(() => {
+      if (cm.style.display !== 'none') {
+        requestAnimationFrame(registerAll);
+      }
+    }).observe(cm, { attributes: true, attributeFilter: ['style', 'class'] });
+  }
+
+  // ── Watch chapters + playlist containers for dynamic content ──────────────
+  function _observeDynamicContainers() {
+    const targets = [
+      document.getElementById('chaptersListNav'),
+      document.getElementById('chaptersListCM'),
+      document.querySelector('.sub-dropdown-content.play-list'),
+      document.querySelector('.playlist-container'),
+    ].filter(Boolean);
+
+    const observer = new MutationObserver(() => requestAnimationFrame(registerAll));
+    targets.forEach(el => observer.observe(el, { childList: true, subtree: false }));
+  }
+
+  // ── Re-register when sub-dropdowns open ───────────────────────────────────
+  function _attachHoverListeners() {
+    document.querySelectorAll('.sub-dropdown').forEach(dropdown => {
+      dropdown.addEventListener('mouseenter', () => {
+        requestAnimationFrame(registerAll);
+      }, { passive: true });
+    });
+  }
+
+  // ── Keyboard guard: stop arrow keys from seeking when panel is hovered ─────
+  // Runs in capture phase (fires before renderer.js's document keydown handler).
+  // Consumes ArrowUp/Down/PageUp/Down only when a registered panel is hovered.
+  const SCROLL_KEYS = new Set(['ArrowUp','ArrowDown','PageUp','PageDown','Home','End']);
+  function _attachKeyboardGuard() {
+    document.addEventListener('keydown', (e) => {
+      if (!SCROLL_KEYS.has(e.key)) return;
+      // Walk hovered elements deepest-first
+      const hovered = Array.from(document.querySelectorAll(':hover'));
+      for (let i = hovered.length - 1; i >= 0; i--) {
+        const el = hovered[i];
+        if (_registered.has(el) && el.scrollHeight > el.clientHeight) {
+          e.stopPropagation(); // prevent reaching renderer.js seek handlers
+          return;
+        }
+      }
+    }, { capture: true }); // capture=true: fires before document-level handlers
+  }
+
+  // ── Viewport overflow fix: flip panels that extend below screen ────────────
+  function _adjustPanelPosition(panel) {
+    if (!panel || panel.offsetParent === null) return;
+    const rect = panel.getBoundingClientRect();
+    const vH   = window.innerHeight;
+    const vW   = window.innerWidth;
+    if (rect.bottom > vH - 4) {
+      const overflow = rect.bottom - vH + 4;
+      const currentTop = parseFloat(panel.style.top) || 0;
+      panel.style.top = `${currentTop - overflow}px`;
+    }
+    if (rect.right > vW - 4) {
+      panel.style.left  = 'auto';
+      panel.style.right = '100%';
+    }
+  }
+
+  function _observePanelPositions() {
+    document.querySelectorAll('.sub-dropdown').forEach(dropdown => {
+      dropdown.addEventListener('mouseenter', () => {
+        requestAnimationFrame(() => {
+          const panel = dropdown.querySelector('.sub-dropdown-content');
+          _adjustPanelPosition(panel);
+        });
+      }, { passive: true });
+    });
+  }
+
+  // ── Public API ─────────────────────────────────────────────────────────────
+  // Call window.ScrollManager.registerAll() after any dynamic list update.
+  window.ScrollManager = { register, registerAll };
+
+  // ── Bootstrap ─────────────────────────────────────────────────────────────
+  function _init() {
+    registerAll();
+    _observeContextMenu();
+    _observeDynamicContainers();
+    _attachHoverListeners();
+    _attachKeyboardGuard();
+    _observePanelPositions();
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', _init);
+  } else {
+    _init();
+  }
+
+})(); // end ScrollManager

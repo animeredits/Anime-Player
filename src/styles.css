@@ -28,6 +28,8 @@ body {
   -webkit-user-select: none;
   user-select: none;
   scroll-behavior: smooth;
+  /* FIX: Stop wheel events from chaining out of Electron window (no rubber-band / bounce) */
+  overscroll-behavior: none;
     --light: hsl(220, 50%, 90%);
   --focus: hsl(210, 90%, 50%);
   --border-color: hsla(0, 0%, 100%, 0.2);
@@ -285,6 +287,11 @@ nav > * {
   display: block;
 }
 
+/* Hide empty dynamic nav panels even on hover */
+.sub-dropdown-content.nav-list-empty {
+  display: none !important;
+}
+
 /* Sort/nav divider */
 .sort-divider {
   height: 1px;
@@ -299,7 +306,7 @@ nav > * {
 .cm-dynamic-list.play-list .playlist-item,
 .play-list a,
 .play-list .playlist-item {
-  display: block !important;
+  display: block; /* no !important — JS search needs to set display:none */
   grid-template-columns: none !important;
   padding: 4px 10px !important;
   margin: 0 !important;
@@ -354,11 +361,14 @@ nav > * {
 }
 
 /* Nav .sub-dropdown-content.play-list panel */
+/* FIX: overscroll-behavior:contain and scroll-behavior:smooth added */
 .sub-dropdown-content.play-list {
   max-height: 380px !important;
   min-width: 300px !important;
   overflow-y: auto !important;
   overflow-x: hidden !important;
+  overscroll-behavior: contain !important; /* FIX */
+  scroll-behavior: smooth;
   padding: 2px 0 !important;
   scrollbar-width: thin;
   scrollbar-color: rgba(255,255,255,0.2) transparent;
@@ -581,30 +591,41 @@ nav > * {
 }
 
 /* ─── Visualization Panel ─────────────────────────────────────────────────── */
+/* FIX: "contain: paint" was the root cause of TWO bugs:
+   1) It created an isolated Chromium paint boundary that broke position:sticky
+      on the .viz-search-bar child — sticky requires the parent scroll container
+      to NOT have paint containment.
+   2) In Electron's compositor it placed the panel in its own layer that
+      intercepted (and silently swallowed) wheel events.
+   SOLUTION: Remove contain entirely. Use isolation:isolate + position:relative
+   to preserve the local stacking context without breaking sticky or scroll. */
 .viz-panel {
   width: 340px !important;
   max-height: 520px;
   overflow-y: auto;
   overflow-x: hidden;
   padding: 10px 10px 12px !important;
-  display: flex !important;
   flex-direction: column;
   gap: 8px;
+  overscroll-behavior: contain;       /* FIX: isolate scroll chain */
+  scroll-behavior: smooth;
   scrollbar-width: thin;
   scrollbar-color: rgba(255,255,255,0.25) transparent;
-  /* Ensure the panel itself scrolls rather than the parent clipping it */
-  contain: paint;
+  /* REMOVED: contain: paint  ← this was the bug */
+  isolation: isolate;                  /* preserves stacking without breaking scroll */
+  position: absolute;
 }
 .viz-panel::-webkit-scrollbar { width: 6px; }
 .viz-panel::-webkit-scrollbar-track { background: transparent; }
 .viz-panel::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.22); border-radius: 4px; }
 .viz-panel::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.38); }
 
-/* Search bar */
+/* Search bar — FIX: z-index bumped to 10 so it stays above the preset grid
+   after "contain:paint" was removed (it previously relied on the isolation boundary) */
 .viz-search-bar {
   position: sticky;
   top: 0;
-  z-index: 2;
+  z-index: 10;
   background: rgba(18,18,22,0.95);
   padding: 4px 0 6px;
 }
@@ -797,26 +818,42 @@ nav > * {
   grid-column: 1 / -1;
 }
 
-/* Context menu viz panel */
+/* Context menu viz panel — self-contained scrollable sub-panel.
+   This IS a scroll container (overflow-y:auto) because its content can be tall.
+   It's safe here because it is the LEAF node — no position:absolute children
+   need to escape it. overscroll-behavior-y:contain (Y axis only, not shorthand)
+   stops wheel chain from leaking out of this box without touching overflow-x. */
 .cm-viz-panel {
   width: 280px !important;
-  max-height: 420px;
+  max-height: 460px;
   overflow-y: auto;
+  overflow-x: hidden;
+  overscroll-behavior-y: contain;
+  scroll-behavior: smooth;
   padding: 8px !important;
   display: flex !important;
   flex-direction: column;
   gap: 6px;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255,255,255,0.2) transparent;
 }
+.cm-viz-panel::-webkit-scrollbar { width: 4px; }
+.cm-viz-panel::-webkit-scrollbar-track { background: transparent; }
+.cm-viz-panel::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.2); border-radius: 4px; }
+.cm-viz-panel::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.4); }
 
 /* Chapters in context menu — scrollable like playlist */
 .cm-chapters-panel {
   padding: 0 !important;
 }
 
+/* Chapters in context menu — scrollable like playlist */
 .chapters-list-cm.cm-dynamic-list {
   max-height: 320px;
   overflow-y: auto;
   overflow-x: hidden;
+  overscroll-behavior-y: contain;
+  scroll-behavior: smooth;
   scrollbar-width: thin;
   scrollbar-color: rgba(255,255,255,0.22) transparent;
   min-width: 260px;
@@ -824,6 +861,27 @@ nav > * {
 .chapters-list-cm.cm-dynamic-list::-webkit-scrollbar { width: 5px; }
 .chapters-list-cm.cm-dynamic-list::-webkit-scrollbar-track { background: transparent; }
 .chapters-list-cm.cm-dynamic-list::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.22); border-radius: 4px; }
+
+/* ── CHAPTERS NAV LIST — SCROLL FIX ──────────────────────────────────────────
+   ROOT CAUSE: no max-height & no overflow-y → panel grew past viewport silently;
+   overflow:visible never shows a scrollbar no matter how tall the content is.
+   FIX: constrain height, isolate scroll chain with overscroll-behavior:contain,
+        promote to own compositor layer with will-change so Electron doesn't clip it. */
+.sub-dropdown-content.chapters-list-nav {
+  max-height: min(440px, calc(100vh - 80px));
+  overflow-y: auto;
+  overflow-x: hidden;
+  overscroll-behavior: contain;       /* stops wheel chain reaching the seek bar */
+  scroll-behavior: smooth;
+  scrollbar-width: thin;              /* Firefox */
+  scrollbar-color: rgba(255,255,255,0.22) transparent;
+  will-change: transform;             /* own compositor layer — prevents Electron z-clipping */
+  transform: translateZ(0);
+}
+.sub-dropdown-content.chapters-list-nav::-webkit-scrollbar { width: 5px; }
+.sub-dropdown-content.chapters-list-nav::-webkit-scrollbar-track { background: transparent; }
+.sub-dropdown-content.chapters-list-nav::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.22); border-radius: 4px; }
+.sub-dropdown-content.chapters-list-nav::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.42); }
 
 /* Chapters in menu */
 .chapters-list-nav a, .chapters-list-cm a {
@@ -835,7 +893,6 @@ nav > * {
   color: rgba(255,255,255,0.8);
   cursor: pointer;
   white-space: nowrap;
-  overflow: hidden;
   text-overflow: ellipsis;
   text-decoration: none;
   border-radius: 4px;
@@ -1160,11 +1217,14 @@ main {
 }
 
 /* Media Player */
+/* FIX: overscroll-behavior:none prevents any leaked wheel event from
+   bouncing or scrolling the root player container in Electron. */
 #mediaPlayer {
   position: relative;
   width: 100vw;
   height: 100vh;
   overflow: hidden;
+  overscroll-behavior: none;
   display: flex;
   justify-content: center;
   align-items: center;
@@ -1183,24 +1243,48 @@ main {
 
 #noMediaLogo{
   display: block;
-  display: flex;
-  justify-content: center;
 }
 
 #noMediaLogo img {
   width: 50%;
   height: 100%;
   /* animation: rotateImage 5s linear infinite; */
-
 }                               
 
 /* =============================================
    CONTEXT MENU — VLC-style
    ============================================= */
+/*
+   ┌─────────────────────────────────────────────────────────┐
+   │  WHY .context-menu has NO overflow / max-height         │
+   ├─────────────────────────────────────────────────────────┤
+   │  CSS spec §overflow (used values):                      │
+   │  If overflow-y ≠ visible, overflow-x:visible is         │
+   │  silently changed to overflow-x:auto (clips content).   │
+   │                                                         │
+   │  overflow-y:auto + overflow-x:visible                   │
+   │       ↓ browser applies ↓                               │
+   │  overflow-y:auto + overflow-x: AUTO ← clips submenus!  │
+   │                                                         │
+   │  Every .cm-submenu uses position:absolute; left:100%    │
+   │  to fly out to the right. If the parent clips           │
+   │  overflow-x the submenu is cut off at the edge —        │
+   │  producing the detached/floating viz-panel bug.         │
+   │                                                         │
+   │  SOLUTION: no overflow on .context-menu at all.         │
+   │  • The menu has ≈14 fixed items ≈ 380px — never needs   │
+   │    to scroll.                                           │
+   │  • showContextMenu() already flips the menu upward      │
+   │    when near the bottom, keeping it in the viewport.    │
+   │  • Each sub-panel (playlist, chapters, viz, tracks)     │
+   │    handles its OWN internal scroll independently.       │
+   └─────────────────────────────────────────────────────────┘
+*/
 .context-menu {
   display: none;
   position: fixed;
   min-width: 200px;
+  /* NO overflow, NO max-height — see note above */
   padding: 4px 0;
   backdrop-filter: blur(30px) saturate(180%);
   background-color: #2f2f2f99;
@@ -1347,11 +1431,17 @@ main {
 }
 
 /* ── Playlist panel (wider + scrollable) ── */
+/* Safe to use overflow-y:auto here because .play-list is a LEAF scroll
+   container — no position:absolute children need to escape it to the right.
+   Use overscroll-behavior-y (Y axis only, not the shorthand) so overflow-x
+   stays at its default (visible) and nothing is unexpectedly clipped. */
 .context-menu .play-list {
   min-width: 300px;
   max-height: 380px;
   overflow-y: auto;
   overflow-x: hidden;
+  overscroll-behavior-y: contain;
+  scroll-behavior: smooth;
   scrollbar-width: thin;
   scrollbar-color: rgba(255,255,255,0.2) transparent;
 }
@@ -1498,15 +1588,21 @@ main {
 }
 
 /* Main container for the playlist */
+/* FIX: Changed top from 10% to 20px so it can't push below viewport.
+   Added overscroll-behavior:contain to stop scroll chain to the video.
+   The inner .play-list max-height is removed below — two competing heights
+   caused partial or broken scroll. Outer container is the single source of truth. */
 .playlist-container {
   display: none;
   position: fixed;
-  top: 10%;
+  top: 20px;                          /* FIX: was 10% — could push below viewport */
   right: -100%;
-  max-height: 100vh;
+  max-height: calc(100vh - 40px);     /* FIX: was 100vh — now leaves 20px margin each side */
   width: auto;
   overflow-y: auto;
   overflow-x: hidden;
+  overscroll-behavior: contain;       /* FIX: stops wheel chain to seek bar */
+  scroll-behavior: smooth;
   backdrop-filter: blur(10px) saturate(180%);
   background-color: #2f2f2f99;
   border-radius: 8px;
@@ -1518,6 +1614,15 @@ main {
   padding: 10px;
   scrollbar-width: thin;
   scrollbar-color: rgba(255,255,255,0.2) transparent;
+}
+
+/* FIX: inner .play-list inside the standalone panel must NOT have its own
+   max-height — the outer .playlist-container controls height.
+   If both set a max-height they fight each other and cause partial/broken scroll. */
+.playlist-container > .play-list {
+  max-height: none !important;
+  overflow-y: visible !important;
+  overflow-x: visible !important;
 }
 
 /* When the playlist is visible */
@@ -1793,8 +1898,12 @@ font-size: 11px;
 }
 
 /* Modal Body */
+/* FIX: overscroll-behavior:contain added so shortcut list scroll
+   doesn't chain to underlying video. */
 .modal-body {
   overflow-y: auto;
+  overscroll-behavior: contain;
+  scroll-behavior: smooth;
   padding: 10px;
   padding-right: 30px; /* Space for scrollbar */
   flex-grow: 1;
@@ -2079,14 +2188,25 @@ video::-webkit-media-text-track-container {
 }
 
 #current-time.tooltip-btn::after{
-  bottom: 200%;
-  transform: translateX(-50%) translateY(10px);
+  left: 0;
+  transform: translateX(0) translateY(4px);
 }
+#current-time.tooltip-btn:hover::after{
+  transform: translateX(0) translateY(0);
+}
+#current-time.tooltip-btn::before { left: 12px; transform: translateX(0) translateY(4px); }
+#current-time.tooltip-btn:hover::before { transform: translateX(0) translateY(0); }
 
 #video-duration.tooltip-btn::after{
-  bottom: 200%;
-  transform: translateX(-80%) translateY(10px);
+  left: auto;
+  right: 0;
+  transform: translateX(0) translateY(4px);
 }
+#video-duration.tooltip-btn:hover::after{
+  transform: translateX(0) translateY(0);
+}
+#video-duration.tooltip-btn::before { left: auto; right: 12px; transform: translateX(0) translateY(4px); }
+#video-duration.tooltip-btn:hover::before { transform: translateX(0) translateY(0); }
 
 /* Time display animation */
 @keyframes pulseTime {
@@ -2142,7 +2262,10 @@ span {
 }
 
 #volume-control.tooltip-btn::after {
-  transform: translateX(20%);
+  transform: translateX(-10%);
+}
+#volume-control.tooltip-btn:hover::after {
+  transform: translateX(-10%) translateY(0);
 }
 
 /* Icon Sizing */
@@ -2151,12 +2274,15 @@ span {
   padding: 18px;
 }
 
-/* Specific position for loop button */
+/* Loop button tooltip */
 #loop-button + .tooltip-btn::after,
 .icon-container[data-tooltip]::after {
-  bottom: 100%;
+  bottom: calc(100% + 10px);
   left: 50%;
-  transform: translateX(-50%) translateY(10px);
+  transform: translateX(-50%) translateY(4px);
+}
+.icon-container[data-tooltip]:hover::after {
+  transform: translateX(-50%) translateY(0);
 }
 
 /* Loop Indicator */
@@ -2645,11 +2771,20 @@ input[type="range"]::-moz-range-thumb:active {
 }
 
 .fullscreen-button.tooltip-btn::after {
-  transform: translateY(-80%);
+  transform: translateX(-50%) translateY(4px);
+}
+.fullscreen-button.tooltip-btn:hover::after {
+  transform: translateX(-50%) translateY(0);
 }
 
 #pip-button.tooltip-btn::after {
-  transform: translateX(-30%);
+  transform: translateX(-60%) translateY(4px);
+}
+#pip-button.tooltip-btn:hover::after {
+  transform: translateX(-60%) translateY(0);
+}
+#pip-button.tooltip-btn::before {
+  left: 40%;
 }
 
 /* Full-Screen Mode */
@@ -2690,28 +2825,62 @@ video:-ms-fullscreen {
   transform: translateX(-50%) translateY(0);
 }
 
-/* Tooltip Styles */
+/* ── Tooltip Styles — polished pill, matches shortcut modal color system ── */
+.tooltip-btn {
+  position: relative;
+}
+
 .tooltip-btn::after {
   content: attr(data-tooltip);
   position: absolute;
-  bottom: 100%;
-  color: #fff;
-  backdrop-filter: blur(30px) saturate(180%);
-  background-color: #2f2f2f99;
-  border: 1px solid rgba(255, 255, 255, 0.125);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
-  padding: 5px 10px;
-  border-radius: 4px;
-  font-size: 14px;
+  bottom: calc(100% + 10px);
+  left: 50%;
+  transform: translateX(-50%) translateY(4px);
+  color: rgba(255, 255, 255, 0.95);
+  background: rgba(20, 18, 32, 0.95);
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  border: 1px solid rgba(255, 255, 255, 0.13);
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.55), 0 1px 4px rgba(0,0,0,0.4);
+  padding: 5px 11px;
+  border-radius: 7px;
+  font-size: 11px;
+  font-weight: 400;
+  letter-spacing: 0.3px;
   white-space: nowrap;
   opacity: 0;
-  transition: all 0.3s ease;
   pointer-events: none;
-  z-index: 1000;
+  z-index: 10001;
+  transition: opacity 0.18s ease, transform 0.18s ease;
+  font-family: "Fira Sans", sans-serif;
+}
+
+/* Arrow tip */
+.tooltip-btn::before {
+  content: '';
+  position: absolute;
+  bottom: calc(100% + 5px);
+  left: 50%;
+  transform: translateX(-50%) translateY(4px);
+  width: 0;
+  height: 0;
+  border-left: 5px solid transparent;
+  border-right: 5px solid transparent;
+  border-top: 5px solid rgba(20, 18, 32, 0.95);
+  opacity: 0;
+  pointer-events: none;
+  z-index: 10001;
+  transition: opacity 0.18s ease, transform 0.18s ease;
 }
 
 .tooltip-btn:hover::after {
   opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}
+
+.tooltip-btn:hover::before {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
 }
 
 /* Fade + Bounce */
@@ -2844,139 +3013,494 @@ video:-ms-fullscreen {
   border-top: 5px solid rgba(15, 15, 22, 0.92);
 }
 
-/* Chapters button — match other control icons (playlist etc.) */
-#chapters-button {
-  cursor: pointer;
-  transition: all 0.2s ease;
-  border-radius: 6px;
-  padding: 5px;
+/* ═══════════════════════════════════════════════════════════════════════════
+   TOOL MODALS — Video Effects | Track Sync | About
+   Styled to match the Shortcuts modal: no overlay blur, same dark glass look
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.tool-modal {
+  display: none;
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  align-items: center;
+  justify-content: center;
+  -webkit-app-region: no-drag;
 }
 
-#chapters-button:hover {
-  transform: scale(1.15);
-  background: rgba(100, 130, 220, 0.18);
-  filter: brightness(1.3) !important;
-}
-
-#chapters-button.active {
-  background: rgba(100, 130, 220, 0.25);
-  filter: brightness(1.4) !important;
-}
-
-.chapters-dropdown {
-  position: absolute;
-  bottom: 70px;
-  right: 20px;
-  background: rgba(20, 20, 30, 0.98);
-  border: 1px solid #00d4ff;
-  border-radius: 8px;
-  max-width: 350px;
-  max-height: 400px;
-  z-index: 1001;
-  box-shadow: 0 -5px 30px rgba(0, 212, 255, 0.2);
-  overflow: hidden;
+.tool-modal-inner {
+  /* Match .modal-content exactly */
+  backdrop-filter: blur(30px) saturate(180%);
+  -webkit-backdrop-filter: blur(30px) saturate(180%);
+  background: #2f2f2fc5;
+  border: 1px solid rgba(255, 255, 255, 0.125);
+  border-radius: 14px;
+  box-shadow: 0 24px 64px rgba(0,0,0,0.7), 0 0 0 1px rgba(255,255,255,0.04);
+  width: 600px;
+  max-width: 95vw;
   display: flex;
   flex-direction: column;
-  animation: slideUp 0.3s ease;
+  overflow: hidden;
+  font-family: "Fira Sans", sans-serif;
+  /* Draggable — positioned via JS after first drag */
+  position: relative;
+  animation: tool-modal-in 0.22s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
-@keyframes slideUp {
-  from {
-    opacity: 0;
-    transform: translateY(10px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
+@keyframes tool-modal-in {
+  from { opacity: 0; transform: scale(0.92) translateY(10px); }
+  to   { opacity: 1; transform: scale(1) translateY(0); }
 }
 
-.chapters-header {
+.tool-modal-inner--sync  { width: 420px; }
+.tool-modal-inner--about { width: 380px; }
+
+/* Header — acts as drag handle */
+.tool-modal-header {
   display: flex;
-  justify-content: space-between;
   align-items: center;
-  padding: 12px 15px;
-  border-bottom: 1px solid #00d4ff;
-  background: rgba(0, 212, 255, 0.05);
+  justify-content: space-between;
+  padding: 14px 18px 12px;
+  border-bottom: 1px solid rgba(255,255,255,0.08);
+  cursor: move;
+  user-select: none;
+  -webkit-user-select: none;
 }
 
-.chapters-header h3 {
-  margin: 0;
-  color: #00d4ff;
+.tool-modal-title-wrap {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+}
+
+.tool-modal-icon {
   font-size: 14px;
-  font-weight: 600;
 }
 
-.chapters-close {
+.tool-modal-title {
+  font-size: 13px;
+  font-weight: 500;
+  letter-spacing: 0.4px;
+  color: rgba(255,255,255,0.92);
+}
+
+.tool-modal-close {
   background: none;
   border: none;
-  color: #00d4ff;
+  color: rgba(255,255,255,0.5);
   cursor: pointer;
-  font-size: 20px;
-  padding: 0 5px;
-  transition: all 0.2s ease;
-}
-
-.chapters-close:hover {
-  color: #00ffff;
-  transform: scale(1.2);
-}
-
-.chapters-list {
-  overflow-y: auto;
-  flex: 1;
-  padding: 0;
-}
-
-.chapters-list::-webkit-scrollbar {
-  width: 6px;
-}
-
-.chapters-list::-webkit-scrollbar-track {
-  background: rgba(0, 212, 255, 0.05);
-}
-
-.chapters-list::-webkit-scrollbar-thumb {
-  background: #00d4ff;
-  border-radius: 3px;
-}
-
-.chapters-list::-webkit-scrollbar-thumb:hover {
-  background: #00ffff;
-}
-
-.chapter-item {
+  font-size: 14px;
+  width: 28px;
+  height: 28px;
   display: flex;
-  justify-content: space-between;
   align-items: center;
-  padding: 10px 15px;
-  border-bottom: 1px solid rgba(0, 212, 255, 0.1);
-  color: #e0e0e0;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  font-size: 13px;
+  justify-content: center;
+  border-radius: 6px;
+  transition: background 0.15s, color 0.15s;
+}
+.tool-modal-close:hover { background: rgba(255,255,255,0.1); color: #fff; }
+
+/* Body */
+/* FIX: overscroll-behavior:contain stops wheel events inside modal body
+   from chaining to the underlying video / seek bar. */
+.tool-modal-body {
+  padding: 16px 18px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scroll-behavior: smooth;
+  max-height: 68vh;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255,255,255,0.2) transparent;
 }
 
-.chapter-item:hover {
-  background: rgba(0, 212, 255, 0.1);
-  color: #00ffff;
-  padding-left: 20px;
+/* Footer */
+.tool-modal-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  padding: 12px 18px;
+  border-top: 1px solid rgba(255,255,255,0.07);
 }
 
-.chapter-item:last-child {
-  border-bottom: none;
-}
-
-.chapter-item-time {
-  color: #00d4ff;
-  font-weight: 600;
+.tool-modal-btn {
+  border: none;
+  border-radius: 7px;
+  padding: 7px 18px;
   font-size: 12px;
-  margin-left: 10px;
+  font-family: "Fira Sans", sans-serif;
+  cursor: pointer;
+  letter-spacing: 0.3px;
+  transition: background 0.15s;
 }
 
-.chapter-item-name {
+
+.tool-modal-btn--secondary ,.tool-modal-btn--primary {
+  background: rgba(255,255,255,0.09);
+  color: rgba(255,255,255,0.8);
+}
+
+.tool-modal-btn--secondary:hover, .tool-modal-btn--primary:hover { background: rgba(255,255,255,0.16); }
+
+/* ── Video Effects sliders ── */
+.tme-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0 20px;
+}
+
+.tme-col { display: flex; flex-direction: column; gap: 10px; }
+
+.tme-section-label {
+  font-size: 10px;
+  letter-spacing: 0.8px;
+  text-transform: uppercase;
+  margin-bottom: 2px;
+  padding-bottom: 5px;
+  border-bottom: 1px solid rgba(255,255,255,0.08);
+}
+
+.tme-row {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 26px;
+}
+
+.tme-row--dep { opacity: 0.4; transition: opacity 0.2s; }
+
+.tme-label {
+  font-size: 11px;
+  color: rgba(255,255,255,0.65);
+  min-width: 72px;
+  flex-shrink: 0;
+}
+
+.tme-label--toggle {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: rgba(255,255,255,0.8);
+  cursor: pointer;
+  min-width: unset;
+}
+
+.tme-checkbox {
+  accent-color: rgba(130,100,255,0.9);
+  width: 13px;
+  height: 13px;
+  cursor: pointer;
+}
+
+.tme-slider {
   flex: 1;
-  white-space: nowrap;
+  height: 3px;
+  border-radius: 3px;
+  outline: none;
+  border: none;
+  appearance: none;
+  background: rgba(255,255,255,0.15);
+  cursor: pointer;
+}
+.tme-slider::-webkit-slider-thumb {
+  appearance: none;
+  width: 13px;
+  height: 13px;
+  border-radius: 50%;
+  cursor: pointer;
+  transition: transform 0.1s;
+}
+.tme-slider::-webkit-slider-thumb:hover { transform: scale(1.2); }
+
+.tme-value {
+  font-size: 10px;
+  color: rgba(255,255,255,0.5);
+  min-width: 34px;
+  text-align: right;
+}
+
+.tme-reset-btn {
+  background: none;
+  border: none;
+  color: rgba(255,255,255,0.3);
+  cursor: pointer;
+  font-size: 12px;
+  padding: 0 2px;
+  transition: color 0.15s;
+}
+.tme-reset-btn:hover { color: rgba(130,100,255,0.9); }
+
+.tme-divider {
+  height: 1px;
+  background: rgba(255,255,255,0.07);
+  margin: 2px 0;
+}
+
+/* ── Sync Tool ── */
+.sync-tabs {
+  display: flex;
+  gap: 0;
+  border-bottom: 1px solid rgba(255,255,255,0.08);
+  padding: 0 18px;
+}
+
+.sync-tab {
+  background: none;
+  border: none;
+  color: rgba(255,255,255,0.45);
+  font-size: 12px;
+  font-family: "Fira Sans", sans-serif;
+  cursor: pointer;
+  padding: 9px 16px;
+  border-bottom: 2px solid transparent;
+  transition: color 0.15s, border-color 0.15s;
+  letter-spacing: 0.3px;
+}
+.sync-tab:hover { color: rgba(255,255,255,0.8); }
+.sync-tab.active {
+  color: rgba(130,100,255,1);
+  border-bottom-color: rgba(130,100,255,0.9);
+}
+
+.sync-pane { display: none; padding: 18px; }
+.sync-pane.active { display: block; }
+
+.sync-section-label {
+  font-size: 10px;
+  letter-spacing: 0.8px;
+  text-transform: uppercase;
+  margin-bottom: 12px;
+}
+
+.sync-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 14px;
+  flex-wrap: wrap;
+}
+
+.sync-label {
+  font-size: 12px;
+  color: rgba(255,255,255,0.6);
+  min-width: 100px;
+}
+
+.sync-spinbox {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  background: rgba(255,255,255,0.07);
+  border: 1px solid rgba(255,255,255,0.12);
+  border-radius: 8px;
   overflow: hidden;
-  text-overflow: ellipsis;
+}
+
+.sync-spin-btn {
+  background: rgba(130,100,255,0.15);
+  border: none;
+  color: rgba(255,255,255,0.75);
+  font-size: 14px;
+  width: 30px;
+  height: 32px;
+  cursor: pointer;
+  transition: background 0.12s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.sync-spin-btn:hover { background: rgba(130,100,255,0.4); color: #fff; }
+
+.sync-spin-val {
+  min-width: 55px;
+  text-align: center;
+  font-size: 13px;
+  color: #fff;
+  font-variant-numeric: tabular-nums;
+  padding: 0 4px;
+}
+
+.sync-spin-unit {
+  font-size: 10px;
+  color: rgba(255,255,255,0.35);
+  padding-right: 8px;
+}
+
+.sync-shortcuts-hint {
+  font-size: 10px;
+  color: rgba(255,255,255,0.35);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.key-badge {
+  background: rgba(255,255,255,0.1);
+  border: 1px solid rgba(255,255,255,0.18);
+  border-radius: 4px;
+  padding: 1px 5px;
+  font-size: 10px;
+  color: rgba(255,255,255,0.65);
+}
+
+/* ── About Modal ── */
+.about-body {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 22px 24px 16px;
+  text-align: center;
+  gap: 8px;
+}
+
+.about-icon-img {
+  width: 64px;
+  height: 64px;
+  border-radius: 16px;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.5);
+  object-fit: contain;
+}
+
+.about-name {
+  font-size: 17px;
+  font-weight: 600;
+  color: rgba(255,255,255,0.95);
+  letter-spacing: 0.3px;
+}
+
+.about-version {
+  font-size: 11px;
+  color: rgba(130,100,255,0.85);
+  background: rgba(130,100,255,0.12);
+  border-radius: 12px;
+  padding: 2px 10px;
+  letter-spacing: 0.5px;
+}
+
+.about-desc {
+  font-size: 12px;
+  color: rgba(255,255,255,0.5);
+  line-height: 1.6;
+  margin-top: 4px;
+}
+
+.about-links {
+  display: flex;
+  gap: 12px;
+  margin-top: 4px;
+}
+
+.about-link {
+  color: rgba(130,100,255,0.85);
+  text-decoration: none;
+  font-size: 12px;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 12px;
+  background: rgba(130,100,255,0.1);
+  border-radius: 8px;
+  transition: background 0.15s;
+}
+.about-link:hover { background: rgba(130,100,255,0.22); color: #fff; }
+
+.about-copy {
+  font-size: 10px;
+  color: rgba(255,255,255,0.25);
+  margin-top: 6px;
+}
+/* =============================================================================
+   SCROLL FIX ADDITIONS — appended section
+   All rules here fix scroll isolation, z-index layering, and track list heights.
+   Root causes documented inline.
+   ============================================================================= */
+
+/* ── Audio / Subtitle / Device track lists ────────────────────────────────────
+   FIX: no max-height or overflow-y was set; lists could extend past viewport
+   without showing a scrollbar (overflow defaults to visible).
+   overscroll-behavior:contain stops wheel from reaching the seek bar. */
+.sub-dropdown-content.audio-track-list,
+.sub-dropdown-content.subtitle-track-list,
+.sub-dropdown-content.audio-device-list {
+  max-height: min(440px, calc(100vh - 80px));
+  overflow-y: auto;
+  overflow-x: hidden;
+  overscroll-behavior: contain;
+  scroll-behavior: smooth;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255,255,255,0.22) transparent;
+}
+.sub-dropdown-content.audio-track-list::-webkit-scrollbar,
+.sub-dropdown-content.subtitle-track-list::-webkit-scrollbar,
+.sub-dropdown-content.audio-device-list::-webkit-scrollbar { width: 5px; }
+.sub-dropdown-content.audio-track-list::-webkit-scrollbar-thumb,
+.sub-dropdown-content.subtitle-track-list::-webkit-scrollbar-thumb,
+.sub-dropdown-content.audio-device-list::-webkit-scrollbar-thumb {
+  background: rgba(255,255,255,0.22); border-radius: 4px;
+}
+.sub-dropdown-content.audio-track-list::-webkit-scrollbar-thumb:hover,
+.sub-dropdown-content.subtitle-track-list::-webkit-scrollbar-thumb:hover,
+.sub-dropdown-content.audio-device-list::-webkit-scrollbar-thumb:hover {
+  background: rgba(255,255,255,0.42);
+}
+
+
+/* ── Z-INDEX ESCALATION — fixes Chromium compositor layer ordering ────────────
+   FIX: backdrop-filter on parent dropdowns creates a new stacking context in
+   Chromium/Electron, which can place nested panels BEHIND sibling layers.
+   Solution: explicitly escalate z-index per nesting level. */
+
+/* Nav 1st-level sub-dropdown on hover */
+.sub-dropdown:hover > .sub-dropdown-content {
+  z-index: 500;
+}
+
+/* Viz-panel needs flex (not block) when shown */
+.sub-dropdown:hover > .sub-dropdown-content.viz-panel {
+  display: flex;
+}
+
+/* ── FOCUS-WITHIN: keep dropdowns open when user clicks/types in a search input inside them ── */
+/* Nav top-level dropdown stays open when child input is focused */
+.dropdown:focus-within .dropdown-content {
+  display: block;
+}
+/* Nav sub-dropdown stays open when child input is focused */
+.sub-dropdown:focus-within > .sub-dropdown-content {
+  display: block;
+}
+/* Viz panel specifically needs flex */
+.sub-dropdown:focus-within > .sub-dropdown-content.viz-panel {
+  display: flex;
+}
+
+/* Nav 2nd-level (nested inside sub-dropdown-content) */
+.sub-dropdown-content .sub-dropdown:hover > .sub-dropdown-content {
+  z-index: 600;
+}
+
+/* Context menu 1st-level sub-menu on hover */
+.context-menu ul li.cm-sub-item:hover > .cm-submenu {
+  z-index: 1100;
+}
+
+/* Context menu 2nd-level (nested sub-menus) */
+.context-menu .cm-submenu .cm-sub-item:hover > .cm-submenu {
+  z-index: 1200;
+}
+
+/* Viz panel inside nav needs its own stacking layer */
+.sub-dropdown-content .viz-panel {
+  isolation: isolate;
+  position: relative;
+  z-index: 1;
+}
+
+/* ── FOCUS RING: shows which panel will receive keyboard scroll ────────────── */
+.sub-dropdown-content.chapters-list-nav:focus-within,
+.sub-dropdown-content.play-list:focus-within,
+.viz-panel:focus-within,
+.playlist-container:focus-within,
+.context-menu:focus-within {
+  outline: 1px solid rgba(111,163,239,0.35);
+  outline-offset: -1px;
 }
