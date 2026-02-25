@@ -339,25 +339,63 @@ nav > * {
 }
 
 /* Playlist search bar — slim */
+.playlist-search-wrap {
+  display: flex;
+  align-items: center;
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  background: rgba(255,255,255,0.05);
+  border-bottom: 1px solid rgba(255,255,255,0.10);
+  border-radius: 4px 4px 0 0;
+  padding: 0 8px;
+  gap: 6px;
+  margin-bottom: 2px;
+}
+.playlist-search-icon {
+  color: rgba(255,255,255,0.4);
+  font-size: 11px;
+  flex-shrink: 0;
+  pointer-events: none;
+}
 .play-list .playlist-search,
 .sub-dropdown-content.play-list .playlist-search {
   display: block !important;
   grid-template-columns: none !important;
   width: 100% !important;
   box-sizing: border-box !important;
-  padding: 5px 10px !important;
+  padding: 6px 0 !important;
   margin: 0 !important;
   height: 30px !important;
   font-size: 11px !important;
   line-height: 1 !important;
-  background: rgba(255,255,255,0.06) !important;
+  background: transparent !important;
   border: none !important;
-  border-bottom: 1px solid rgba(255,255,255,0.1) !important;
   color: #fff;
   outline: none;
-  position: sticky;
-  top: 0;
-  z-index: 2;
+  flex: 1;
+}
+.play-list .playlist-search::placeholder,
+.sub-dropdown-content.play-list .playlist-search::placeholder {
+  color: rgba(255,255,255,0.35);
+}
+.playlist-search-clear {
+  display: none;
+  align-items: center;
+  justify-content: center;
+  background: none;
+  border: none;
+  color: rgba(255,255,255,0.45);
+  cursor: pointer;
+  padding: 2px 4px;
+  font-size: 11px;
+  flex-shrink: 0;
+  border-radius: 3px;
+  transition: color 0.15s;
+}
+.playlist-search-clear:hover {
+  color: rgba(255,255,255,0.9);
+  background: rgba(255,255,255,0.08);
 }
 
 /* Nav .sub-dropdown-content.play-list panel */
@@ -380,20 +418,28 @@ nav > * {
   border-radius: 4px;
 }
 
-/* ── Context menu: separator between static buttons and dynamic file lists ──
-   Matches the visual divider the navbar shows between static items and loaded files */
 .context-menu .subtitle-track-list.cm-dynamic-list,
 .context-menu .audio-track-list.cm-dynamic-list,
 .context-menu .audio-device-list.cm-dynamic-list {
-  border-top: 1px solid rgba(255,255,255,0.10);
   margin-top: 2px;
   padding-top: 4px;
 }
-
-/* Playlist CM also gets a separator above the track items */
 .context-menu .play-list.cm-dynamic-list {
-  border-top: 1px solid rgba(255,255,255,0.10);
   margin-top: 2px;
+}
+.context-menu .cm-dynamic-list a,
+.context-menu .cm-dynamic-list .track-item,
+.context-menu .cm-dynamic-list .subtitle-item,
+.context-menu .cm-dynamic-list .playlist-item,
+.context-menu .cm-dynamic-list .device-item {
+  border-bottom: 1px solid rgba(255,255,255,0.07) !important;
+}
+.context-menu .cm-dynamic-list a:last-child,
+.context-menu .cm-dynamic-list .track-item:last-child,
+.context-menu .cm-dynamic-list .subtitle-item:last-child,
+.context-menu .cm-dynamic-list .playlist-item:last-child,
+.context-menu .cm-dynamic-list .device-item:last-child {
+  border-bottom: none !important;
 }
 
 /* Audio/subtitle track lists: also compact single-line */
@@ -823,6 +869,21 @@ nav > * {
    It's safe here because it is the LEAF node — no position:absolute children
    need to escape it. overscroll-behavior-y:contain (Y axis only, not shorthand)
    stops wheel chain from leaking out of this box without touching overflow-x. */
+/* Disabled state for Visualization context-menu item — mirrors navbar opacity:0.5 */
+#cm-viz-item.cm-viz-disabled > a {
+  opacity: 0.4;
+  pointer-events: none;
+  cursor: default;
+}
+#cm-viz-item.cm-viz-disabled > .cm-submenu,
+#cm-viz-item.cm-viz-disabled:hover > .cm-submenu {
+  display: none !important;
+  visibility: hidden !important;
+}
+#cm-viz-item.cm-viz-disabled:hover > a {
+  background-color: transparent !important;
+}
+
 .cm-viz-panel {
   width: 280px !important;
   max-height: 460px;
@@ -831,12 +892,18 @@ nav > * {
   overscroll-behavior-y: contain;
   scroll-behavior: smooth;
   padding: 8px !important;
-  display: flex !important;
+  display: flex;
   flex-direction: column;
   gap: 6px;
   scrollbar-width: thin;
   scrollbar-color: rgba(255,255,255,0.2) transparent;
 }
+
+.context-menu ul li.cm-sub-item:hover > .cm-submenu.cm-viz-panel,
+.context-menu .cm-submenu li.cm-sub-item:hover > .cm-submenu.cm-viz-panel {
+  display: flex !important;
+}
+
 .cm-viz-panel::-webkit-scrollbar { width: 4px; }
 .cm-viz-panel::-webkit-scrollbar-track { background: transparent; }
 .cm-viz-panel::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.2); border-radius: 4px; }
@@ -1235,10 +1302,10 @@ main {
   outline: none;
   display: none;
   position: absolute;
-  width: 100%;
-  height: 100%;
+  width: 100% !important;
+  height: 100% !important;
   object-fit: contain;
-  transition: transform 0.3s ease-out;
+  transition: transform 0.15s ease-out;
 }
 
 #noMediaLogo{
@@ -1464,7 +1531,6 @@ main {
   font-weight: 300;
   cursor: pointer;
   white-space: nowrap;
-  border: none;
   margin: 0;
 }
 
@@ -1597,7 +1663,7 @@ main {
   position: fixed;
   top: 20px;                          /* FIX: was 10% — could push below viewport */
   right: -100%;
-  max-height: calc(100vh - 40px);     /* FIX: was 100vh — now leaves 20px margin each side */
+  max-height: 480px;   /* FIX: was 100vh — now leaves 20px margin each side */
   width: auto;
   overflow-y: auto;
   overflow-x: hidden;
@@ -1637,7 +1703,7 @@ main {
   padding: 10px;
   text-decoration: none;
   color: #fff;
-  border-bottom: 1px solid #444;
+  border-bottom: 1px solid rgba(255,255,255,0.07);
   cursor: pointer;
   transition: background-color 0.2s;
   scroll-behavior: smooth;

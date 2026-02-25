@@ -2,11 +2,11 @@ const video = document.getElementById("media");
 const mediaPlayer = document.getElementById("mediaPlayer");
 const minimizeBtn = document.querySelector("#minimize");
 const maximizeBtn = document.querySelector("#maximize");
-const videoEffectBtn = document.querySelector('.videoEffectBtn'); // kept for compat (may be null)
-const saturationModal = null; // replaced by videoEffectsModal
-const saturationSlider = null; // replaced by combined sliders
-const saturationValue = null;  // replaced
-const resetBtn = null;         // replaced
+const videoEffectBtn = document.querySelector('.videoEffectBtn');
+const saturationModal = null; 
+const saturationSlider = null;
+const saturationValue = null;  
+const resetBtn = null;         
 const openFileButton = document.getElementById("openFileButton");
 const openFolderButton = document.getElementById("openFolderButton");
 const shuffleButton = document.getElementById("shuffle-button");
@@ -22,8 +22,6 @@ const speedOptions = {
 	decrease: [0.75, 0.5, 0.25],
 };
 const zoomTrackList = document.getElementById("zoom-track-list");
-// Select from BOTH navbar AND context menu zoom items using data-zoom-level attribute
-// (getElementById only finds the first duplicate ID, so context menu zoom was broken)
 const zoomOptions = document.querySelectorAll("[data-zoom-level]");
 const seekBarContainer = document.getElementById("seek-bar-container");
 const seekBarWrapper = document.getElementById("seek-bar-wrapper");
@@ -62,7 +60,7 @@ const subtitleDisplay = document.getElementById('subtitle-display');
 
 let currentChapters = [];
 let currentVideoPath = null;
-let chaptersDropdown, chaptersButton, chaptersCloseBtn, chaptersList, chapterTooltip, chaptersMarkersContainer;
+let chaptersList, chapterTooltip, chaptersMarkersContainer;
 let subtitleCueListener = null;
 let ffprobeAudioTracks = [];
 let audioTrackPlayer = null;
@@ -75,6 +73,7 @@ let isFirstFileOpened = false;
 let playedVideos = [];
 let currentVideoIndex = 0;
 let currentAudioIndex = 0;
+let timeDisplayInterval = null;
 let lastPlayedIndex = -1;
 let lastPlayedStack = [];
 let navigationHistory = [];
@@ -91,15 +90,11 @@ let tooltipTimeout;
 let scrollTimeout;
 let currentSpeedIndex = 3;
 let videoId;
-let sortMethod = 'name'; // 'name' | 'date'
-let sortDirection = 'ascending'; // 'ascending' | 'descending'
+let sortMethod = 'name';
+let sortDirection = 'ascending';
 let hideContinueButtonTimeout;
 let hideHandleTimeout;
 let isVideoPaused = false;
-// let isLeftMouseDown = false;
-// let isRightMouseDown = false;
-// let leftWasPausedBeforeHold = false;
-// let rightWasPausedBeforeHold = false;
 let totalTimeInSeconds = 0;
 let countdownInterval = null;
 let remainingTimeOnPause = 0;
@@ -108,6 +103,7 @@ let isContextMenuVisible = false;
 let isSpeedAdjustmentHold = false;
 let contextMenuClick = false;
 let isShuffle = false;
+let isLoadingFile = false; 
 let isLooping = false;
 let volumeStep = 0.05;
 let minFontSize = 18;
@@ -207,19 +203,6 @@ function updateLogo(src) {
 	audioImage.style.display = "block"; // Show the logo
 }
 
-// Change the logo based on selection from a dropdown
-document.getElementById('customLogoInput').addEventListener('change', function(e) {
-	const file = e.target.files[0];
-	if (file) {
-		const reader = new FileReader();
-		reader.onload = function(event) {
-			const src = event.target.result;
-			updateLogo(src);
-		};
-		reader.readAsDataURL(file);
-	}
-});
-
 // ✅ Trigger file input when clicking the custom logo link
 customLogoLink.addEventListener("click", function() {
 	customLogoInput.click(); // Programmatically click the file input
@@ -260,10 +243,8 @@ customLogoInput.addEventListener("change", async function(event) {
 		if (autoSaveLogo) {
 			const response = await window.electron.saveCustomLogo(fileBuffer, fileName);
 			if (response.success) {
-				// console.log("GIF saved successfully at:", response.path);
 				saveCustomLogo(response.path, fileName);
 				loadCustomLogos(); // ✅ Refresh the list
-				closeVizDropdown(); // Close panel so only the selected logo shows
 			} else {
 				console.error("Failed to save GIF:", response.error);
 			}
@@ -275,10 +256,8 @@ customLogoInput.addEventListener("change", async function(event) {
 			if (confirmed) {
 				const response = await window.electron.saveCustomLogo(fileBuffer, fileName);
 				if (response.success) {
-					// console.log("GIF saved successfully at:", response.path);
 					saveCustomLogo(response.path, fileName);
 					loadCustomLogos(); // ✅ Refresh the list
-					closeVizDropdown(); // Close panel so only the selected logo shows
 					if (autoSave) {
 						localStorage.setItem("autoSaveLogo", JSON.stringify(true));
 					}
@@ -298,7 +277,7 @@ customLogoInput.addEventListener("change", async function(event) {
 // ✅ Update the saveCustomLogo function to add to BOTH navbar and context menu panels
 function saveCustomLogo(filePath, fileName) {
 	// Helper to create a tile and add it to a container
-	function _addToContainer(container, isCM) {
+	function _addToContainer(container) {
 		if (!container) return;
 
 		// Remove existing item for same file to avoid duplicates
@@ -342,7 +321,7 @@ function saveCustomLogo(filePath, fileName) {
 		item.appendChild(thumb);
 		item.appendChild(labelRow);
 
-		// Click to select
+		// Click to select — same behavior as built-in viz-preset-item tiles
 		item.addEventListener("click", (e) => {
 			if (e.target === delIcon || delIcon.contains(e.target)) return;
 			document.querySelectorAll(".viz-preset-item").forEach(i => i.classList.remove("active"));
@@ -351,6 +330,7 @@ function saveCustomLogo(filePath, fileName) {
 			updateLogo(filePath);
 			localStorage.setItem('selectedLogo', filePath);
 			showStatusMessage("Visualization: " + fileName);
+			closeVizDropdown();
 		});
 		// Insert before upload button or append
 		const uploadBtn = container.querySelector('.viz-upload-btn, #customLogoLink, #customLogoLinkCM');
@@ -358,13 +338,13 @@ function saveCustomLogo(filePath, fileName) {
 		else container.appendChild(item);
 	}
 
-	// Navbar panel
-	const navContainer = document.querySelector("#logoOptions .sub-dropdown-content");
-	_addToContainer(navContainer, false);
+	// Navbar panel — #logoOptions IS the viz-panel (sub-dropdown-content)
+	const navContainer = document.getElementById("logoOptions");
+	_addToContainer(navContainer);
 
-	// Context menu panel
-	const cmContainer = document.querySelector("#vizPresetsCM");
-	_addToContainer(cmContainer, true);
+	// Context menu panel — items go inside #vizPresetsCM grid
+	const cmContainer = document.getElementById("vizPresetsCM");
+	_addToContainer(cmContainer);
 
 	saveCustomLogoToStorage(filePath, fileName);
 	checkPlayAllButton();
@@ -1034,6 +1014,15 @@ async function loadMediaFile(filePath, fileName) {
 	}
 
 	try {
+		// ✅ CRITICAL: Cleanup old stream before loading new file (prevents streaming errors)
+		// Stop current playback to close any open stream
+		video.pause();
+		video.currentTime = 0;
+		// Clear the old source to release the stream
+		video.src = '';
+		// Give browser time to close the stream before requesting new file
+		await new Promise(resolve => setTimeout(resolve, 50));
+
 		document.getElementById("noMediaLogo").style.display = "none";
 		video.style.display = "block";
 
@@ -1073,9 +1062,9 @@ async function loadMediaFile(filePath, fileName) {
 			// Disable the navbar viz button text visually
 			const vizBtn = audioLogoDropdown.querySelector('.sub-dropbtn');
 			if (vizBtn) vizBtn.setAttribute('tabindex', '-1');
-			// Disable visualization in context menu for video files (mirrors navbar behaviour)
+			// Disable visualization in context menu for video files (mirrors navbar opacity style)
 			const cmVizItem = document.getElementById("cm-viz-item");
-			if (cmVizItem) { cmVizItem.style.opacity = "0.4"; cmVizItem.style.pointerEvents = "none"; }
+			if (cmVizItem) { cmVizItem.classList.add("cm-viz-disabled"); }
 		} else if (audioFormats.includes(fileExtension)) {
 			document.getElementById("audioLogo").style.display = "block";
 			audioImage.style.display = "block";
@@ -1087,7 +1076,7 @@ async function loadMediaFile(filePath, fileName) {
 			if (vizBtn) vizBtn.removeAttribute('tabindex');
 			// Re-enable visualization in context menu for audio files
 			const cmVizItem = document.getElementById("cm-viz-item");
-			if (cmVizItem) { cmVizItem.style.opacity = ""; cmVizItem.style.pointerEvents = ""; }
+			if (cmVizItem) { cmVizItem.classList.remove("cm-viz-disabled"); }
 			const savedLogo = localStorage.getItem("selectedLogo");
 			if (savedLogo) {
 				setSelectedLogo(savedLogo);
@@ -1122,6 +1111,16 @@ async function loadMediaFile(filePath, fileName) {
 		console.error("❌ Error loading media file:", error);
 		video.style.display = "none";
 		document.getElementById("noMediaLogo").style.display = "block";
+		
+		// Clear the loading flag so user can try again
+		isLoadingFile = false;
+		
+		// Show error message to user
+		if (error.message && error.message.includes('ERR_OUT_OF_RANGE')) {
+			showStatusMessage("Error: File stream corrupted. Try again.");
+		} else {
+			showStatusMessage("Error: Failed to load file. Try again.");
+		}
 	}
 }
 
@@ -1189,11 +1188,13 @@ function playMediaFile(filePath) {
 }
 
 // ✅ Function to play a video by its index
-function playVideoByIndex(index) {
+function playVideoByIndex(index, skipHistoryUpdate = false) {
 	if (index < 0 || index >= mediaFiles.length) return;
 
 	// Track navigation history so Previous button works after manual playlist selections
-	if (currentVideoIndex !== null &&
+	// (Only update if not called from playNext/playPrevious which manage history themselves)
+	if (!skipHistoryUpdate &&
+		currentVideoIndex !== null &&
 		currentVideoIndex !== index &&
 		navigationHistory[navigationHistory.length - 1] !== currentVideoIndex) {
 		navigationHistory.push(currentVideoIndex);
@@ -1424,6 +1425,11 @@ function getPreviousIndex() {
 
 // ✅ Play next video while tracking playback history
 function playNext() {
+	// ✅ Debounce rapid calls to prevent streaming errors
+	if (isLoadingFile) {
+		return;
+	}
+
 	if (video.duration >= 60 && video.currentTime < video.duration) {
 		savePlaybackTime(video.dataset.videoId, video.currentTime);
 	}
@@ -1456,20 +1462,33 @@ function playNext() {
 		}
 	}
 
+	isLoadingFile = true;  // Set debounce flag
 	currentVideoIndex = nextIndex;
 	lastPlayedIndex = nextIndex;
 
-	playVideoByIndex(nextIndex);
+	playVideoByIndex(nextIndex, true); // Skip history update since playNext already manages it
 	highlightCurrentVideo(mediaFiles[nextIndex]);
 	updateNavigationButtons();
 	showStatusMessage("Next");
+	
+	// Clear debounce flag after file loading completes (with safety timeout)
+	setTimeout(() => {
+		isLoadingFile = false;
+	}, 500);
 }
 
 // ✅ Play previous video correctly
 function playPrevious() {
+	// ✅ Debounce rapid calls to prevent streaming errors
+	if (isLoadingFile) {
+		return;
+	}
+
 	if (video.duration >= 60 && video.currentTime < video.duration) {
 		savePlaybackTime(video.dataset.videoId, video.currentTime);
 	}
+
+	isLoadingFile = true;  // Set debounce flag
 
 	if (navigationHistory.length > 0) {
 		let prevIndex = navigationHistory.pop(); // Retrieve the actual previous video
@@ -1477,10 +1496,15 @@ function playPrevious() {
 		currentVideoIndex = prevIndex;
 		lastPlayedIndex = prevIndex;
 
-		playVideoByIndex(prevIndex);
+		playVideoByIndex(prevIndex, true); // Skip history update since playPrevious already manages it
 		highlightCurrentVideo(mediaFiles[prevIndex]);
 		updateNavigationButtons();
 		showStatusMessage("Previous");
+		
+		// Clear debounce flag after file loading completes
+		setTimeout(() => {
+			isLoadingFile = false;
+		}, 500);
 		return;
 	}
 
@@ -1488,16 +1512,22 @@ function playPrevious() {
 	const prevIndex = getPreviousIndex();
 	if (prevIndex === null) {
 		console.warn("No previous video available.");
+		isLoadingFile = false;  // Clear flag if no video to load
 		return;
 	}
 
 	currentVideoIndex = prevIndex;
 	lastPlayedIndex = prevIndex;
 
-	playVideoByIndex(prevIndex);
+	playVideoByIndex(prevIndex, true); // Skip history update since we manually set currentVideoIndex
 	highlightCurrentVideo(mediaFiles[prevIndex]);
 	updateNavigationButtons();
 	showStatusMessage("Previous Video");
+	
+	// Clear debounce flag after file loading completes
+	setTimeout(() => {
+		isLoadingFile = false;
+	}, 500);
 }
 
 // ✅ Ensure buttons are updated properly
@@ -1565,7 +1595,10 @@ function stopPlayback() {
 	updateNavigationButtons();
 
 	// Clean up temp subtitle files
-	window.electron.invoke('cleanup-subtitles').catch(e => console.warn('Subtitle cleanup:', e));
+	const cleanupPromise = window.electron.invoke('cleanup-subtitles');
+	if (cleanupPromise && typeof cleanupPromise.catch === 'function') {
+		cleanupPromise.catch(e => console.warn('Subtitle cleanup:', e));
+	}
 }
 
 // Event listener for stop playback using querySelectorAll and forEach
@@ -1798,29 +1831,36 @@ function updatePlaylistDropdown(mediaFiles) {
 		playlistContainer.innerHTML = "";
 
 		// ✅ Inject search bar
+		// ── Search bar wrapper (icon + input + clear button) ──
+		const searchWrap = document.createElement("div");
+		searchWrap.classList.add("playlist-search-wrap");
+
+		const searchIcon = document.createElement("i");
+		searchIcon.className = "fa-solid fa-magnifying-glass playlist-search-icon";
+		searchWrap.appendChild(searchIcon);
+
 		const searchInput = document.createElement("input");
 		searchInput.type = "text";
-		searchInput.placeholder = "Search video...";
+		searchInput.placeholder = "Search...";
 		searchInput.classList.add("playlist-search");
+		searchWrap.appendChild(searchInput);
 
-		// Styling
-		Object.assign(searchInput.style, {
-			placeholdercolor: "#fff",
-			backgroundColor: "transparent",
-			backdropFilter: "blur(10px)",
-			color: "#fff",
-			position: "sticky",
-			top: "0",
-			zIndex: "2",
-			paddingLeft: "5px",
-			width: "100%",
-			height: "28px",
-			outline: "none",
-			border: "none",
-			display: "block",
+		const clearBtn = document.createElement("button");
+		clearBtn.classList.add("playlist-search-clear");
+		clearBtn.innerHTML = '<i class="fa-solid fa-xmark"></i>';
+		clearBtn.style.display = "none";
+		clearBtn.addEventListener("click", (e) => {
+			e.stopPropagation();
+			searchInput.value = "";
+			clearBtn.style.display = "none";
+			playlistContainer.querySelectorAll(".playlist-item").forEach(item => {
+				item.style.display = "block";
+			});
+			searchInput.focus();
 		});
+		searchWrap.appendChild(clearBtn);
 
-		playlistContainer.appendChild(searchInput);
+		playlistContainer.appendChild(searchWrap);
 
 		mediaFiles.forEach((filePath, index) => {
 			// Extract REAL filename (not 8.3 short name)
@@ -1847,17 +1887,67 @@ function updatePlaylistDropdown(mediaFiles) {
 		let debounceTimeout;
 		searchInput.addEventListener("input", function() {
 			clearTimeout(debounceTimeout);
+			const hasVal = searchInput.value.length > 0;
+			clearBtn.style.display = hasVal ? "flex" : "none";
 			debounceTimeout = setTimeout(() => {
 				const query = searchInput.value.toLowerCase().trim();
 				playlistContainer.querySelectorAll(".playlist-item").forEach(item => {
 					item.style.display = item.textContent.toLowerCase().includes(query) ? "block" : "none";
 				});
-			}, 300);
+			}, 150);
 		});
 
-		// Prevent input from closing dropdown
+		// Prevent input from closing dropdown or context menu
 		searchInput.addEventListener("click", (e) => e.stopPropagation());
-		searchInput.addEventListener("keydown", (e) => e.stopPropagation());
+		searchInput.addEventListener("mousedown", (e) => e.stopPropagation());
+
+		// Context menu: pin it open while search is focused (typing loses CSS :hover)
+		searchInput.addEventListener("focus", () => {
+			const cm = document.getElementById("context-menu");
+			const cmPlaylistItem = document.getElementById("context-menu-playlist");
+			const cmAudioItem = cmPlaylistItem ? cmPlaylistItem.closest(".cm-submenu") : null;
+			if (cm && cm.style.display === "block") {
+				// Force submenu chain visible while typing
+				if (cmAudioItem) cmAudioItem.style.display = "block";
+				const sub = playlistContainer.closest(".cm-submenu");
+				if (sub) sub.style.setProperty("display", "block", "important");
+			}
+		});
+		searchInput.addEventListener("blur", () => {
+			// Remove forced display so CSS hover takes over again
+			const sub = playlistContainer.closest(".cm-submenu");
+			if (sub) sub.style.removeProperty("display");
+		});
+
+		searchInput.addEventListener("keydown", (e) => {
+			e.stopPropagation();
+			// Arrow keys navigate playlist while typing
+			if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+				e.preventDefault();
+				const items = Array.from(playlistContainer.querySelectorAll(".playlist-item"))
+					.filter(el => el.style.display !== "none");
+				if (items.length === 0) return;
+				const cur = items.findIndex(el => el.classList.contains("highlight"));
+				const next = e.key === "ArrowDown"
+					? (cur + 1) % items.length
+					: (cur - 1 + items.length) % items.length;
+				items[next].click();
+				items[next].scrollIntoView({ block: "nearest" });
+			}
+			// Enter selects highlighted item
+			if (e.key === "Enter") {
+				const highlighted = playlistContainer.querySelector(".playlist-item.highlight");
+				if (highlighted) highlighted.click();
+			}
+			// Escape clears search
+			if (e.key === "Escape") {
+				searchInput.value = "";
+				clearBtn.style.display = "none";
+				playlistContainer.querySelectorAll(".playlist-item").forEach(item => {
+					item.style.display = "block";
+				});
+			}
+		});
 	});
 
 	// ✅ Global: Clear input and reset on outside click
@@ -1880,6 +1970,83 @@ function updatePlaylistDropdown(mediaFiles) {
 	// ScrollManager so wheel isolation is applied to the newly visible containers.
 	if (window.ScrollManager) window.ScrollManager.registerAll();
 }
+
+// ✅ Check if a container is actually visible in the DOM
+function isContainerVisible(container) {
+	const style = window.getComputedStyle(container);
+	if (style.display === 'none' || style.visibility === 'hidden') return false;
+
+	// Walk up to check if any ancestor is hidden (handles cm-submenu, sub-dropdown-content, etc.)
+	let el = container.parentElement;
+	while (el && el !== document.body) {
+		const ps = window.getComputedStyle(el);
+		if (ps.display === 'none' || ps.visibility === 'hidden') return false;
+		el = el.parentElement;
+	}
+	return true;
+}
+
+// ✅ PLAYLIST CONTAINER ARROW KEY NAVIGATION (Bottom Playlist Only)
+// Using capture phase to intercept before other handlers
+document.addEventListener("keydown", (e) => {
+	const playlistContainer = document.querySelector(".playlist-container");
+	
+	// Only activate if playlist container is visible
+	if (!playlistContainer || !isContainerVisible(playlistContainer)) return;
+	
+	// Don't interfere with search input or other text inputs
+	const activeEl = document.activeElement;
+	if (activeEl && (activeEl.classList.contains("playlist-search") || 
+	    activeEl.tagName === "INPUT" ||
+	    activeEl.tagName === "TEXTAREA")) return;
+	
+	if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+		e.preventDefault();
+		e.stopPropagation();
+		
+		// Get all visible playlist items in the bottom container
+		const playList = playlistContainer.querySelector(".play-list");
+		if (!playList) return;
+		
+		const items = Array.from(playList.querySelectorAll(".playlist-item"))
+			.filter(el => el.style.display !== "none");
+		
+		if (items.length === 0) return;
+		
+		// Find currently highlighted item
+		const curIndex = items.findIndex(el => el.classList.contains("highlight"));
+		
+		// Calculate next index (wrap around)
+		let nextIndex;
+		if (e.key === "ArrowDown") {
+			nextIndex = curIndex === -1 ? 0 : (curIndex + 1) % items.length;
+		} else {
+			nextIndex = curIndex === -1 ? items.length - 1 : (curIndex - 1 + items.length) % items.length;
+		}
+		
+		// Click the item to play it and highlight it
+		items[nextIndex].click();
+		items[nextIndex].scrollIntoView({ behavior: "smooth", block: "nearest" });
+		
+		// Show status message for keyboard navigation
+		showStatusMessage(`${e.key === "ArrowDown" ? "↓" : "↑"} ${items[nextIndex].textContent}`);
+		return; // Stop further processing
+	}
+	
+	// Enter key to play highlighted item
+	if (e.key === "Enter") {
+		const playList = playlistContainer.querySelector(".play-list");
+		if (!playList) return;
+		
+		const highlighted = playList.querySelector(".playlist-item.highlight");
+		if (highlighted) {
+			e.preventDefault();
+			e.stopPropagation();
+			highlighted.click();
+			showStatusMessage("Playing: " + highlighted.textContent);
+		}
+	}
+}, true); // Use capture phase to intercept before other handlers
 
 // ✅ Function to HIGHLIGHT CURRENT VIDEO (All Containers)
 function highlightCurrentVideo(fileName) {
@@ -1912,21 +2079,6 @@ function highlightCurrentVideo(fileName) {
 	});
 }
 
-// Check if a container is actually visible in the DOM
-function isContainerVisible(container) {
-	const style = window.getComputedStyle(container);
-	const parent = container.closest('.sub-dropdown-content, .playlist-container');
-
-	// Check if element or parent is hidden
-	if (style.display === 'none' || style.visibility === 'hidden') return false;
-	if (parent) {
-		const parentStyle = window.getComputedStyle(parent);
-		if (parentStyle.display === 'none' || parentStyle.visibility === 'hidden') return false;
-	}
-
-	return true;
-}
-
 const playlistContainers = document.querySelectorAll(".play-list");
 
 // Attach scroll and mouse interaction listeners to each playlist container
@@ -1943,22 +2095,7 @@ playlistContainers.forEach((playlistContainer) => {
 		}, 2000); // Adjust delay as needed
 	});
 
-	// FIX: Use {passive: false} so e.preventDefault() is honoured in Electron/Chromium.
-	// Without this Chromium ignores preventDefault on wheel events (passive by default)
-	// and the wheel leaks to parent containers including the seek bar.
-	playlistContainer.addEventListener("wheel", (event) => {
-		event.stopPropagation(); // always stop chain
-		if (isMouseOver) {
-			const st = playlistContainer.scrollTop;
-			const sh = playlistContainer.scrollHeight;
-			const ch = playlistContainer.clientHeight;
-			const atTop    = event.deltaY < 0 && st <= 0;
-			const atBottom = event.deltaY > 0 && st + ch >= sh - 1;
-			if (atTop || atBottom) event.preventDefault(); // stop boundary leak
-		}
-	}, { passive: false }); // FIX: must be non-passive for preventDefault to work
-
-	// Detect mouse enter/leave events for the playlist container
+	// Mouse enter/leave for tracking hover state (kept for compatibility with other listeners)
 	playlistContainer.addEventListener("mouseenter", () => {
 		isMouseOver = true;
 	});
@@ -1993,6 +2130,25 @@ function togglePlaylist() {
 	if (willShow) {
 		setTimeout(() => scrollToHighlighted(playlistContainer.querySelector('.play-list')), 50);
 	}
+}
+
+// Playlist navigation logic
+function handlePlaylistNavigation(event) {
+    const playlistContainer = document.querySelector(".playlist-container");
+    const playlistItems = Array.from(playlistContainer.querySelectorAll(".playlist-item"));
+    if (playlistItems.length === 0) return;
+
+    const currentIndex = playlistItems.findIndex(item => item.classList.contains("highlight"));
+
+    if (event.key === "ArrowDown") {
+        event.preventDefault();
+        const nextIndex = (currentIndex + 1) % playlistItems.length;
+        playlistItems[nextIndex].click();
+    } else if (event.key === "ArrowUp") {
+        event.preventDefault();
+        const prevIndex = (currentIndex - 1 + playlistItems.length) % playlistItems.length;
+        playlistItems[prevIndex].click();
+    }
 }
 
 // Reusable scroll function
@@ -2035,6 +2191,22 @@ document.addEventListener("keydown", function(event) {
 	}
 });
 
+// Main keydown event listener
+document.addEventListener("keydown", function (event) {
+    if (isPlaylistVisible()) {
+        handlePlaylistNavigation(event);
+    } else {
+        handleVolumeControl(event);
+    }
+});
+
+// Playlist visibility check
+function isPlaylistVisible() {
+    const playlistContainer = document.querySelector(".playlist-container");
+    return playlistContainer && playlistContainer.classList.contains("show");
+}
+
+
 // Hide playlist on outside click
 window.addEventListener("click", function(event) {
 	const playlistContainer = document.querySelector(".playlist-container");
@@ -2043,6 +2215,20 @@ window.addEventListener("click", function(event) {
 	}
 });
 
+
+
+// Volume control logic
+function handleVolumeControl(event) {
+    if (event.key === "ArrowUp") {
+        event.preventDefault();
+        updateVolume(Math.min(2, gainNode.gain.value + 0.05));
+        showStatusMessage(`Volume: ${(Math.min(2, gainNode.gain.value + 0.05) * 100).toFixed(0)}%`);
+    } else if (event.key === "ArrowDown") {
+        event.preventDefault();
+        updateVolume(Math.max(0, gainNode.gain.value - 0.05));
+        showStatusMessage(`Volume: ${(Math.max(0, gainNode.gain.value - 0.05) * 100).toFixed(0)}%`);
+    }
+}
 
 // ✅ Sort playlist and instantly play FIRST video of sorted result
 function sortPlaylist() {
@@ -2155,20 +2341,9 @@ document.addEventListener('click', (e) => {
 
 // Initialize DOM elements (delay to ensure they exist)
 function initChaptersDOM() {
-	chaptersDropdown = null; // removed — chapters now in Playback menus
-	chaptersButton = null;   // removed — chapters button removed from controls
-	chaptersCloseBtn = null;
 	chaptersList = null;     // legacy panel removed
 	chapterTooltip = document.getElementById('chapter-tooltip');
 	chaptersMarkersContainer = document.getElementById('chapters-markers-container');
-
-	// console.log('[Chapters] DOM Elements initialized:');
-	// console.log('  - chaptersDropdown:', !!chaptersDropdown);
-	// console.log('  - chaptersButton:', !!chaptersButton);
-	// console.log('  - chaptersList:', !!chaptersList);
-	// console.log('  - chapterTooltip:', !!chapterTooltip);
-	// console.log('  - chaptersMarkersContainer:', !!chaptersMarkersContainer);
-
 	setupChapterEventListeners();
 }
 
@@ -2239,13 +2414,8 @@ function renderChapterMarkers() {
 	// console.log(`[Chapters] Rendered ${currentChapters.length} markers`);
 }
 
-// Render chapters list in dropdown + navbar menu + context menu
+// Render chapters list in navbar menu + context menu
 function renderChaptersList() {
-	// legacy floating panel (may be null now)
-	if (chaptersList) {
-		chaptersList.innerHTML = "";
-	}
-
 	// Helper to build a chapter anchor element
 	function makeChapterAnchor(chapter, index, onClickExtra) {
 		const a = document.createElement("a");
@@ -2268,11 +2438,6 @@ function renderChaptersList() {
 			if (typeof onClickExtra === "function") onClickExtra();
 		});
 		return a;
-	}
-
-	// Populate legacy list if it still exists
-	if (chaptersList) {
-		currentChapters.forEach((ch, i) => chaptersList.appendChild(makeChapterAnchor(ch, i)));
 	}
 
 	// Populate navbar Playback > Chapters sub-dropdown
@@ -2299,9 +2464,6 @@ function renderChaptersList() {
 		}
 	}
 
-	// FIX: re-register scroll containers after dynamic chapter items are injected.
-	// Without this the new <a> elements inside chapters-list-nav / chapters-list-cm
-	// are not tracked by the ScrollManager wheel handler, so scroll events can leak.
 	if (window.ScrollManager) window.ScrollManager.registerAll();
 }
 
@@ -2338,7 +2500,6 @@ function hideChapterTooltip() {
 	}
 }
 
-// Jump to chapter
 function jumpToChapter(index) {
 	if (index < 0 || index >= currentChapters.length) {
 		console.warn('[Chapters] Invalid chapter index:', index);
@@ -2347,14 +2508,9 @@ function jumpToChapter(index) {
 
 	const chapter = currentChapters[index];
 	video.currentTime = chapter.start;
-	// console.log(`[Chapters] Jumped to chapter: ${chapter.name} at ${formatChapterTime(chapter.start)}`);
 
-	// Highlight the current chapter
-	if (chaptersList) {
-		document.querySelectorAll('.chapter-item').forEach((item, i) => {
-			item.style.background = i === index ? 'rgba(0, 212, 255, 0.2)' : '';
-		});
-	}
+	// Highlight the current chapter in nav/cm menus
+	highlightActiveChapterInMenus(index);
 }
 
 // Jump to next chapter
@@ -2400,11 +2556,9 @@ function jumpToPreviousChapter() {
 	}
 }
 
-// Clear chapters
 function clearChapters() {
 	currentChapters = [];
 	if (chaptersMarkersContainer) chaptersMarkersContainer.innerHTML = '';
-	if (chaptersList) chaptersList.innerHTML = '';
 	if (chapterTooltip) chapterTooltip.style.display = 'none';
 }
 
@@ -2431,39 +2585,10 @@ function formatChapterTime(seconds) {
 	return `${minutes}:${String(secs).padStart(2, '0')}`;
 }
 
-// Setup all chapter event listeners
 function setupChapterEventListeners() {
-	// Chapters button click
-	if (chaptersButton) {
-		chaptersButton.onclick = null; // Clear any existing listeners
-		chaptersButton.addEventListener('click', (e) => {
-			// console.log('[Chapters] Button clicked');
-			e.stopPropagation();
-			toggleChaptersDropdown();
-		});
-		// console.log('[Chapters] Button listener attached');
-	} else {
-		console.warn('[Chapters] Button not found for listener');
-	}
-
-	// Close button
-	if (chaptersCloseBtn) {
-		chaptersCloseBtn.addEventListener('click', () => {
-			if (chaptersDropdown) {
-				chaptersDropdown.style.display = 'none';
-				if (chaptersButton) chaptersButton.classList.remove('active');
-			}
-		});
-	}
-
 	// Close dropdown when clicking outside
 	document.addEventListener('click', (e) => {
-		if (chaptersDropdown && chaptersButton) {
-			if (!chaptersDropdown.contains(e.target) && e.target !== chaptersButton && !chaptersButton.contains(e.target)) {
-				chaptersDropdown.style.display = 'none';
-				chaptersButton.classList.remove('active');
-			}
-		}
+		// no-op: chapters now live in Playback menus only
 	});
 
 	// Update markers when video duration changes
@@ -2472,10 +2597,6 @@ function setupChapterEventListeners() {
 			renderChapterMarkers();
 		}
 	});
-
-	// Tooltip stays pinned at the marker — no mousemove follower needed
-
-	// console.log('[Chapters] All event listeners attached');
 }
 
 // Initialize when DOM is ready
@@ -2998,8 +3119,12 @@ function updateVolume(newVolume, source = null) {
 	// Ensure the volume value is within the precise range [0, 2]
 	newVolume = parseFloat(Math.max(0, Math.min(2, newVolume).toFixed(2)));
 
-	// Update the actual audio volume
+	// Update the actual audio volume using ramp
 	gainNode.gain.linearRampToValueAtTime(newVolume, audioContext.currentTime + 0.1);
+	
+	// IMMEDIATE: Set the gain value directly for instant icon/slider update
+	// (The ramp above still applies for smooth transition to audio output)
+	gainNode.gain.value = newVolume;
 
 	// Sync volume to external audio element (non-native codec path)
 	// audioTrackPlayer.volume is 0–1, gainNode supports 0–2 (boosted)
@@ -3018,7 +3143,7 @@ function updateVolume(newVolume, source = null) {
 	// Save the exact volume setting
 	saveVolumeSetting(newVolume);
 
-	// Update volume button icon
+	// Update volume button icon IMMEDIATELY with the target value
 	updateVolumeIcon();
 }
 
@@ -3067,6 +3192,28 @@ volumeSlider.addEventListener("mouseleave", () => {
 window.addEventListener('load', () => {
 	// Force sync the slider with current volume on load
 	volumeSlider.value = Math.round(gainNode.gain.value * 100);
+	
+	// ✅ Initialize wheel scrolling for bottom playlist container ONLY
+	const bottomPlaylistContainer = document.querySelector(".playlist-container");
+	if (bottomPlaylistContainer && !bottomPlaylistContainer._wheelListenerAdded) {
+		bottomPlaylistContainer.addEventListener("wheel", (event) => {
+			event.stopPropagation(); // Stop propagation to prevent seek bar interference
+			
+			const st = bottomPlaylistContainer.scrollTop;
+			const sh = bottomPlaylistContainer.scrollHeight;
+			const ch = bottomPlaylistContainer.clientHeight;
+			
+			// Only prevent default at boundaries to stop leak to video/seek bar
+			const atTop    = event.deltaY < 0 && st <= 0;
+			const atBottom = event.deltaY > 0 && st + ch >= sh - 1;
+			
+			if (atTop || atBottom) {
+				event.preventDefault(); // Stop boundary leak only, allow normal scroll otherwise
+			}
+		}, { passive: false }); // Must be non-passive for preventDefault to work
+		
+		bottomPlaylistContainer._wheelListenerAdded = true; // Flag to prevent re-adding
+	}
 });
 
 // Mouse wheel handler for slider - use same calculation
@@ -3077,7 +3224,7 @@ volumeSlider.addEventListener("wheel", (e) => {
 	let newValue = parseInt(volumeSlider.value) + step;
 	newValue = Math.max(0, Math.min(newValue, 200));
 
-	const exactVolume = parseFloat(newValue / 100).toFixed(2);
+	const exactVolume = parseFloat((newValue / 100).toFixed(2));
 	updateVolume(exactVolume, 'wheel');
 	showTooltip(exactVolume, e); // tooltip near mouse only — no status pill
 });
@@ -3128,8 +3275,8 @@ mediaPlayer.addEventListener("wheel", (event) => {
 			scale = Math.max(scale - 0.1, minZoom); // Min zoom level (no zoom)
 		}
 
-		video.style.transform = `scale(${scale})`;
-		video.style.transformOrigin = "center center"; // Zoom from the center
+		applyTransformations(); // keeps rotation + pan intact
+		video.style.transformOrigin = "center center";
 
 		const zoomPercentage = Math.round(scale * 100);
 		showStatusMessage(`Zoom: ${zoomPercentage}%`);
@@ -3163,6 +3310,9 @@ mediaPlayer.addEventListener("wheel", (event) => {
 		newVolume = Math.max(0, Math.min(2, newVolume));
 
 		updateVolume(newVolume, 'wheel');
+
+		const volumePercent = Math.round(newVolume * 100);
+		showStatusMessage(`Volume: ${volumePercent}%`);
 
 		tooltip.style.left = `${event.pageX}px`;
 		tooltip.style.top = `${event.pageY - 30}px`;
@@ -3739,6 +3889,17 @@ document.addEventListener("DOMContentLoaded", function() {
 	// Attach event listeners
 	mediaPlayer.addEventListener("contextmenu", showContextMenu);
 
+	// Scroll to highlighted item when context menu playlist sub-panel opens
+	const cmPlaylistItem = document.getElementById('context-menu-playlist');
+	if (cmPlaylistItem) {
+		cmPlaylistItem.addEventListener('mouseenter', () => {
+			requestAnimationFrame(() => {
+				const cmPlaylist = cmPlaylistItem.querySelector('.play-list');
+				if (cmPlaylist) scrollToHighlighted(cmPlaylist);
+			});
+		});
+	}
+
 	document.addEventListener("click", (e) => {
 		if (!contextMenu.contains(e.target)) {
 			hideContextMenu();
@@ -4118,16 +4279,23 @@ document.addEventListener("keydown", (event) => {
 		return;
 	}
 
-	if (event.key === "ArrowUp") {
-		event.preventDefault();
-		const newVol = Math.min(2, parseFloat((gainNode.gain.value + 0.05).toFixed(2)));
-		updateVolume(newVol);
-		showStatusMessage(`Volume: ${Math.round(newVol * 100)}%`);
-	} else if (event.key === "ArrowDown") {
-		event.preventDefault();
-		const newVol = Math.max(0, parseFloat((gainNode.gain.value - 0.05).toFixed(2)));
-		updateVolume(newVol);
-		showStatusMessage(`Volume: ${Math.round(newVol * 100)}%`);
+	// Skip volume control via arrow keys if the standalone playlist panel is open
+	// (arrow keys are used for item navigation in that context instead)
+	const _plContainer = document.querySelector(".playlist-container");
+	const _plOpen = _plContainer && _plContainer.classList.contains("show");
+
+	if (!_plOpen) {
+		if (event.key === "ArrowUp") {
+			event.preventDefault();
+			const newVol = Math.min(2, parseFloat((gainNode.gain.value + 0.05).toFixed(2)));
+			updateVolume(newVol);
+			showStatusMessage(`Volume: ${Math.round(newVol * 100)}%`);
+		} else if (event.key === "ArrowDown") {
+			event.preventDefault();
+			const newVol = Math.max(0, parseFloat((gainNode.gain.value - 0.05).toFixed(2)));
+			updateVolume(newVol);
+			showStatusMessage(`Volume: ${Math.round(newVol * 100)}%`);
+		}
 	}
 
 	if (event.ctrlKey && event.key === ";") {
@@ -4166,10 +4334,33 @@ document.addEventListener("keydown", (event) => {
 		}
 	}
 
-	if (event.ctrlKey && event.key.toLowerCase() === 't') {
-		event.preventDefault();
-		showTimerContainer()
+if (event.key.toLowerCase() === 't' && !event.ctrlKey) {
+	event.preventDefault();
+	if (currentMedia) {
+		// Clear any existing interval
+		if (timeDisplayInterval) clearInterval(timeDisplayInterval);
+		
+		// Update time display in real-time
+		const updateTimeDisplay = () => {
+			const timeStr = `⏱️ ${formatTime(currentMedia.currentTime)} / ${formatTime(currentMedia.duration)}`;
+			showStatusMessage(timeStr);
+		};
+		
+		// Show initial time
+		updateTimeDisplay();
+		
+		// Update every 100ms for smooth display
+		timeDisplayInterval = setInterval(updateTimeDisplay, 100);
+		
+		// Stop updating after 5 seconds or when key is released
+		setTimeout(() => {
+			if (timeDisplayInterval) {
+				clearInterval(timeDisplayInterval);
+				timeDisplayInterval = null;
+			}
+		}, 5000);
 	}
+}
 
 	if (event.key === "+") {
 		// Increase speed
@@ -4300,7 +4491,7 @@ zoomOptions.forEach((option) => {
 		currentZoomIndex = index;
 
 		// Apply zoom transformations
-		video.style.transform = `scale(${scale})`;
+		applyTransformations(); // keeps rotation + pan intact
 		video.style.transformOrigin = "center center"; // Zoom from the center
 
 		// Display status message
@@ -4579,8 +4770,11 @@ function startExternalAudio(index) {
 	// Error handler
 	function onError(e) {
 		audioTrackPlayer.removeEventListener('error', onError);
-		console.error('[Audio] Stream error:', e);
-		console.error('[Audio] Error details:', audioTrackPlayer.error);
+		// MEDIA_ERR_SRC_NOT_FOUND (4) or MEDIA_ERR_ABORTED (1) fire when we intentionally
+		// clear src during seek/track-switch — not real errors, safe to ignore.
+		const code = audioTrackPlayer.error ? audioTrackPlayer.error.code : 0;
+		if (code === MediaError.MEDIA_ERR_ABORTED || code === MediaError.MEDIA_ERR_SRC_NOT_FOUND) return;
+		console.error('[Audio] Stream error:', audioTrackPlayer.error);
 	}
 	audioTrackPlayer.addEventListener('error', onError);
 
@@ -5725,6 +5919,11 @@ const updateDialog = {
 
 // Initialize when DOM is ready
 document.addEventListener('DOMContentLoaded', () => {
+	// Visualization is only for audio — disable it in context menu on startup
+	// (will be re-enabled when an audio file is loaded, exactly like the navbar)
+	const cmVizItem = document.getElementById("cm-viz-item");
+	if (cmVizItem) { cmVizItem.classList.add("cm-viz-disabled"); }
+
 	updateDialog.init();
 
 	window.electron.onUpdateAvailable((_, info) => {
@@ -6495,4 +6694,4 @@ if (document.readyState === 'loading') {
     _init();
   }
 
-})(); // end ScrollManager
+})();
