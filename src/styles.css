@@ -149,7 +149,7 @@ nav > * {
   z-index: 100;
 }
 
-/* ── NAV ROW: 3-column layout (icon | label | shortcut) ── */
+/*  NAV ROW: 3-column layout (icon | label | shortcut)  */
 .dropdown-content a,
 .sub-dropdown-content a {
   display: grid;
@@ -197,7 +197,7 @@ nav > * {
 
 /* Sub-dropbtn uses same 3-column layout */
 .sub-dropbtn {
-  display: grid !important;
+  display: grid;
   grid-template-columns: 28px 1fr auto;
   align-items: center;
   padding: 7px 10px 7px 8px;
@@ -224,9 +224,10 @@ nav > * {
   justify-self: end;
 }
 
-/* nav-sort-check & nav-effect-check */
+/* nav-sort-check, nav-effect-check & nav-aspect-check */
 .nav-sort-check,
-.nav-effect-check {
+.nav-effect-check,
+.nav-aspect-check {
   display: flex;
   justify-content: center;
   align-items: center;
@@ -234,10 +235,11 @@ nav > * {
   color: #6fa3ef;
 }
 
-/* Active sort/effect items */
+/* Active sort/effect/aspect items */
 .sort-option.active .nav-row-text,
 .sort-order.active .nav-row-text,
-.audio-effect-option.effect-active .nav-row-text {
+.audio-effect-option.effect-active .nav-row-text,
+.aspect-ratio-option.active .nav-row-text {
   color: #6fa3ef;
 }
 
@@ -307,13 +309,12 @@ nav > * {
 .play-list a,
 .play-list .playlist-item {
   display: block; /* no !important — JS search needs to set display:none */
-  grid-template-columns: none !important;
-  padding: 4px 10px !important;
-  margin: 0 !important;
-  font-size: 11px !important;
-  line-height: 1.35 !important;
-  height: auto !important;
-  min-height: 0 !important;
+  padding: 4px 10px;
+  margin: 0;
+  font-size: 11px;
+  line-height: 1.35;
+  height: auto;
+  min-height: 0;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -360,17 +361,16 @@ nav > * {
 }
 .play-list .playlist-search,
 .sub-dropdown-content.play-list .playlist-search {
-  display: block !important;
-  grid-template-columns: none !important;
-  width: 100% !important;
-  box-sizing: border-box !important;
-  padding: 6px 0 !important;
-  margin: 0 !important;
-  height: 30px !important;
-  font-size: 11px !important;
-  line-height: 1 !important;
-  background: transparent !important;
-  border: none !important;
+  display: block;
+  width: 100%;
+  box-sizing: border-box;
+  padding: 6px 0;
+  margin: 0;
+  height: 30px;
+  font-size: 11px;
+  line-height: 1;
+  background: transparent;
+  border: none;
   color: #fff;
   outline: none;
   flex: 1;
@@ -470,7 +470,7 @@ nav > * {
   font-size: 16px;
 }
 
-/* ── GIF / Logo Save Modal (redesigned) ── */
+/*  GIF / Logo Save Modal (redesigned)  */
 .gif-modal {
   display: none;
   position: fixed;
@@ -636,7 +636,7 @@ nav > * {
   object-fit: contain;
 }
 
-/* ─── Visualization Panel ─────────────────────────────────────────────────── */
+/* ─ Visualization Panel ─ */
 /* FIX: "contain: paint" was the root cause of TWO bugs:
    1) It created an isolated Chromium paint boundary that broke position:sticky
       on the .viz-search-bar child — sticky requires the parent scroll container
@@ -929,7 +929,7 @@ nav > * {
 .chapters-list-cm.cm-dynamic-list::-webkit-scrollbar-track { background: transparent; }
 .chapters-list-cm.cm-dynamic-list::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.22); border-radius: 4px; }
 
-/* ── CHAPTERS NAV LIST — SCROLL FIX ──────────────────────────────────────────
+/*  CHAPTERS NAV LIST — SCROLL FIX 
    ROOT CAUSE: no max-height & no overflow-y → panel grew past viewport silently;
    overflow:visible never shows a scrollbar no matter how tall the content is.
    FIX: constrain height, isolate scroll chain with overscroll-behavior:contain,
@@ -1284,8 +1284,6 @@ main {
 }
 
 /* Media Player */
-/* FIX: overscroll-behavior:none prevents any leaked wheel event from
-   bouncing or scrolling the root player container in Electron. */
 #mediaPlayer {
   position: relative;
   width: 100vw;
@@ -1302,9 +1300,9 @@ main {
   outline: none;
   display: none;
   position: absolute;
-  width: 100% !important;
-  height: 100% !important;
-  object-fit: contain;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
   transition: transform 0.15s ease-out;
 }
 
@@ -1318,40 +1316,12 @@ main {
   /* animation: rotateImage 5s linear infinite; */
 }                               
 
-/* =============================================
-   CONTEXT MENU — VLC-style
-   ============================================= */
-/*
-   ┌─────────────────────────────────────────────────────────┐
-   │  WHY .context-menu has NO overflow / max-height         │
-   ├─────────────────────────────────────────────────────────┤
-   │  CSS spec §overflow (used values):                      │
-   │  If overflow-y ≠ visible, overflow-x:visible is         │
-   │  silently changed to overflow-x:auto (clips content).   │
-   │                                                         │
-   │  overflow-y:auto + overflow-x:visible                   │
-   │       ↓ browser applies ↓                               │
-   │  overflow-y:auto + overflow-x: AUTO ← clips submenus!  │
-   │                                                         │
-   │  Every .cm-submenu uses position:absolute; left:100%    │
-   │  to fly out to the right. If the parent clips           │
-   │  overflow-x the submenu is cut off at the edge —        │
-   │  producing the detached/floating viz-panel bug.         │
-   │                                                         │
-   │  SOLUTION: no overflow on .context-menu at all.         │
-   │  • The menu has ≈14 fixed items ≈ 380px — never needs   │
-   │    to scroll.                                           │
-   │  • showContextMenu() already flips the menu upward      │
-   │    when near the bottom, keeping it in the viewport.    │
-   │  • Each sub-panel (playlist, chapters, viz, tracks)     │
-   │    handles its OWN internal scroll independently.       │
-   └─────────────────────────────────────────────────────────┘
-*/
+  /* CONTEXT MENU */
+
 .context-menu {
   display: none;
   position: fixed;
   min-width: 200px;
-  /* NO overflow, NO max-height — see note above */
   padding: 4px 0;
   backdrop-filter: blur(30px) saturate(180%);
   background-color: #2f2f2f99;
@@ -1362,20 +1332,20 @@ main {
   z-index: 1000;
 }
 
-/* ── Base list reset ── */
+/*  Base list reset  */
 .context-menu ul {
   list-style: none;
   margin: 0;
   padding: 0;
 }
 
-/* ── Every list item ── */
+/*  Every list item  */
 .context-menu ul li {
   position: relative;
   margin: 0;
 }
 
-/* ── Divider ── */
+/*  Divider  */
 .context-menu ul li.cm-divider {
   height: 1px;
   background-color: rgba(255, 255, 255, 0.12);
@@ -1383,7 +1353,7 @@ main {
   pointer-events: none;
 }
 
-/* ── Anchor / row ── */
+/*  Anchor / row  */
 .context-menu ul li > a {
   display: flex;
   align-items: center;
@@ -1405,7 +1375,7 @@ main {
   border-radius: 4px;
 }
 
-/* ── Icon column (fixed width keeps text aligned) ── */
+/*  Icon column (fixed width keeps text aligned)  */
 .context-menu .cm-icon {
   display: inline-flex;
   justify-content: center;
@@ -1422,14 +1392,14 @@ main {
   color: rgba(220, 80, 80, 0.9);
 }
 
-/* ── Label text ── */
+/*  Label text  */
 .context-menu .cm-text {
   flex: 1;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
-/* ── Keyboard shortcut (right-aligned) ── */
+/*  Keyboard shortcut (right-aligned)  */
 .context-menu .cm-shortcut {
   margin-left: 18px;
   font-size: 10px;
@@ -1437,14 +1407,14 @@ main {
   white-space: nowrap;
 }
 
-/* ── Sub-menu arrow ── */
+/*  Sub-menu arrow  */
 .context-menu .cm-arrow {
   margin-left: 6px;
   font-size: 8px;
   color: rgba(255, 255, 255, 0.55);
 }
 
-/* ── Sub-menu panel ── */
+/*  Sub-menu panel  */
 .context-menu .cm-submenu {
   display: none;
   position: absolute;
@@ -1497,7 +1467,7 @@ main {
   z-index: 1002;
 }
 
-/* ── Playlist panel (wider + scrollable) ── */
+/*  Playlist panel (wider + scrollable)  */
 /* Safe to use overflow-y:auto here because .play-list is a LEAF scroll
    container — no position:absolute children need to escape it to the right.
    Use overscroll-behavior-y (Y axis only, not the shorthand) so overflow-x
@@ -1513,7 +1483,7 @@ main {
   scrollbar-color: rgba(255,255,255,0.2) transparent;
 }
 
-/* ── Dynamic lists inside context menu sub-panels ── */
+/*  Dynamic lists inside context menu sub-panels  */
 .context-menu .cm-dynamic-list {
   padding: 4px 0;
 }
@@ -1554,7 +1524,7 @@ main {
   padding: 6px 10px;
 }
 
-/* ── Font Awesome icons in context menu ── */
+/*  Font Awesome icons in context menu  */
 .context-menu .cm-icon i,
 .context-menu .cm-arrow i {
   font-size: 11px;
@@ -1568,8 +1538,19 @@ main {
   color: rgba(220, 80, 80, 0.9);
 }
 
-/* ── cm-check: always reserve width, icon visible only when .active ── */
+/*  cm-check: always reserve width, icon visible only when .active  */
 .context-menu .cm-check {
+  display: inline-flex;
+  justify-content: center;
+  align-items: center;
+  width: 14px;
+  min-width: 14px;
+  font-size: 10px;
+  color: #6fa3ef;
+}
+
+/*  cm-aspect-check: aspect ratio checkmarks in context menu  */
+.context-menu .cm-aspect-check {
   display: inline-flex;
   justify-content: center;
   align-items: center;
@@ -1589,7 +1570,12 @@ main {
   color: #6fa3ef;
 }
 
-/* ── Font Awesome icons in nav dropdowns ── */
+/* Aspect ratio active highlight */
+.context-menu .cm-aspect-ratio-option.active .cm-text {
+  color: #6fa3ef;
+}
+
+/*  Font Awesome icons in nav dropdowns  */
 .nav-icon {
   font-size: 10px;
   margin-right: 5px;
@@ -1616,10 +1602,10 @@ main {
   color: #6fa3ef;
 }
 
-/* ── Sub-menu item: never hidden, always visible ── */
+/*  Sub-menu item: never hidden, always visible  */
 /* (removed display:none rule — items always show) */
 
-/* ── Empty dynamic list placeholder ── */
+/*  Empty dynamic list placeholder  */
 .context-menu .cm-empty-placeholder {
   padding: 8px 14px;
   font-size: 11px;
@@ -1628,19 +1614,19 @@ main {
   pointer-events: none;
 }
 
-/* ── Speed active state ── */
+/*  Speed active state  */
 .context-menu .speed-option.speed-active .cm-icon,
 .speed-option.speed-active {
   color: #6fa3ef;
 }
 
-/* ── Audio device active state ── */
+/*  Audio device active state  */
 .audio-device-list .device-active {
   color: #6fa3ef;
   font-weight: 500;
 }
 
-/* ── Audio Effect active state ── */
+/*  Audio Effect active state  */
 .audio-effect-option.effect-active {
   color: #6fa3ef;
 }
@@ -1654,20 +1640,16 @@ main {
 }
 
 /* Main container for the playlist */
-/* FIX: Changed top from 10% to 20px so it can't push below viewport.
-   Added overscroll-behavior:contain to stop scroll chain to the video.
-   The inner .play-list max-height is removed below — two competing heights
-   caused partial or broken scroll. Outer container is the single source of truth. */
 .playlist-container {
   display: none;
   position: fixed;
-  top: 20px;                          /* FIX: was 10% — could push below viewport */
+  top: 20px;                       
   right: -100%;
-  max-height: 480px;   /* FIX: was 100vh — now leaves 20px margin each side */
+  max-height: 480px;  
   width: auto;
   overflow-y: auto;
   overflow-x: hidden;
-  overscroll-behavior: contain;       /* FIX: stops wheel chain to seek bar */
+  overscroll-behavior: contain;  
   scroll-behavior: smooth;
   backdrop-filter: blur(10px) saturate(180%);
   background-color: #2f2f2f99;
@@ -1682,9 +1664,7 @@ main {
   scrollbar-color: rgba(255,255,255,0.2) transparent;
 }
 
-/* FIX: inner .play-list inside the standalone panel must NOT have its own
-   max-height — the outer .playlist-container controls height.
-   If both set a max-height they fight each other and cause partial/broken scroll. */
+
 .playlist-container > .play-list {
   max-height: none !important;
   overflow-y: visible !important;
@@ -1720,19 +1700,19 @@ main {
   top: 0;
   bottom: 0; /* Stretch the arrows to fill the entire vertical space */
   z-index: 999;
-  pointer-events: none; /* Prevents pointer events from affecting the container */
+  pointer-events: none;
 }
 
 /* Arrow Buttons */
 .arrow-button {
-  pointer-events: all; /* Enables pointer events on buttons */
+  pointer-events: all; 
   background: transparent;
   border: none;
   display: flex;
   justify-content: center;
   align-items: center;
-  width: 5%; /* Increases the width to make clickable areas larger */
-  height: 100%; /* Makes the button cover the full height of the screen */
+  width: 5%; 
+  height: 100%; 
   cursor: pointer;
   transition: opacity 0.3s ease, visibility 0.3s ease;
 }
@@ -2891,7 +2871,7 @@ video:-ms-fullscreen {
   transform: translateX(-50%) translateY(0);
 }
 
-/* ── Tooltip Styles — polished pill, matches shortcut modal color system ── */
+/*  Tooltip Styles — polished pill, matches shortcut modal color system  */
 .tooltip-btn {
   position: relative;
 }
@@ -3207,7 +3187,7 @@ video:-ms-fullscreen {
 
 .tool-modal-btn--secondary:hover, .tool-modal-btn--primary:hover { background: rgba(255,255,255,0.16); }
 
-/* ── Video Effects sliders ── */
+/*  Video Effects sliders  */
 .tme-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -3301,7 +3281,7 @@ video:-ms-fullscreen {
   margin: 2px 0;
 }
 
-/* ── Sync Tool ── */
+/*  Sync Tool  */
 .sync-tabs {
   display: flex;
   gap: 0;
@@ -3408,7 +3388,7 @@ video:-ms-fullscreen {
   color: rgba(255,255,255,0.65);
 }
 
-/* ── About Modal ── */
+/*  About Modal  */
 .about-body {
   display: flex;
   flex-direction: column;
@@ -3480,7 +3460,7 @@ video:-ms-fullscreen {
    Root causes documented inline.
    ============================================================================= */
 
-/* ── Audio / Subtitle / Device track lists ────────────────────────────────────
+/*  Audio / Subtitle / Device track lists 
    FIX: no max-height or overflow-y was set; lists could extend past viewport
    without showing a scrollbar (overflow defaults to visible).
    overscroll-behavior:contain stops wheel from reaching the seek bar. */
@@ -3510,7 +3490,7 @@ video:-ms-fullscreen {
 }
 
 
-/* ── Z-INDEX ESCALATION — fixes Chromium compositor layer ordering ────────────
+/*  Z-INDEX ESCALATION — fixes Chromium compositor layer ordering 
    FIX: backdrop-filter on parent dropdowns creates a new stacking context in
    Chromium/Electron, which can place nested panels BEHIND sibling layers.
    Solution: explicitly escalate z-index per nesting level. */
@@ -3525,7 +3505,7 @@ video:-ms-fullscreen {
   display: flex;
 }
 
-/* ── FOCUS-WITHIN: keep dropdowns open when user clicks/types in a search input inside them ── */
+/*  FOCUS-WITHIN: keep dropdowns open when user clicks/types in a search input inside them  */
 /* Nav top-level dropdown stays open when child input is focused */
 .dropdown:focus-within .dropdown-content {
   display: block;
@@ -3561,7 +3541,7 @@ video:-ms-fullscreen {
   z-index: 1;
 }
 
-/* ── FOCUS RING: shows which panel will receive keyboard scroll ────────────── */
+/*  FOCUS RING: shows which panel will receive keyboard scroll  */
 .sub-dropdown-content.chapters-list-nav:focus-within,
 .sub-dropdown-content.play-list:focus-within,
 .viz-panel:focus-within,

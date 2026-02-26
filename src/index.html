@@ -286,6 +286,22 @@
                   <a data-zoom-level="5" class="nav-row"><span class="nav-row-icon"><i class="fa-solid fa-rotate-left"></i></span><span class="nav-row-text">Reset</span></a>
                 </div>
               </div>
+              <div class="sub-dropdown">
+                <a href="javascript:void(0)" class="sub-dropbtn nav-row">
+                  <span class="nav-row-icon"><i class="fa-solid fa-rectangle"></i></span>
+                  <span class="nav-row-text">Aspect Ratio</span>
+                </a>
+                <div class="sub-dropdown-content aspect-ratio-list" id="aspect-ratio-list">
+                  <a data-aspect-ratio="original" class="aspect-ratio-option nav-row"><span class="nav-row-icon nav-aspect-check"><i class="fa-solid fa-check"></i></span><span class="nav-row-text">Original</span></a>
+                  <a data-aspect-ratio="fit" class="aspect-ratio-option nav-row"><span class="nav-row-icon nav-aspect-check"></span><span class="nav-row-text">Fit (Contain)</span></a>
+                  <a data-aspect-ratio="fill" class="aspect-ratio-option nav-row"><span class="nav-row-icon nav-aspect-check"></span><span class="nav-row-text">Fill (Stretch)</span></a>
+                  <div class="sort-divider"></div>
+                  <a data-aspect-ratio="16-9" class="aspect-ratio-option nav-row"><span class="nav-row-icon nav-aspect-check"></span><span class="nav-row-text">16:9</span></a>
+                  <a data-aspect-ratio="4-3" class="aspect-ratio-option nav-row"><span class="nav-row-icon nav-aspect-check"></span><span class="nav-row-text">4:3</span></a>
+                  <a data-aspect-ratio="21-9" class="aspect-ratio-option nav-row"><span class="nav-row-icon nav-aspect-check"></span><span class="nav-row-text">21:9 (Ultrawide)</span></a>
+                  <a data-aspect-ratio="1-1" class="aspect-ratio-option nav-row"><span class="nav-row-icon nav-aspect-check"></span><span class="nav-row-text">1:1 (Square)</span></a>
+                </div>
+              </div>
             </div>
           </li>
           <li class="dropdown">
@@ -795,6 +811,25 @@
                         <li><a data-zoom-level="4"><span class="cm-icon"></span><span class="cm-text">3×</span></a></li>
                         <li class="cm-divider"></li>
                         <li><a data-zoom-level="5"><span class="cm-icon"><i class="fa-solid fa-rotate-left"></i></span><span class="cm-text">Reset</span></a></li>
+                      </ul>
+                    </div>
+                  </li>
+                  <li class="cm-sub-item">
+                    <a href="javascript:void(0)">
+                      <span class="cm-icon"><i class="fa-solid fa-rectangle"></i></span>
+                      <span class="cm-text">Aspect Ratio</span>
+                      <span class="cm-arrow"><i class="fa-solid fa-chevron-right"></i></span>
+                    </a>
+                    <div class="cm-submenu">
+                      <ul class="cm-aspect-ratio-list">
+                        <li><a data-aspect-ratio="original" class="cm-aspect-ratio-option"><span class="cm-icon cm-aspect-check"><i class="fa-solid fa-check"></i></span><span class="cm-text">Original</span></a></li>
+                        <li><a data-aspect-ratio="fit" class="cm-aspect-ratio-option"><span class="cm-icon cm-aspect-check"></span><span class="cm-text">Fit (Contain)</span></a></li>
+                        <li><a data-aspect-ratio="fill" class="cm-aspect-ratio-option"><span class="cm-icon cm-aspect-check"></span><span class="cm-text">Fill (Stretch)</span></a></li>
+                        <li class="cm-divider"></li>
+                        <li><a data-aspect-ratio="16-9" class="cm-aspect-ratio-option"><span class="cm-icon cm-aspect-check"></span><span class="cm-text">16:9</span></a></li>
+                        <li><a data-aspect-ratio="4-3" class="cm-aspect-ratio-option"><span class="cm-icon cm-aspect-check"></span><span class="cm-text">4:3</span></a></li>
+                        <li><a data-aspect-ratio="21-9" class="cm-aspect-ratio-option"><span class="cm-icon cm-aspect-check"></span><span class="cm-text">21:9 (Ultrawide)</span></a></li>
+                        <li><a data-aspect-ratio="1-1" class="cm-aspect-ratio-option"><span class="cm-icon cm-aspect-check"></span><span class="cm-text">1:1 (Square)</span></a></li>
                       </ul>
                     </div>
                   </li>

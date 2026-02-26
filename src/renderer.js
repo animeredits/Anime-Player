@@ -120,6 +120,7 @@ let isPanning = false;
 let startX, startY;
 let minZoom = 0.25;
 let maxZoom = 3;
+let currentAspectRatio = 'original'; // Track current aspect ratio
 let recognitionActive = false;
 let isMouseOver = false;
 let isShutdownAtVideoEndEnabled = false;
@@ -1106,6 +1107,7 @@ async function loadMediaFile(filePath, fileName) {
 
 		video.dataset.rotation = "0";
 		applyRotation();
+		loadSavedAspectRatio(); // Apply saved aspect ratio when loading new video
 
 	} catch (error) {
 		console.error("❌ Error loading media file:", error);
@@ -3375,25 +3377,7 @@ mute.forEach((muteButton) => {
 });
 
 
-// Zoom functionality (CTRL + Shift + Mouse Wheel)
-mediaPlayer.addEventListener("wheel", (event) => {
-	// Prevent default behavior
-	event.preventDefault();
 
-	if (event.ctrlKey && event.shiftKey) {
-		// Zoom functionality with CTRL + Shift + Mouse Wheel
-		if (event.deltaY < 0) {
-			scale = Math.min(scale + 0.1, maxZoom); // Max zoom level
-			video.style.cursor = "zoom-in";
-		} else {
-			scale = Math.max(scale - 0.1, minZoom); // Min zoom level (no zoom)
-			video.style.cursor = "zoom-out";
-		}
-
-		// Apply zoom along with rotation and pan
-		applyTransformations();
-	}
-});
 
 // Move functionality with CTRL + Shift + Left-Click
 video.addEventListener("mousedown", (event) => {
@@ -4481,12 +4465,8 @@ if (event.key.toLowerCase() === 't' && !event.ctrlKey) {
 });
 
 // Function to handle zoom menu clicks
-// Uses data-zoom-level attribute so both navbar AND context menu items resolve correctly
 zoomOptions.forEach((option) => {
 	option.addEventListener("click", () => {
-		// Read zoom level from attribute — not forEach index — so duplicate selectors
-		// from navbar vs. context menu don't cause index mismatches
-		const index = parseInt(option.dataset.zoomLevel, 10);
 		scale = zoomLevels[index];
 		currentZoomIndex = index;
 
@@ -4499,6 +4479,116 @@ zoomOptions.forEach((option) => {
 		showStatusMessage(`Zoom: ${zoomPercentage}%`);
 	});
 });
+
+// ═══════════════════════════════════════════════════════════════════════════
+// ASPECT RATIO CONTROLS
+// ═══════════════════════════════════════════════════════════════════════════
+
+// Function to apply aspect ratio to video
+function applyAspectRatio(ratio) {
+	const videoContainer = video;
+	
+	// Map aspect ratio settings
+	const aspectRatioMap = {
+		'original': { objectFit: 'contain', aspectRatio: 'auto', width: '100%', height: '100%' },
+		'fit': { objectFit: 'contain', aspectRatio: 'auto', width: '100%', height: '100%' },
+		'fill': { objectFit: 'fill', aspectRatio: 'auto', width: '100%', height: '100%' },
+		'16-9': { objectFit: 'cover', aspectRatio: '16 / 9', width: '100%', height: '100%' },
+		'4-3': { objectFit: 'cover', aspectRatio: '4 / 3', width: '100%', height: '100%' },
+		'21-9': { objectFit: 'cover', aspectRatio: '21 / 9', width: '100%', height: '100%' },
+		'1-1': { objectFit: 'cover', aspectRatio: '1 / 1', width: '100%', height: '100%' }
+	};
+
+	const config = aspectRatioMap[ratio] || aspectRatioMap['original'];
+	
+	// Apply styles directly to video element
+	videoContainer.style.objectFit = config.objectFit;
+	videoContainer.style.width = config.width;
+	videoContainer.style.height = config.height;
+	videoContainer.style.aspectRatio = config.aspectRatio;
+
+	// Save to localStorage
+	localStorage.setItem('videoAspectRatio', ratio);
+	currentAspectRatio = ratio;
+}
+
+// Get and apply saved aspect ratio
+function loadSavedAspectRatio() {
+	const savedRatio = localStorage.getItem('videoAspectRatio') || 'original';
+	applyAspectRatio(savedRatio);
+	updateAspectRatioUI(savedRatio);
+}
+
+// Update UI to show which aspect ratio is active (navbar)
+function updateAspectRatioUI(activeRatio) {
+	const aspectOptions = document.querySelectorAll('.aspect-ratio-option');
+	aspectOptions.forEach(option => {
+		option.classList.remove('active');
+		const icon = option.querySelector('.nav-aspect-check');
+		if (icon) {
+			icon.innerHTML = '';
+		}
+	});
+	
+	const activeOption = document.querySelector(`[data-aspect-ratio="${activeRatio}"].aspect-ratio-option`);
+	if (activeOption) {
+		activeOption.classList.add('active');
+		const icon = activeOption.querySelector('.nav-aspect-check');
+		if (icon) {
+			icon.innerHTML = '<i class="fa-solid fa-check"></i>';
+		}
+	}
+}
+
+// Update UI to show which aspect ratio is active (context menu)
+function updateAspectRatioUICM(activeRatio) {
+	const aspectOptions = document.querySelectorAll('.cm-aspect-ratio-option');
+	aspectOptions.forEach(option => {
+		option.classList.remove('active');
+		const icon = option.querySelector('.cm-aspect-check');
+		if (icon) {
+			icon.innerHTML = '';
+		}
+	});
+	
+	const activeOption = document.querySelector(`[data-aspect-ratio="${activeRatio}"].cm-aspect-ratio-option`);
+	if (activeOption) {
+		activeOption.classList.add('active');
+		const icon = activeOption.querySelector('.cm-aspect-check');
+		if (icon) {
+			icon.innerHTML = '<i class="fa-solid fa-check"></i>';
+		}
+	}
+}
+
+// Add event listeners to navbar aspect ratio options
+const aspectRatioOptions = document.querySelectorAll('.aspect-ratio-option');
+aspectRatioOptions.forEach((option) => {
+	option.addEventListener('click', (e) => {
+		e.preventDefault();
+		const ratio = option.dataset.aspectRatio;
+		applyAspectRatio(ratio);
+		updateAspectRatioUI(ratio);
+		updateAspectRatioUICM(ratio);
+		showStatusMessage(`Aspect Ratio: ${option.querySelector('.nav-row-text').textContent}`);
+	});
+});
+
+// Add event listeners to context menu aspect ratio options
+const cmAspectRatioOptions = document.querySelectorAll('.cm-aspect-ratio-option');
+cmAspectRatioOptions.forEach((option) => {
+	option.addEventListener('click', (e) => {
+		e.preventDefault();
+		const ratio = option.dataset.aspectRatio;
+		applyAspectRatio(ratio);
+		updateAspectRatioUI(ratio);
+		updateAspectRatioUICM(ratio);
+		showStatusMessage(`Aspect Ratio: ${option.querySelector('.cm-text').textContent}`);
+	});
+});
+
+// Load saved aspect ratio on initialization
+loadSavedAspectRatio();
 
 
 // Function to toggle the shortcuts info box (modal)
@@ -4581,13 +4671,6 @@ function rotateVideo(degrees) {
 	applyRotation();
 }
 
-// Function to rotate video
-function rotateVideo(degrees) {
-	video.dataset.rotation = degrees;
-	rotationInitiated = true; // Set the flag to true
-	applyRotation();
-}
-
 // Add event listener for full screen change
 document.addEventListener("fullscreenchange", () => {
 	applyRotation();
@@ -4598,22 +4681,6 @@ video.dataset.rotation = "0"; // Set rotation angle
 applyRotation(); // Apply initial rotation
 
 // Audio Track Management (ffprobe-based — detects AC3, DTS, TrueHD, etc.) 
-
-// Holds ffprobe track data returned from main process
-
-// Audio Track Management
-//
-// ARCHITECTURE:
-//   video#media  → always plays /stream (HEVC/H264 video + container audio).
-//                  For native codecs (AAC) this is all we need.
-//   audio#audioTrackPlayer → hidden <audio> element that plays /audio/<n>
-//                  (ffmpeg transcodes EAC3/AC3/DTS → Opus/WebM).
-//                  We mute the <video> and sync this element to it.
-//
-// This avoids ALL video.src swapping, so no AbortError, no re-load races.
-//
-
-
 
 // Get or create the hidden <audio> element for non-native audio codecs
 function getAudioTrackPlayer() {
@@ -4647,8 +4714,6 @@ if (document.readyState !== 'loading') {
 }
 
 // All audio tracks now route through the external FFmpeg pipe regardless of codec.
-// The NATIVE_AUDIO_CODECS distinction is no longer needed for routing decisions.
-
 async function populateAudioTracks() {
 	const audioTrackLists = document.querySelectorAll(".audio-track-list");
 	audioTrackLists.forEach(list => {
@@ -4709,27 +4774,19 @@ async function populateAudioTracks() {
 		return;
 	}
 
-	// 2. No ffprobe tracks found
-	// The video.audioTracks browser API is unreliable for MKV in Electron
-	// (wrong indices, often empty). Show a message and let the user try the
 	// next file — ffprobe should always find tracks for valid media files.
 	ffprobeAudioTracks = [];
 	console.warn('[Audio] No tracks found via ffprobe — cannot populate audio menu');
 	refreshDynamicListVisibility(); // hide audio track rows (no tracks)
 }
 
-// Apply audio track selection without touching video.src
-// For native codecs: use browser audioTracks API (video element handles it)
-// For non-native:    mute video, play /audio/<n> in hidden <audio> element, keep in sync
 // Audio sync state 
 var _activeAudioIndex = -1; // which track is in the <audio> element
 var _streamStartedAt = 0; // video.currentTime when the stream was launched
 var _driftTimer = null; // setInterval handle for drift correction
 var DRIFT_MAX = 0.5; // seconds — restart stream if drift exceeds this
 
-// Launch (or re-launch) the external audio stream from video.currentTime.
-// This kills the old ffmpeg process and starts a new one from the right seek position.
-// Because the stream is a live WebM pipe, we CANNOT seek audioTrackPlayer.currentTime —
+
 // instead we pass ?ss= so ffmpeg starts encoding at the correct offset.
 function startExternalAudio(index) {
 	audioTrackPlayer = getAudioTrackPlayer();
@@ -4770,7 +4827,6 @@ function startExternalAudio(index) {
 	// Error handler
 	function onError(e) {
 		audioTrackPlayer.removeEventListener('error', onError);
-		// MEDIA_ERR_SRC_NOT_FOUND (4) or MEDIA_ERR_ABORTED (1) fire when we intentionally
 		// clear src during seek/track-switch — not real errors, safe to ignore.
 		const code = audioTrackPlayer.error ? audioTrackPlayer.error.code : 0;
 		if (code === MediaError.MEDIA_ERR_ABORTED || code === MediaError.MEDIA_ERR_SRC_NOT_FOUND) return;
@@ -4810,8 +4866,6 @@ function startExternalAudio(index) {
 	}, 5000);
 }
 
-// Stop the external audio stream and clear drift correction.
-// NOTE: We do NOT unmute video here — video stays muted because all audio
 // comes through the external pipe. Video is only unmuted when no media is loaded.
 function stopExternalAudio() {
 	_stopDriftTimer();
@@ -4837,7 +4891,7 @@ function _startDriftTimer() {
 			_stopDriftTimer();
 			return;
 		}
-		if (video.paused || audioTrackPlayer.paused) return; // OK while paused
+		if (video.paused || audioTrackPlayer.paused) return; 
 
 		if (audioTrackPlayer.readyState < 2) {
 			// Stalled
@@ -4864,16 +4918,6 @@ function _stopDriftTimer() {
 }
 
 // Apply a chosen audio track (called on load and on user pick)
-//
-// WHY always external (even for native AAC):
-//   video.audioTracks[] browser API is unreliable for MKV in Electron.
-//   Its indices don't match ffprobe's — e.g. if track 0 is EAC3 (non-native),
-//   the browser may only expose the two AAC tracks as indices 0 and 1, making
-//   ffprobe index 2 → video.audioTracks[2] = undefined → no track enabled →
-//   browser falls back to English default.
-//   The HTTP /audio/<n> pipe already transcodes to WebM/Opus for EAC3/AC3/DTS.
-//   For AAC it's equally fast — FFmpeg just reads/remuxes, barely any CPU cost.
-//   All three tracks now work identically through one reliable code path.
 function applyAudioTrack(index) {
 	const track = ffprobeAudioTracks[index];
 	if (!track) return;
@@ -4997,22 +5041,7 @@ function handleKeyPress(event) {
 document.addEventListener("keydown", handleKeyPress);
 
 // Audio tracks are populated in loadedmetadata (already handles this)
-
-
-// Freeze-frame seek overlay
-// Problem: browser clears the video frame the instant video.currentTime changes,
-// causing a black/white flash while it fetches & decodes the new position.
-//
-// Fix (same technique used by YouTube, Netflix, VLC preview):
-//   1. Before seeking → snapshot current frame onto a hidden <canvas>
-//   2. Show canvas ON TOP of video (covers the black flash completely)
-//   3. Show spinner on top of the canvas so user knows it's loading
-//   4. When 'seeked' fires AND first new frame is painted → hide canvas
-//
-// The canvas exactly matches the video element size/position so the transition
-// is completely seamless — user never sees black.
-
-let _freezeCanvas = null; // created once, reused
+let _freezeCanvas = null;
 let _freezeCtx = null;
 let _freezeActive = false;
 let _seekSpinnerTimer = null;
@@ -5092,7 +5121,6 @@ video.addEventListener('canplay', () => {
 
 // Debounced seek helper
 // Throttle rapid currentTime changes (drag, wheel) to one Range request per 100 ms.
-// The freeze-frame already covers the gap visually, so debounce is for perf only.
 let _seekDebounceTimer = null;
 
 function _seekTo(time) {
@@ -5102,36 +5130,16 @@ function _seekTo(time) {
 	}, 80);
 }
 
-
-let currentSubtitleIndex = -1; // -1 = off
-
-// Tracks currently-alive Blob URLs so we can revoke them when loading a new video
-// (avoids memory leaks — browser keeps Blob data alive until revoked)
+let currentSubtitleIndex = -1;
 let _subtitleBlobUrls = [];
-
-// ASS style data per track (index → { styles, events }).  Null for SRT/VTT.
-// Populated by populateSubtitleTracks(), consumed by _renderCues().
 let _subtitleCueStyles = [];
-
-// ── Subtitle population guard ─────────────────────────────────────────────
-// Problem: loadedmetadata fires TWICE — once when video.src is set, and again
-// when populateSubtitleTracks appends <track> elements to the video element.
-// A simple boolean flag resets between the two fires (async completes first),
-// so the second fire bypasses it and re-populates → duplicate track list.
-//
-// Fix: key the guard to the file path. Once a file's subtitles are populated,
-// any subsequent call for the SAME file is a no-op — regardless of timing.
-// Resets to null when a new file starts loading (playMediaFile / stopPlayback).
 let _subtitlePopulatedForFile = null;
 
 async function populateSubtitleTracks() {
 	const filePath = mediaFiles[currentVideoIndex];
 	if (!filePath) return;
-	// Already populated for this exact file — skip (handles double loadedmetadata)
 	if (filePath === _subtitlePopulatedForFile) return;
-	_subtitlePopulatedForFile = filePath; // claim this file immediately (before any await)
-
-	// Tear down previous subtitle state & revoke old Blob URLs
+	_subtitlePopulatedForFile = filePath;
 	_subtitleTeardown();
 	video.querySelectorAll('track').forEach(t => t.remove());
 	_subtitleBlobUrls.forEach(u => URL.revokeObjectURL(u));
@@ -5157,7 +5165,7 @@ async function populateSubtitleTracks() {
 		result = await window.electron.invoke('get-subtitle-tracks', filePath);
 	} catch (err) {
 		console.error('[Sub] IPC error:', err);
-		_subtitlePopulatedForFile = null; // allow retry on error
+		_subtitlePopulatedForFile = null;
 		return;
 	}
 	if (!result || !result.success || result.tracks.length === 0) {
