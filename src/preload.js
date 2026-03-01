@@ -13,9 +13,11 @@ contextBridge.exposeInMainWorld('electron', {
   onInitialWindowStates: (callback) => ipcRenderer.on('initial-window-states', (_, states) => callback(states)),
   
   // Update Control
-  onUpdateAvailable: (callback) => ipcRenderer.on('update-available', callback),
-  onUpdateError: (callback) => ipcRenderer.on('update-error', callback),
-  startUpdateDownload: () => ipcRenderer.send('start-update-download'),
+  onUpdateAvailable:    (callback) => ipcRenderer.on('update-available',     callback),
+  onUpdateNotAvailable: (callback) => ipcRenderer.on('update-not-available', callback),
+  onUpdateError:        (callback) => ipcRenderer.on('update-error',         callback),
+  startUpdateDownload:  () => ipcRenderer.send('start-update-download'),
+  checkForUpdates:      () => ipcRenderer.send('check-for-updates'),
 
   // Media Controls
   onPlayPause: (callback) => ipcRenderer.on('play-pause', callback),
@@ -56,6 +58,9 @@ contextBridge.exposeInMainWorld('electron', {
 
   // GPU info
   onGpuInfo: (callback) => ipcRenderer.on('gpu-info', (_, info) => callback(info)),
+
+  // App info (version, platform, runtime details)
+  getAppInfo: () => ipcRenderer.invoke('get-app-info'),
 
   onAppClosing: (callback) => ipcRenderer.on("app-closing", callback),
 

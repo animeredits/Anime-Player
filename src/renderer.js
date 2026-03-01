@@ -395,21 +395,21 @@ function showCustomConfirm() {
 		const cancelButton = document.getElementById("cancelButton");
 		const autoSaveCheckbox = document.getElementById("cbx-43");
 
-		modal.style.display = "flex"; // Show the modal
+		ModalAnimator.open(modal);
 
 		confirmButton.onclick = () => {
 			resolve({
 				confirmed: true,
 				autoSave: autoSaveCheckbox.checked,
 			});
-			modal.style.display = "none"; // Hide modal
+			ModalAnimator.close(modal);
 		};
 
 		cancelButton.onclick = () => {
 			resolve({
 				confirmed: false,
 			});
-			modal.style.display = "none"; // Hide modal
+			ModalAnimator.close(modal);
 		};
 	});
 }
@@ -744,12 +744,34 @@ const _vfx = {
 	sharpenAmt: 0,
 	blur:       false,
 	blurAmt:    0,
+	vignette:   false,
+	vignetteAmt:0,
+	warmth:     0,     // -100 to +100 (applied as sepia + hue twist)
 };
 
 function _applyVideoFilter() {
 	let f = `hue-rotate(${_vfx.hue}deg) brightness(${_vfx.brightness}%) contrast(${_vfx.contrast}%) saturate(${_vfx.saturation}%)`;
 	if (_vfx.blur && _vfx.blurAmt > 0) f += ` blur(${_vfx.blurAmt}px)`;
+	// Warmth: positive = warm (sepia tint), negative = cool (hue shift toward blue)
+	if (_vfx.warmth !== 0) {
+		const warmPct = Math.abs(_vfx.warmth);
+		if (_vfx.warmth > 0) {
+			f += ` sepia(${warmPct * 0.6}%)`;
+		} else {
+			f += ` hue-rotate(${_vfx.warmth * 0.2}deg) saturate(${100 + warmPct * 0.3}%)`;
+		}
+	}
 	video.style.filter = f;
+	// Vignette: overlay box-shadow on video wrapper
+	const wrapper = video.parentElement;
+	if (wrapper) {
+		if (_vfx.vignette && _vfx.vignetteAmt > 0) {
+			const spread = Math.round(_vfx.vignetteAmt * 1.2);
+			wrapper.style.boxShadow = `inset 0 0 ${spread}px ${Math.round(spread*0.5)}px rgba(0,0,0,0.85)`;
+		} else {
+			wrapper.style.boxShadow = '';
+		}
+	}
 	localStorage.setItem('videoEffects', JSON.stringify(_vfx));
 }
 
@@ -776,18 +798,24 @@ function _syncVfxUI() {
 	set('gammaSlider',      Math.round(_vfx.gamma*100), v => (v/100).toFixed(2));
 	set('sharpenSlider',    _vfx.sharpenAmt,          v => `${v}`);
 	set('blurSlider',       _vfx.blurAmt,             v => `${v}px`);
-	const sharpenToggle = document.getElementById('sharpenToggle');
-	const blurToggle    = document.getElementById('blurToggle');
-	if (sharpenToggle) sharpenToggle.checked = _vfx.sharpen;
-	if (blurToggle)    blurToggle.checked    = _vfx.blur;
+	set('vignetteSlider',   _vfx.vignetteAmt,         v => `${v}%`);
+	set('warmthSlider',     _vfx.warmth,              v => `${v}`);
+	const sharpenToggle  = document.getElementById('sharpenToggle');
+	const blurToggle     = document.getElementById('blurToggle');
+	const vignetteToggle = document.getElementById('vignetteToggle');
+	if (sharpenToggle)  sharpenToggle.checked  = _vfx.sharpen;
+	if (blurToggle)     blurToggle.checked     = _vfx.blur;
+	if (vignetteToggle) vignetteToggle.checked = _vfx.vignette;
 	_updateDepRows();
 }
 
 function _updateDepRows() {
-	const sharpenRow = document.getElementById('sharpenRow');
-	const blurRow    = document.getElementById('blurRow');
-	if (sharpenRow) sharpenRow.style.opacity = _vfx.sharpen ? '1' : '0.4';
-	if (blurRow)    blurRow.style.opacity    = _vfx.blur    ? '1' : '0.4';
+	const sharpenRow  = document.getElementById('sharpenRow');
+	const blurRow     = document.getElementById('blurRow');
+	const vignetteRow = document.getElementById('vignetteRow');
+	if (sharpenRow)  sharpenRow.style.opacity  = _vfx.sharpen   ? '1' : '0.4';
+	if (blurRow)     blurRow.style.opacity     = _vfx.blur      ? '1' : '0.4';
+	if (vignetteRow) vignetteRow.style.opacity = _vfx.vignette  ? '1' : '0.4';
 }
 
 // Legacy compat — called by old code
@@ -799,6 +827,16 @@ function updateSaturation(value) {
 }
 function loadSaturationValue() { _loadVideoEffects(); }
 
+// ── Update status helpers — module-scope so all DOMContentLoaded blocks can reach them ──
+let _updateCheckTimer = null;
+function _setUpdateStatus(cls, html) {
+	const statusEl = document.getElementById('aboutUpdateStatus');
+	const iconEl   = document.getElementById('aboutUpdateIcon');
+	if (statusEl) { statusEl.className = `about-update-status ${cls}`; statusEl.innerHTML = html; }
+	if (iconEl)   iconEl.classList.remove('fa-spin');
+	if (_updateCheckTimer) { clearTimeout(_updateCheckTimer); _updateCheckTimer = null; }
+}
+
 // Slider input events
 document.addEventListener('DOMContentLoaded', () => {
 	const sliderMap = [
@@ -809,6 +847,8 @@ document.addEventListener('DOMContentLoaded', () => {
 		{ id: 'gammaSlider',      key: 'gamma',       fmt: v => (v/100).toFixed(2),valId: 'gammaValue', transform: v => v/100 },
 		{ id: 'sharpenSlider',    key: 'sharpenAmt',  fmt: v => `${v}`,            valId: 'sharpenValue' },
 		{ id: 'blurSlider',       key: 'blurAmt',     fmt: v => `${v}px`,          valId: 'blurValue' },
+		{ id: 'vignetteSlider',   key: 'vignetteAmt', fmt: v => `${v}%`,           valId: 'vignetteValue' },
+		{ id: 'warmthSlider',     key: 'warmth',      fmt: v => `${v}`,            valId: 'warmthValue' },
 	];
 	sliderMap.forEach(({ id, key, fmt, valId, transform }) => {
 		const el = document.getElementById(id);
@@ -825,13 +865,15 @@ document.addEventListener('DOMContentLoaded', () => {
 	});
 
 	// Toggle checkboxes
-	const sharpenToggle = document.getElementById('sharpenToggle');
-	const blurToggle    = document.getElementById('blurToggle');
-	if (sharpenToggle) sharpenToggle.addEventListener('change', () => { _vfx.sharpen = sharpenToggle.checked; _updateDepRows(); _applyVideoFilter(); });
-	if (blurToggle)    blurToggle.addEventListener('change', ()    => { _vfx.blur    = blurToggle.checked;    _updateDepRows(); _applyVideoFilter(); });
+	const sharpenToggle  = document.getElementById('sharpenToggle');
+	const blurToggle     = document.getElementById('blurToggle');
+	const vignetteToggle = document.getElementById('vignetteToggle');
+	if (sharpenToggle)  sharpenToggle.addEventListener('change', () => { _vfx.sharpen = sharpenToggle.checked; _updateDepRows(); _applyVideoFilter(); });
+	if (blurToggle)     blurToggle.addEventListener('change', ()    => { _vfx.blur    = blurToggle.checked;    _updateDepRows(); _applyVideoFilter(); });
+	if (vignetteToggle) vignetteToggle.addEventListener('change', () => { _vfx.vignette = vignetteToggle.checked; _updateDepRows(); _applyVideoFilter(); });
 
 	// Reset individual sliders
-	document.querySelectorAll('.tme-reset-btn').forEach(btn => {
+	document.querySelectorAll('.tme-reset-btn, .vfx-reset').forEach(btn => {
 		btn.addEventListener('click', (e) => {
 			e.stopPropagation();
 			const targetId = btn.dataset.target;
@@ -844,7 +886,7 @@ document.addEventListener('DOMContentLoaded', () => {
 	// Reset All button
 	const resetAllBtn = document.getElementById('videoEffectsResetAll');
 	if (resetAllBtn) resetAllBtn.addEventListener('click', () => {
-		Object.assign(_vfx, { hue:0, brightness:100, contrast:100, saturation:100, gamma:1.0, sharpen:false, sharpenAmt:0, blur:false, blurAmt:0 });
+		Object.assign(_vfx, { hue:0, brightness:100, contrast:100, saturation:100, gamma:1.0, sharpen:false, sharpenAmt:0, blur:false, blurAmt:0, vignette:false, vignetteAmt:0, warmth:0 });
 		_applyVideoFilter();
 		_syncVfxUI();
 	});
@@ -856,7 +898,7 @@ document.addEventListener('DOMContentLoaded', () => {
 	// Close buttons
 	['videoEffectsClose','videoEffectsClose2'].forEach(id => {
 		const b = document.getElementById(id);
-		if (b) b.addEventListener('click', () => { document.getElementById('videoEffectsModal').style.display = 'none'; });
+		if (b) b.addEventListener('click', () => { ModalAnimator.close(document.getElementById('videoEffectsModal')); });
 	});
 
 	// Load saved values
@@ -867,13 +909,70 @@ document.addEventListener('DOMContentLoaded', () => {
 function toggleToolModal(id) {
 	const m = document.getElementById(id);
 	if (!m) return;
-	const isOpen = m.style.display !== 'none';
-	// close all first
-	['videoEffectsModal','syncToolModal','aboutModal'].forEach(mid => {
-		const mm = document.getElementById(mid);
-		if (mm) mm.style.display = 'none';
-	});
-	if (!isOpen) m.style.display = 'flex';
+
+	const MODAL_IDS = ['videoEffectsModal', 'syncToolModal', 'aboutModal'];
+	const isOpen = m.classList.contains('show') || ModalAnimator.isOpen(m);
+
+	// Find any currently open sibling modal
+	const currentlyOpen = MODAL_IDS
+		.filter(mid => mid !== id)
+		.map(mid => document.getElementById(mid))
+		.find(mm => mm && (mm.classList.contains('show') || ModalAnimator.isOpen(mm)));
+
+	if (currentlyOpen && !isOpen) {
+		// ── Smooth switch: keep backdrop, cross-fade content only ──
+		const oldInner = currentlyOpen.querySelector('.tool-modal-inner');
+		const newInner = m.querySelector('.tool-modal-inner');
+
+		// Show the new modal overlay (reuse backdrop from old one)
+		// Step 1: Animate old inner out
+		if (oldInner) {
+			oldInner.classList.add('modal-switch-out');
+		}
+
+		// Step 2: After out animation, hide old modal, show new one
+		setTimeout(() => {
+			// Hide old
+			currentlyOpen.classList.remove('show');
+			currentlyOpen.style.display = 'none';
+			currentlyOpen.style.pointerEvents = 'none';
+			if (oldInner) oldInner.classList.remove('modal-switch-out', 'closing');
+			ModalAnimator.activeModals.delete(currentlyOpen);
+
+			// Show new modal
+			m.classList.remove('hidden', 'closing');
+			m.classList.add('show');
+			m.style.display = 'flex';
+			m.style.pointerEvents = 'auto';
+			ModalAnimator.activeModals.set(m, { isOpen: true, clickPoint: { x: window.innerWidth / 2, y: window.innerHeight / 2 } });
+
+			// Animate new inner in
+			if (newInner) {
+				newInner.classList.remove('closing', 'modal-switch-out');
+				newInner.style.animation = 'none';
+				void newInner.offsetWidth;
+				newInner.style.animation = '';
+				newInner.classList.add('modal-switch-in');
+				setTimeout(() => newInner.classList.remove('modal-switch-in'), 300);
+			}
+		}, 160);
+
+	} else {
+		// Normal open/close (no sibling open)
+		if (isOpen) {
+			ModalAnimator.close(m);
+		} else {
+			// Close any others first (shouldn't normally be open, but safety net)
+			MODAL_IDS.forEach(mid => {
+				if (mid === id) return;
+				const mm = document.getElementById(mid);
+				if (mm && (mm.classList.contains('show') || ModalAnimator.isOpen(mm))) {
+					ModalAnimator.close(mm);
+				}
+			});
+			ModalAnimator.open(m);
+		}
+	}
 }
 
 // ── Sync Tool ─────────────────────────────────────────────────────────
@@ -923,7 +1022,7 @@ document.addEventListener('DOMContentLoaded', () => {
 	// Sync tool close
 	['syncToolClose','syncToolClose2'].forEach(id => {
 		const b = document.getElementById(id);
-		if (b) b.addEventListener('click', () => { document.getElementById('syncToolModal').style.display = 'none'; });
+		if (b) b.addEventListener('click', () => { ModalAnimator.close(document.getElementById('syncToolModal')); });
 	});
 
 	// Sync tabs
@@ -937,26 +1036,47 @@ document.addEventListener('DOMContentLoaded', () => {
 		});
 	});
 
-	// Spin buttons for sync
-	document.querySelectorAll('.sync-spin-btn').forEach(btn => {
+	// Unified sync button handler — covers ctrl-btn, chip, and legacy spin-btn
+	function _applySyncDelta(targetId, delta) {
+		const el = document.getElementById(targetId);
+		if (!el) return;
+		let val = parseFloat(el.textContent) + delta;
+		val = Math.round(val * 1000) / 1000;
+		if (targetId === 'audioDelayVal') { _audioDelay = val; adjustAudioDelay(0); el.textContent = _audioDelay.toFixed(3); }
+		else if (targetId === 'subDelayVal')   { _subDelay = val - delta; adjustSubtitleDelay(delta); }
+		else if (targetId === 'videoOffsetVal'){ _videoOffset = val; el.textContent = val.toFixed(3); }
+		else if (targetId === 'subSpeedVal')   { _subSpeed = Math.max(0.1, val); el.textContent = _subSpeed.toFixed(3); }
+		else { el.textContent = val.toFixed(3); }
+	}
+
+	// Handle "0" chip as a reset for that specific value
+	document.querySelectorAll('.sync-chip--mid').forEach(btn => {
+		btn.addEventListener('click', (e) => {
+			e.stopPropagation();
+			// Find the nearest card, reset all val displays
+			const pane = btn.closest('.sync-pane');
+			if (!pane) return;
+			const valEls = pane.querySelectorAll('.sync-display-val');
+			valEls.forEach(el => {
+				const id = el.id;
+				if (id === 'audioDelayVal')  { _audioDelay = 0; adjustAudioDelay(0); el.textContent = '0.000'; }
+				else if (id === 'subDelayVal')    { _subDelay = 0; el.textContent = '0.000'; }
+				else if (id === 'videoOffsetVal') { _videoOffset = 0; el.textContent = '0.000'; }
+			});
+		});
+	});
+
+	document.querySelectorAll('.sync-ctrl-btn, .sync-chip:not(.sync-chip--mid), .sync-spin-btn').forEach(btn => {
 		btn.addEventListener('click', (e) => {
 			e.stopPropagation();
 			const targetId = btn.dataset.target;
 			const delta    = parseFloat(btn.dataset.delta);
-			const el       = document.getElementById(targetId);
-			if (!el) return;
-			let val = parseFloat(el.textContent) + delta;
-			val = Math.round(val * 1000) / 1000;
-			el.textContent = val.toFixed(3);
-			// Apply action
-			if (targetId === 'audioDelayVal') { _audioDelay = val; adjustAudioDelay(0); el.textContent = _audioDelay.toFixed(3); }
-			if (targetId === 'subDelayVal')   { _subDelay = val - delta; adjustSubtitleDelay(delta); }
-			if (targetId === 'videoOffsetVal'){ _videoOffset = val; }
-			if (targetId === 'subSpeedVal')   { _subSpeed = Math.max(0.1, val); el.textContent = _subSpeed.toFixed(3); }
+			if (!targetId || isNaN(delta)) return;
+			_applySyncDelta(targetId, delta);
 		});
 	});
 
-	// Sync reset
+	// Sync reset all
 	const syncResetBtn = document.getElementById('syncResetBtn');
 	if (syncResetBtn) syncResetBtn.addEventListener('click', () => {
 		_audioDelay = 0; _subDelay = 0; _videoOffset = 0; _subSpeed = 1.0;
@@ -965,24 +1085,117 @@ document.addEventListener('DOMContentLoaded', () => {
 		showStatusMessage('Sync reset');
 	});
 
-	// About modal
+	// VFX tab switching
+	document.querySelectorAll('.vfx-tab').forEach(tab => {
+		tab.addEventListener('click', () => {
+			document.querySelectorAll('.vfx-tab').forEach(t => t.classList.remove('active'));
+			document.querySelectorAll('.vfx-pane').forEach(p => p.classList.remove('active'));
+			tab.classList.add('active');
+			const pane = document.getElementById('vfxPane-' + tab.dataset.vfxTab);
+			if (pane) pane.classList.add('active');
+		});
+	});
+
+	// ── About modal ────────────────────────────────────────────────────────────
 	const aboutBtn = document.getElementById('showAboutBtn');
-	if (aboutBtn) aboutBtn.addEventListener('click', () => toggleToolModal('aboutModal'));
+
+	// Load app info into about modal — uses cached data so returns instantly
+	async function loadAboutInfo() {
+		if (!window.electron || !window.electron.getAppInfo) return;
+		try {
+			const info = await window.electron.getAppInfo();
+
+			// Version badge
+			const versionEl = document.getElementById('aboutVersionLabel');
+			if (versionEl) versionEl.textContent = `v${info.version}`;
+
+			// Platform badge
+			const platformEl = document.getElementById('aboutPlatformBadge');
+			if (platformEl) {
+				const icons = { Windows: '🪟', macOS: '🍎', Linux: '🐧' };
+				platformEl.textContent = `${icons[info.platformName] || '💻'} ${info.platformName}`;
+			}
+
+			// Architecture badge
+			const archEl = document.getElementById('aboutArchBadge');
+			if (archEl) archEl.textContent = info.arch;
+
+			// OS — uses proper marketing name (Windows 11, not 10.x)
+			const osEl = document.getElementById('aboutOsValue');
+			if (osEl) osEl.textContent = info.osDisplay || `${info.platformName}`;
+
+			// GPU
+			const gpuEl = document.getElementById('aboutGpuValue');
+			if (gpuEl) gpuEl.textContent = info.gpuName || 'Unknown';
+
+			// HW Accel
+			const hwEl = document.getElementById('aboutHwAccelValue');
+			if (hwEl) hwEl.textContent = info.hwAccel !== 'none' ? info.hwAccel : 'None (software)';
+
+			// Copyright year — always current
+			const copyEl = document.getElementById('aboutCopyYear');
+			if (copyEl) copyEl.textContent = `© ${info.copyrightYear || new Date().getFullYear()} animeredits — MIT License`;
+
+		} catch (e) {
+			console.warn('Could not load app info:', e);
+		}
+	}
+
+	if (aboutBtn) aboutBtn.addEventListener('click', () => {
+		// Clear any stale update status and cancel pending timer on open
+		if (_updateCheckTimer) { clearTimeout(_updateCheckTimer); _updateCheckTimer = null; }
+		const statusEl = document.getElementById('aboutUpdateStatus');
+		if (statusEl && statusEl.classList.contains('about-update-status--checking')) {
+			statusEl.className = 'about-update-status';
+			statusEl.innerHTML = '';
+		}
+		const iconEl = document.getElementById('aboutUpdateIcon');
+		if (iconEl) iconEl.classList.remove('fa-spin');
+		toggleToolModal('aboutModal');
+		loadAboutInfo();
+	});
 
 	['aboutClose','aboutClose2'].forEach(id => {
 		const b = document.getElementById(id);
-		if (b) b.addEventListener('click', () => { document.getElementById('aboutModal').style.display = 'none'; });
+		if (b) b.addEventListener('click', () => { ModalAnimator.close(document.getElementById('aboutModal')); });
 	});
 
-	// Check for updates button (both navbar and about modal)
+	// Check for updates — real-time status in about modal
+	// ── Update check with guaranteed timeout ─────────────────────────────────
+	// Check for updates — NOTE: _updateCheckTimer and _setUpdateStatus are module-scoped above
 	['checkUpdateBtn','aboutCheckUpdate'].forEach(id => {
 		const b = document.getElementById(id);
 		if (b) b.addEventListener('click', () => {
+			const statusEl = document.getElementById('aboutUpdateStatus');
+			const iconEl   = document.getElementById('aboutUpdateIcon');
+			if (statusEl) {
+				statusEl.className = 'about-update-status about-update-status--checking';
+				statusEl.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin"></i> Checking for updates…';
+			}
+			if (iconEl) iconEl.classList.add('fa-spin');
 			showStatusMessage('Checking for updates…');
-			// Trigger the Electron update check if available
-			if (window.electron && window.electron.startUpdateDownload) {
-				// Re-use the ipc or just show status
-				showStatusMessage('Checking for updates…');
+
+			// Clear any previous pending timeout
+			if (_updateCheckTimer) { clearTimeout(_updateCheckTimer); _updateCheckTimer = null; }
+
+			// Safety net: if no IPC response within 8 s, show up-to-date (dev mode
+			// never fires update-not-available; packaged may time out on slow networks)
+			_updateCheckTimer = setTimeout(() => {
+				const el = document.getElementById('aboutUpdateStatus');
+				// Only act if still showing "checking" — don't override a real response
+				if (el && el.classList.contains('about-update-status--checking')) {
+					_setUpdateStatus(
+						'about-update-status--ok',
+						'<i class="fa-solid fa-circle-check"></i> You\'re up to date!'
+					);
+					showStatusMessage('Anime Player is up to date', 3000);
+				}
+				_updateCheckTimer = null;
+			}, 8000);
+
+			// Use checkForUpdates (safe) — NOT startUpdateDownload (requires pending update)
+			if (window.electron && window.electron.checkForUpdates) {
+				window.electron.checkForUpdates();
 			}
 		});
 	});
@@ -992,7 +1205,7 @@ document.addEventListener('DOMContentLoaded', () => {
 		const m = document.getElementById(id);
 		if (!m) return;
 		m.addEventListener('click', (e) => {
-			if (e.target === m) m.style.display = 'none';
+			if (e.target === m) ModalAnimator.close(m);
 		});
 	});
 
@@ -1003,6 +1216,130 @@ document.addEventListener('DOMContentLoaded', () => {
 		m.addEventListener('keydown', e => e.stopPropagation());
 	});
 });
+
+ const ModalAnimator = {
+        activeModals: new Map(),
+        config: {
+          openDuration: 450,
+          closeDuration: 350,
+          overlayDuration: 350
+        },
+
+        open(modalElement, options = {}) {
+          if (!modalElement) return;
+          this.activeModals.set(modalElement, {
+            isOpen: true,
+            clickPoint: options.clickPoint || { x: window.innerWidth / 2, y: window.innerHeight / 2 }
+          });
+          modalElement.classList.remove('hidden', 'closing');
+          modalElement.classList.add('show');
+          const content = this._getModalContent(modalElement);
+          if (content) {
+            content.classList.remove('closing');
+            content.style.animation = 'none';
+            void content.offsetWidth;
+            content.style.animation = '';
+          }
+          modalElement.style.display = 'flex';
+          modalElement.style.pointerEvents = 'auto';
+          this._emitEvent(modalElement, 'modalOpened');
+        },
+
+        close(modalElement) {
+          if (!modalElement) return;
+          const content = this._getModalContent(modalElement);
+          if (content) {
+            content.classList.add('closing');
+          }
+          modalElement.classList.add('closing');
+          setTimeout(() => {
+            modalElement.classList.remove('show');
+            modalElement.classList.add('hidden');
+            modalElement.style.display = 'none';
+            modalElement.style.pointerEvents = 'none';
+            if (content) {
+              content.classList.remove('closing');
+            }
+            this.activeModals.delete(modalElement);
+            this._emitEvent(modalElement, 'modalClosed');
+          }, this.config.closeDuration);
+        },
+
+        _getModalContent(modalElement) {
+          if (modalElement.classList.contains('gif-modal')) {
+            return modalElement.querySelector('.gif-modal-content');
+          } else if (modalElement.classList.contains('tool-modal')) {
+            return modalElement.querySelector('.tool-modal-inner');
+          } else if (modalElement.classList.contains('modal')) {
+            return modalElement.querySelector('.modal-content');
+          }
+          return null;
+        },
+
+        _emitEvent(element, eventName) {
+          const event = new CustomEvent(eventName, {
+            detail: { modal: element },
+            bubbles: true,
+            cancelable: true
+          });
+          element.dispatchEvent(event);
+        },
+
+        isOpen(modalElement) {
+          const state = this.activeModals.get(modalElement);
+          return state ? state.isOpen : false;
+        },
+
+        closeAll() {
+          const modals = Array.from(this.activeModals.keys());
+          modals.forEach(modal => this.close(modal));
+        },
+
+        setupOverlayClose(modalElement, contentElement) {
+          modalElement.addEventListener('click', (e) => {
+            if (e.target === modalElement) {
+              this.close(modalElement);
+            }
+          });
+        },
+
+        setupCloseButton(closeButtonElement, modalElement) {
+          closeButtonElement.addEventListener('click', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            this.close(modalElement);
+          });
+        }
+      };
+
+      function initializeModalAnimations() {
+        const gifModals = document.querySelectorAll('.gif-modal');
+        gifModals.forEach(modal => {
+          const closeBtn = modal.querySelector('.gif-modal-btn--cancel, .modalClose');
+          if (closeBtn) {
+            ModalAnimator.setupCloseButton(closeBtn, modal);
+          }
+          ModalAnimator.setupOverlayClose(modal, modal.querySelector('.gif-modal-content'));
+        });
+
+        const shortcutsModal = document.getElementById('shortcutsModal');
+        if (shortcutsModal) {
+          const closeBtn = shortcutsModal.querySelector('.modalClose');
+          if (closeBtn) {
+            ModalAnimator.setupCloseButton(closeBtn, shortcutsModal);
+          }
+          ModalAnimator.setupOverlayClose(shortcutsModal, shortcutsModal.querySelector('.modal-content'));
+        }
+
+        const toolModals = document.querySelectorAll('.tool-modal');
+        toolModals.forEach(modal => {
+          const closeBtn = modal.querySelector('.tool-modal-close');
+          if (closeBtn) {
+            ModalAnimator.setupCloseButton(closeBtn, modal);
+          }
+          ModalAnimator.setupOverlayClose(modal, modal.querySelector('.tool-modal-inner'));
+        });
+      }
 
 // ✅ Function to load media file
 async function loadMediaFile(filePath, fileName) {
@@ -4178,7 +4515,14 @@ document.addEventListener("keydown", (event) => {
 			// close any open tool modal
 			['videoEffectsModal','syncToolModal','aboutModal'].forEach(id => {
 				const m = document.getElementById(id);
-				if (m && m.style.display !== 'none') m.style.display = 'none';
+				if (m) {
+					// hide any element that is visible
+					if (m.style.display !== 'none') m.style.display = 'none';
+					// also close using ModalAnimator if it's open
+					if (m.classList.contains('show') || ModalAnimator.isOpen(m)) {
+						ModalAnimator.close(m);
+					}
+				}
 			});
 			// blur the focused input
 			activeEl.blur();
@@ -4594,25 +4938,12 @@ loadSavedAspectRatio();
 // Function to toggle the shortcuts info box (modal)
 function toggleShortcutsInfoBox() {
 	const modal = document.getElementById("shortcutsModal");
-
+	
 	// Toggle the modal's visibility
-	if (modal.style.display === "block") {
-		modal.style.display = "none";
+	if (modal.classList.contains('show') || ModalAnimator.isOpen(modal)) {
+		ModalAnimator.close(modal);
 	} else {
-		modal.style.display = "block";
-
-		// Close the modal when the user clicks on <span> (x)
-		const closeBtn = document.querySelector(".modalClose");
-		closeBtn.onclick = function() {
-			modal.style.display = "none";
-		};
-
-		// Close the modal when the user clicks anywhere outside of it
-		window.onclick = function(event) {
-			if (event.target == modal) {
-				modal.style.display = "none";
-			}
-		};
+		ModalAnimator.open(modal);
 	}
 }
 
@@ -4660,7 +4991,8 @@ function applyRotation() {
 			showStatusMessage("Error: Unsupported rotation angle.");
 			return; // Exit function if there's an error
 	}
-
+video.classList.add('rotating');
+setTimeout(() => video.classList.remove('rotating'), 600);
 	video.style.objectFit = "contain"; // Adjust to fit container
 }
 
@@ -5936,11 +6268,41 @@ document.addEventListener('DOMContentLoaded', () => {
 
 	window.electron.onUpdateAvailable((_, info) => {
 		updateDialog.show(info?.version);
+		_setUpdateStatus(
+			'about-update-status--available',
+			`<i class="fa-solid fa-arrow-up-from-bracket"></i> Update v${info?.version || ''} available — click to install`
+		);
 	});
 
+	// Up-to-date — fired by main when checkForUpdates finds nothing new
+	if (window.electron.onUpdateNotAvailable) {
+		window.electron.onUpdateNotAvailable(() => {
+			_setUpdateStatus(
+				'about-update-status--ok',
+				'<i class="fa-solid fa-circle-check"></i> You\'re up to date!'
+			);
+			showStatusMessage('Anime Player is up to date', 3000);
+		});
+	}
+
 	window.electron.onUpdateError((_, errMsg) => {
-		console.error('Update failed:', errMsg);
-		showStatusMessage('⚠️ Update failed — will retry later', 5000);
+		console.error('Update check error:', errMsg);
+		showStatusMessage('⚠️ Update check failed — check your connection', 5000);
+		const statusEl = document.getElementById('aboutUpdateStatus');
+		// Don't overwrite a positive result that already arrived
+		if (statusEl &&
+		    !statusEl.classList.contains('about-update-status--ok') &&
+		    !statusEl.classList.contains('about-update-status--available')) {
+			_setUpdateStatus(
+				'about-update-status--error',
+				'<i class="fa-solid fa-triangle-exclamation"></i> Update check failed — check your connection.'
+			);
+		} else if (statusEl) {
+			// Still clear the icon spinner and timer
+			const iconEl = document.getElementById('aboutUpdateIcon');
+			if (iconEl) iconEl.classList.remove('fa-spin');
+			if (_updateCheckTimer) { clearTimeout(_updateCheckTimer); _updateCheckTimer = null; }
+		}
 	});
 });
 
@@ -6701,5 +7063,13 @@ if (document.readyState === 'loading') {
   } else {
     _init();
   }
+
+
+// Initialize modal animations
+if (typeof initializeModalAnimations === 'function') {
+	document.addEventListener('DOMContentLoaded', () => {
+		initializeModalAnimations();
+	});
+}
 
 })();

@@ -1,28 +1,84 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
   <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Updating Anime Player</title>
+  <meta http-equiv="Content-Security-Policy" content="script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com;" />
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&family=Sora:wght@500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="updater.css">
 </head>
 <body>
-  <div class="updater-container">
-    <img src="../../assets/icons/icon.png" class="updater-logo" draggable="false">
-    <div class="updater-info">
-      <div class="updater-status" id="updater-status">Downloading update…</div>
-      <div class="updater-version" id="updater-version"></div>
+
+  <div class="title-bar">
+    <div class="title-bar-left">
+      <img src="../../assets/icons/icon.png" class="title-bar-icon" draggable="false" alt="">
+      <span class="title-bar-text">Anime Player</span>
     </div>
-    <div class="progress-wrap">
-      <div class="progress-container">
-        <div id="progress-bar" class="progress-bar"></div>
-      </div>
-      <div class="progress-meta">
-        <span id="progress-percent">0%</span>
-        <span id="progress-speed"></span>
-      </div>
+    <div class="title-bar-right">
+      <button class="wc-btn" id="minimizeBtn" title="Minimize">
+        <svg width="10" height="1" viewBox="0 0 10 1"><rect width="10" height="1" fill="currentColor"/></svg>
+      </button>
     </div>
-    <div class="updater-eta" id="updater-eta"></div>
   </div>
+
+  <div class="updater-body">
+
+    <!-- Hero row: icon + title/version -->
+    <div class="hero">
+      <div class="hero-icon-wrap">
+        <img src="../../assets/icons/icon.png" class="hero-icon" draggable="false" alt="Anime Player">
+        <div class="hero-icon-ring" id="heroRing"></div>
+      </div>
+      <div class="hero-text">
+        <div class="hero-title downloading" id="updaterTitle">Downloading update</div>
+        <div class="hero-version" id="updaterVersion">
+          <span class="tag-arrow">▶</span>
+          <span id="versionText">—</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Big % number + label -->
+    <div class="pct-row">
+      <span class="pct-number" id="pctNumber">0</span>
+      <span class="pct-symbol">%</span>
+      <span class="pct-label" id="pctLabel">Fetching…</span>
+    </div>
+
+    <!-- Segmented progress bar (20 segments) -->
+    <div class="seg-track" id="segTrack"></div>
+
+    <!-- Stats cards -->
+    <div class="stats-grid">
+      <div class="stat-card">
+        <div class="stat-card-label">Speed</div>
+        <div class="stat-card-value cyan" id="statSpd">—</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-card-label">Remaining</div>
+        <div class="stat-card-value accent" id="statEta">—</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-card-label">Downloaded</div>
+        <div class="stat-card-value" id="statBytes">—</div>
+      </div>
+    </div>
+
+    <!-- Done banner -->
+    <div class="done-banner" id="doneBanner">
+      <svg class="done-check" viewBox="0 0 24 24" fill="none">
+        <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="1.5"/>
+        <path d="M7.5 12.5l3 3 6-6" stroke="currentColor" stroke-width="2"
+              stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+      <span id="doneText">Update ready — restarting…</span>
+    </div>
+
+  </div>
+
   <script src="updater.js"></script>
 </body>
 </html>

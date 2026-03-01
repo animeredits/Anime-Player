@@ -35,6 +35,222 @@
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,300,0,0&family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@24,300,0,0&family=Material+Symbols+Sharp:opsz,wght,FILL,GRAD@20,100,0,0" />
     <link rel="stylesheet" href="https://site-assets.fontawesome.com/releases/v6.4.2/css/all.css" />
     <link rel="stylesheet" href="styles.css" />
+    
+    <!-- ── Modal Animations ──────────────────────────────────────────────── -->
+    <style>
+      /* Modal Animation Styles - Open/Close from center point */
+      /* ── GIF Modal (Confirmation Dialogs) ──────────────────────────────── */
+      .gif-modal {
+        display: none;
+        position: fixed;
+        inset: 0;
+        z-index: 9999;
+        justify-content: center;
+        align-items: center;
+        background: rgba(0, 0, 0, 0.55);
+        backdrop-filter: blur(6px);
+        pointer-events: auto;
+        animation: modal-overlay-in 0.35s ease-out;
+      }
+
+      .gif-modal.closing {
+        animation: modal-overlay-out 0.35s ease-in forwards;
+      }
+
+      .gif-modal-content {
+        width: 340px;
+        padding: 28px 28px 24px;
+        border-radius: 16px;
+        background: rgba(30, 30, 40, 0.92);
+        backdrop-filter: blur(24px) saturate(160%);
+        border: 1px solid rgba(255, 255, 255, 0.12);
+        box-shadow: 0 24px 60px rgba(0, 0, 0, 0.6), 0 0 0 1px rgba(255,255,255,0.04);
+        color: #fff;
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        animation: ripple-modal-open 0.45s cubic-bezier(0.34, 1.56, 0.64, 1);
+        transform-origin: center;
+      }
+
+      .gif-modal-content.closing {
+        animation: ripple-modal-close 0.35s ease-in forwards;
+      }
+
+      /* ── Shortcuts Modal ───────────────────────────────────────────────── */
+      .modal {
+        display: none;
+        position: fixed;
+        z-index: 99;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        width: 70vw;
+        height: 70vh;
+        overflow: hidden;
+        pointer-events: auto;
+        animation: modal-overlay-in 0.35s ease-out;
+      }
+
+      .modal.closing {
+        animation: modal-overlay-out 0.35s ease-in forwards;
+      }
+
+      .modal-content {
+        font-family: sans-serif;
+        backdrop-filter: blur(30px) saturate(180%);
+        background-color: #2f2f2fc5;
+        border-radius: 12px;
+        border: 1px solid rgba(255, 255, 255, 0.125);
+        margin: 15% auto;
+        padding: 20px;
+        width: auto;
+        height: auto;
+        max-width: 800px;
+        max-height: 302px;
+        border-radius: 16px;
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+        letter-spacing: 0.5px;
+        scrollbar-width: thin;
+        scrollbar-color: rgba(255,255,255,0.2) transparent;
+        animation: ripple-modal-open 0.45s cubic-bezier(0.34, 1.56, 0.64, 1);
+        transform-origin: center;
+      }
+
+      .modal-content.closing {
+        animation: ripple-modal-close 0.35s ease-in forwards;
+      }
+
+      /* ── Tool Modal (Settings, Sync, About) ─────────────────────────────── */
+      .tool-modal {
+        display: none;
+        position: fixed;
+        inset: 0;
+        z-index: 9999;
+        align-items: center;
+        justify-content: center;
+        -webkit-app-region: no-drag;
+        animation: modal-overlay-in 0.35s ease-out;
+      }
+
+      .tool-modal.closing {
+        animation: modal-overlay-out 0.35s ease-in forwards;
+      }
+
+      .tool-modal-inner {
+        backdrop-filter: blur(30px) saturate(180%);
+        -webkit-backdrop-filter: blur(30px) saturate(180%);
+        background: #2f2f2fc5;
+        border: 1px solid rgba(255, 255, 255, 0.125);
+        border-radius: 14px;
+        box-shadow: 0 24px 64px rgba(0,0,0,0.7), 0 0 0 1px rgba(255,255,255,0.04);
+        width: 600px;
+        max-width: 95vw;
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+        font-family: "Fira Sans", sans-serif;
+        position: relative;
+        animation: ripple-modal-open 0.45s cubic-bezier(0.34, 1.56, 0.64, 1);
+        transform-origin: center;
+      }
+
+      .tool-modal-inner.closing {
+        animation: ripple-modal-close 0.35s ease-in forwards;
+      }
+
+      /* ── Animations ────────────────────────────────────────────────────── */
+      @keyframes modal-overlay-in {
+        from {
+          background-color: rgba(0, 0, 0, 0);
+          backdrop-filter: blur(0px);
+        }
+        to {
+          background-color: rgba(0, 0, 0, 0.55);
+          backdrop-filter: blur(6px);
+        }
+      }
+
+      @keyframes modal-overlay-out {
+        from {
+          background-color: rgba(0, 0, 0, 0.55);
+          backdrop-filter: blur(6px);
+        }
+        to {
+          background-color: rgba(0, 0, 0, 0);
+          backdrop-filter: blur(0px);
+        }
+      }
+
+      @keyframes ripple-modal-open {
+        0% {
+          opacity: 0;
+          transform: scale(0.3) translateY(20px);
+          filter: blur(10px);
+        }
+        50% {
+          opacity: 0.8;
+        }
+        100% {
+          opacity: 1;
+          transform: scale(1) translateY(0);
+          filter: blur(0px);
+        }
+      }
+
+      @keyframes ripple-modal-close {
+        0% {
+          opacity: 1;
+          transform: scale(1) translateY(0);
+          filter: blur(0px);
+        }
+        50% {
+          opacity: 0.7;
+        }
+        100% {
+          opacity: 0;
+          transform: scale(0.2) translateY(20px);
+          filter: blur(8px);
+        }
+      }
+
+      /* ── Close Button Animations ─────────────────────────────────────────── */
+      .modalClose {
+        transition: all 0.2s ease;
+        cursor: pointer;
+      }
+
+      .modalClose:hover {
+        transform: rotate(90deg) scale(1.1);
+      }
+
+      .modalClose:active {
+        transform: rotate(90deg) scale(0.95);
+      }
+
+      .tool-modal-close:hover {
+        transform: rotate(90deg) scale(1.05);
+      }
+
+      .tool-modal-close:active {
+        transform: rotate(90deg) scale(0.95);
+      }
+
+      .gif-modal.show,
+      .modal.show,
+      .tool-modal.show {
+        display: flex !important;
+      }
+
+      .gif-modal.hidden,
+      .modal.hidden,
+      .tool-modal.hidden {
+        display: none !important;
+        pointer-events: none;
+      }
+    </style>
   </head>
   <body>
     <!-- Media Player -->
@@ -398,82 +614,173 @@
 
         <!-- ── Video Effects Modal ───────────────────────────────────────── -->
         <div id="videoEffectsModal" class="tool-modal" style="display:none;">
-          <div class="tool-modal-inner">
+          <div class="tool-modal-inner vfx-modal-inner">
             <div class="tool-modal-header">
               <div class="tool-modal-title-wrap">
-                <i class="fa-solid fa-palette tool-modal-icon"></i>
+                <i class="fa-solid fa-wand-magic-sparkles tool-modal-icon"></i>
                 <span class="tool-modal-title">Video Effects</span>
               </div>
               <button class="tool-modal-close" id="videoEffectsClose"><i class="fa-solid fa-xmark"></i></button>
             </div>
-            <div class="tool-modal-body">
-              <div class="tme-grid">
-                <!-- Left column -->
-                <div class="tme-col">
-                  <div class="tme-section-label">Image Adjust</div>
-                  <div class="tme-row">
-                    <label class="tme-label">Hue</label>
-                    <input type="range" class="tme-slider" id="hueSlider" min="-180" max="180" value="0">
-                    <span class="tme-value" id="hueValue">0°</span>
-                    <button class="tme-reset-btn" data-target="hueSlider" data-default="0" title="Reset">↻</button>
+
+            <!-- VFX Tab bar -->
+            <div class="vfx-tabs">
+              <button class="vfx-tab active" data-vfx-tab="color"><i class="fa-solid fa-droplet"></i> Color</button>
+              <button class="vfx-tab" data-vfx-tab="enhance"><i class="fa-solid fa-sparkles"></i> Enhance</button>
+              <button class="vfx-tab" data-vfx-tab="temp"><i class="fa-solid fa-temperature-half"></i> Temperature</button>
+            </div>
+
+            <div class="tool-modal-body vfx-body">
+
+              <!-- ── Color pane ── -->
+              <div class="vfx-pane active" id="vfxPane-color">
+                <div class="vfx-slider-group">
+                  <div class="vfx-row">
+                    <div class="vfx-row-left">
+                      <span class="vfx-icon"><i class="fa-solid fa-palette"></i></span>
+                      <label class="vfx-label">Hue</label>
+                    </div>
+                    <input type="range" class="vfx-slider" id="hueSlider" min="-180" max="180" value="0">
+                    <span class="vfx-val" id="hueValue">0°</span>
+                    <button class="vfx-reset" data-target="hueSlider" data-default="0" title="Reset"><i class="fa-solid fa-rotate-left"></i></button>
                   </div>
-                  <div class="tme-row">
-                    <label class="tme-label">Brightness</label>
-                    <input type="range" class="tme-slider" id="brightnessSlider" min="0" max="200" value="100">
-                    <span class="tme-value" id="brightnessValue">100%</span>
-                    <button class="tme-reset-btn" data-target="brightnessSlider" data-default="100" title="Reset">↻</button>
+                  <div class="vfx-row">
+                    <div class="vfx-row-left">
+                      <span class="vfx-icon"><i class="fa-solid fa-sun"></i></span>
+                      <label class="vfx-label">Brightness</label>
+                    </div>
+                    <input type="range" class="vfx-slider" id="brightnessSlider" min="0" max="200" value="100">
+                    <span class="vfx-val" id="brightnessValue">100%</span>
+                    <button class="vfx-reset" data-target="brightnessSlider" data-default="100" title="Reset"><i class="fa-solid fa-rotate-left"></i></button>
                   </div>
-                  <div class="tme-row">
-                    <label class="tme-label">Contrast</label>
-                    <input type="range" class="tme-slider" id="contrastSlider" min="0" max="200" value="100">
-                    <span class="tme-value" id="contrastValue">100%</span>
-                    <button class="tme-reset-btn" data-target="contrastSlider" data-default="100" title="Reset">↻</button>
+                  <div class="vfx-row">
+                    <div class="vfx-row-left">
+                      <span class="vfx-icon"><i class="fa-solid fa-circle-half-stroke"></i></span>
+                      <label class="vfx-label">Contrast</label>
+                    </div>
+                    <input type="range" class="vfx-slider" id="contrastSlider" min="0" max="200" value="100">
+                    <span class="vfx-val" id="contrastValue">100%</span>
+                    <button class="vfx-reset" data-target="contrastSlider" data-default="100" title="Reset"><i class="fa-solid fa-rotate-left"></i></button>
                   </div>
-                  <div class="tme-row">
-                    <label class="tme-label">Saturation</label>
-                    <input type="range" class="tme-slider" id="saturationSlider" min="0" max="200" value="100">
-                    <span class="tme-value" id="saturationValue">100%</span>
-                    <button class="tme-reset-btn" data-target="saturationSlider" data-default="100" title="Reset">↻</button>
+                  <div class="vfx-row">
+                    <div class="vfx-row-left">
+                      <span class="vfx-icon"><i class="fa-solid fa-eye-dropper"></i></span>
+                      <label class="vfx-label">Saturation</label>
+                    </div>
+                    <input type="range" class="vfx-slider" id="saturationSlider" min="0" max="200" value="100">
+                    <span class="vfx-val" id="saturationValue">100%</span>
+                    <button class="vfx-reset" data-target="saturationSlider" data-default="100" title="Reset"><i class="fa-solid fa-rotate-left"></i></button>
                   </div>
-                  <div class="tme-row">
-                    <label class="tme-label">Gamma</label>
-                    <input type="range" class="tme-slider" id="gammaSlider" min="10" max="300" value="100">
-                    <span class="tme-value" id="gammaValue">1.00</span>
-                    <button class="tme-reset-btn" data-target="gammaSlider" data-default="100" title="Reset">↻</button>
-                  </div>
-                </div>
-                <!-- Right column -->
-                <div class="tme-col">
-                  <div class="tme-section-label">Enhancements</div>
-                  <div class="tme-row">
-                    <label class="tme-label tme-label--toggle">
-                      <input type="checkbox" id="sharpenToggle" class="tme-checkbox"> Sharpen
-                    </label>
-                  </div>
-                  <div class="tme-row tme-row--dep" id="sharpenRow">
-                    <label class="tme-label">Sigma</label>
-                    <input type="range" class="tme-slider" id="sharpenSlider" min="0" max="100" value="0">
-                    <span class="tme-value" id="sharpenValue">0</span>
-                    <button class="tme-reset-btn" data-target="sharpenSlider" data-default="0" title="Reset">↻</button>
-                  </div>
-                  <div class="tme-divider"></div>
-                  <div class="tme-row">
-                    <label class="tme-label tme-label--toggle">
-                      <input type="checkbox" id="blurToggle" class="tme-checkbox"> Blur
-                    </label>
-                  </div>
-                  <div class="tme-row tme-row--dep" id="blurRow">
-                    <label class="tme-label">Radius</label>
-                    <input type="range" class="tme-slider" id="blurSlider" min="0" max="20" value="0">
-                    <span class="tme-value" id="blurValue">0px</span>
-                    <button class="tme-reset-btn" data-target="blurSlider" data-default="0" title="Reset">↻</button>
+                  <div class="vfx-row">
+                    <div class="vfx-row-left">
+                      <span class="vfx-icon"><i class="fa-solid fa-sliders"></i></span>
+                      <label class="vfx-label">Gamma</label>
+                    </div>
+                    <input type="range" class="vfx-slider" id="gammaSlider" min="10" max="300" value="100">
+                    <span class="vfx-val" id="gammaValue">1.00</span>
+                    <button class="vfx-reset" data-target="gammaSlider" data-default="100" title="Reset"><i class="fa-solid fa-rotate-left"></i></button>
                   </div>
                 </div>
               </div>
-            </div>
+
+              <!-- ── Enhance pane ── -->
+              <div class="vfx-pane" id="vfxPane-enhance">
+                <div class="vfx-slider-group">
+
+                  <div class="vfx-toggle-row">
+                    <div class="vfx-toggle-left">
+                      <span class="vfx-icon"><i class="fa-solid fa-maximize"></i></span>
+                      <label class="vfx-label" for="sharpenToggle">Sharpen</label>
+                    </div>
+                    <label class="vfx-switch">
+                      <input type="checkbox" id="sharpenToggle">
+                      <span class="vfx-switch-track"></span>
+                    </label>
+                  </div>
+                  <div class="vfx-row vfx-dep-row" id="sharpenRow">
+                    <div class="vfx-row-left">
+                      <span class="vfx-icon vfx-icon--indent"></span>
+                      <label class="vfx-label">Amount</label>
+                    </div>
+                    <input type="range" class="vfx-slider" id="sharpenSlider" min="0" max="100" value="0">
+                    <span class="vfx-val" id="sharpenValue">0</span>
+                    <button class="vfx-reset" data-target="sharpenSlider" data-default="0" title="Reset"><i class="fa-solid fa-rotate-left"></i></button>
+                  </div>
+
+                  <div class="vfx-divider"></div>
+
+                  <div class="vfx-toggle-row">
+                    <div class="vfx-toggle-left">
+                      <span class="vfx-icon"><i class="fa-solid fa-droplet-slash"></i></span>
+                      <label class="vfx-label" for="blurToggle">Blur</label>
+                    </div>
+                    <label class="vfx-switch">
+                      <input type="checkbox" id="blurToggle">
+                      <span class="vfx-switch-track"></span>
+                    </label>
+                  </div>
+                  <div class="vfx-row vfx-dep-row" id="blurRow">
+                    <div class="vfx-row-left">
+                      <span class="vfx-icon vfx-icon--indent"></span>
+                      <label class="vfx-label">Radius</label>
+                    </div>
+                    <input type="range" class="vfx-slider" id="blurSlider" min="0" max="20" value="0">
+                    <span class="vfx-val" id="blurValue">0px</span>
+                    <button class="vfx-reset" data-target="blurSlider" data-default="0" title="Reset"><i class="fa-solid fa-rotate-left"></i></button>
+                  </div>
+
+                  <div class="vfx-divider"></div>
+
+                  <div class="vfx-toggle-row">
+                    <div class="vfx-toggle-left">
+                      <span class="vfx-icon"><i class="fa-solid fa-circle-dot"></i></span>
+                      <label class="vfx-label" for="vignetteToggle">Vignette</label>
+                    </div>
+                    <label class="vfx-switch">
+                      <input type="checkbox" id="vignetteToggle">
+                      <span class="vfx-switch-track"></span>
+                    </label>
+                  </div>
+                  <div class="vfx-row vfx-dep-row" id="vignetteRow">
+                    <div class="vfx-row-left">
+                      <span class="vfx-icon vfx-icon--indent"></span>
+                      <label class="vfx-label">Strength</label>
+                    </div>
+                    <input type="range" class="vfx-slider" id="vignetteSlider" min="0" max="100" value="0">
+                    <span class="vfx-val" id="vignetteValue">0%</span>
+                    <button class="vfx-reset" data-target="vignetteSlider" data-default="0" title="Reset"><i class="fa-solid fa-rotate-left"></i></button>
+                  </div>
+
+                </div>
+              </div>
+
+              <!-- ── Temperature pane ── -->
+              <div class="vfx-pane" id="vfxPane-temp">
+                <div class="vfx-slider-group">
+                  <div class="vfx-temp-header">
+                    <div class="vfx-temp-scale">
+                      <span class="vfx-temp-cool"><i class="fa-solid fa-snowflake"></i> Cool</span>
+                      <span class="vfx-temp-warm"><i class="fa-solid fa-fire"></i> Warm</span>
+                    </div>
+                  </div>
+                  <div class="vfx-row">
+                    <div class="vfx-row-left">
+                      <span class="vfx-icon"><i class="fa-solid fa-temperature-half"></i></span>
+                      <label class="vfx-label">Warmth</label>
+                    </div>
+                    <input type="range" class="vfx-slider vfx-slider--warm" id="warmthSlider" min="-100" max="100" value="0">
+                    <span class="vfx-val" id="warmthValue">0</span>
+                    <button class="vfx-reset" data-target="warmthSlider" data-default="0" title="Reset"><i class="fa-solid fa-rotate-left"></i></button>
+                  </div>
+                  <p class="vfx-hint">Drag left for a cooler blue tint, right for a warmer amber tone.</p>
+                </div>
+              </div>
+
+            </div><!-- /vfx-body -->
+
             <div class="tool-modal-footer">
-              <button class="tool-modal-btn tool-modal-btn--secondary" id="videoEffectsResetAll">Reset All</button>
-              <button class="tool-modal-btn tool-modal-btn--primary" id="videoEffectsClose2">Close</button>
+              <button class="tool-modal-btn tool-modal-btn--ghost" id="videoEffectsResetAll"><i class="fa-solid fa-rotate-left"></i> Reset All</button>
+              <button class="tool-modal-btn tool-modal-btn--primary" id="videoEffectsClose2">Done</button>
             </div>
           </div>
         </div>
@@ -483,71 +790,109 @@
           <div class="tool-modal-inner tool-modal-inner--sync">
             <div class="tool-modal-header">
               <div class="tool-modal-title-wrap">
-                <i class="fa-solid fa-sliders-h tool-modal-icon"></i>
-                <span class="tool-modal-title">Adjustments &amp; Sync</span>
+                <i class="fa-solid fa-sliders tool-modal-icon"></i>
+                <span class="tool-modal-title">Track Sync</span>
               </div>
               <button class="tool-modal-close" id="syncToolClose"><i class="fa-solid fa-xmark"></i></button>
             </div>
             <!-- Tabs -->
             <div class="sync-tabs">
-              <button class="sync-tab active" data-tab="audio">Audio</button>
-              <button class="sync-tab" data-tab="video">Video</button>
-              <button class="sync-tab" data-tab="subtitle">Subtitle</button>
+              <button class="sync-tab active" data-tab="audio"><i class="fa-solid fa-volume-high"></i> Audio</button>
+              <button class="sync-tab" data-tab="video"><i class="fa-solid fa-film"></i> Video</button>
+              <button class="sync-tab" data-tab="subtitle"><i class="fa-solid fa-closed-captioning"></i> Subtitle</button>
             </div>
+
             <!-- Tab: Audio -->
             <div class="sync-pane active" id="syncPane-audio">
-              <div class="sync-section-label">Audio / Video Sync</div>
-              <div class="sync-row">
-                <label class="sync-label">Audio delay</label>
-                <div class="sync-spinbox">
-                  <button class="sync-spin-btn" data-delta="-0.1" data-target="audioDelayVal">−</button>
-                  <span class="sync-spin-val" id="audioDelayVal">0.000</span>
-                  <span class="sync-spin-unit">s</span>
-                  <button class="sync-spin-btn" data-delta="0.1" data-target="audioDelayVal">+</button>
+              <div class="sync-card">
+                <div class="sync-card-label">Audio Delay</div>
+                <div class="sync-card-desc">Shift audio earlier (−) or later (+) relative to video</div>
+                <div class="sync-control-row">
+                  <button class="sync-ctrl-btn sync-ctrl-btn--minus" data-delta="-0.1" data-target="audioDelayVal">−</button>
+                  <div class="sync-display">
+                    <span class="sync-display-val" id="audioDelayVal">0.000</span>
+                    <span class="sync-display-unit">seconds</span>
+                  </div>
+                  <button class="sync-ctrl-btn sync-ctrl-btn--plus" data-delta="0.1" data-target="audioDelayVal">+</button>
                 </div>
-                <div class="sync-shortcuts-hint"><span class="key-badge">G</span> slower &nbsp; <span class="key-badge">H</span> faster</div>
+                <div class="sync-nudge-strip">
+                  <button class="sync-chip" data-target="audioDelayVal" data-delta="-1.0">−1s</button>
+                  <button class="sync-chip" data-target="audioDelayVal" data-delta="-0.5">−500ms</button>
+                  <button class="sync-chip" data-target="audioDelayVal" data-delta="-0.1">−100ms</button>
+                  <button class="sync-chip sync-chip--mid">0</button>
+                  <button class="sync-chip" data-target="audioDelayVal" data-delta="0.1">+100ms</button>
+                  <button class="sync-chip" data-target="audioDelayVal" data-delta="0.5">+500ms</button>
+                  <button class="sync-chip" data-target="audioDelayVal" data-delta="1.0">+1s</button>
+                </div>
+                <div class="sync-kb-hint"><span class="key-badge">G</span> −100ms &nbsp;&nbsp; <span class="key-badge">H</span> +100ms</div>
               </div>
             </div>
+
             <!-- Tab: Video -->
             <div class="sync-pane" id="syncPane-video">
-              <div class="sync-section-label">Video Delay</div>
-              <div class="sync-row">
-                <label class="sync-label">Video offset</label>
-                <div class="sync-spinbox">
-                  <button class="sync-spin-btn" data-delta="-0.05" data-target="videoOffsetVal">−</button>
-                  <span class="sync-spin-val" id="videoOffsetVal">0.000</span>
-                  <span class="sync-spin-unit">s</span>
-                  <button class="sync-spin-btn" data-delta="0.05" data-target="videoOffsetVal">+</button>
+              <div class="sync-card">
+                <div class="sync-card-label">Video Offset</div>
+                <div class="sync-card-desc">Shift video frames earlier (−) or later (+) relative to audio</div>
+                <div class="sync-control-row">
+                  <button class="sync-ctrl-btn sync-ctrl-btn--minus" data-delta="-0.05" data-target="videoOffsetVal">−</button>
+                  <div class="sync-display">
+                    <span class="sync-display-val" id="videoOffsetVal">0.000</span>
+                    <span class="sync-display-unit">seconds</span>
+                  </div>
+                  <button class="sync-ctrl-btn sync-ctrl-btn--plus" data-delta="0.05" data-target="videoOffsetVal">+</button>
+                </div>
+                <div class="sync-nudge-strip">
+                  <button class="sync-chip" data-target="videoOffsetVal" data-delta="-1.0">−1s</button>
+                  <button class="sync-chip" data-target="videoOffsetVal" data-delta="-0.5">−500ms</button>
+                  <button class="sync-chip" data-target="videoOffsetVal" data-delta="-0.05">−50ms</button>
+                  <button class="sync-chip sync-chip--mid">0</button>
+                  <button class="sync-chip" data-target="videoOffsetVal" data-delta="0.05">+50ms</button>
+                  <button class="sync-chip" data-target="videoOffsetVal" data-delta="0.5">+500ms</button>
+                  <button class="sync-chip" data-target="videoOffsetVal" data-delta="1.0">+1s</button>
                 </div>
               </div>
             </div>
+
             <!-- Tab: Subtitle -->
             <div class="sync-pane" id="syncPane-subtitle">
-              <div class="sync-section-label">Subtitle / Video Sync</div>
-              <div class="sync-row">
-                <label class="sync-label">Subtitle delay</label>
-                <div class="sync-spinbox">
-                  <button class="sync-spin-btn" data-delta="-0.5" data-target="subDelayVal">−</button>
-                  <span class="sync-spin-val" id="subDelayVal">0.000</span>
-                  <span class="sync-spin-unit">s</span>
-                  <button class="sync-spin-btn" data-delta="0.5" data-target="subDelayVal">+</button>
+              <div class="sync-card">
+                <div class="sync-card-label">Subtitle Delay</div>
+                <div class="sync-card-desc">Shift subtitles earlier (−) or later (+)</div>
+                <div class="sync-control-row">
+                  <button class="sync-ctrl-btn sync-ctrl-btn--minus" data-delta="-0.5" data-target="subDelayVal">−</button>
+                  <div class="sync-display">
+                    <span class="sync-display-val" id="subDelayVal">0.000</span>
+                    <span class="sync-display-unit">seconds</span>
+                  </div>
+                  <button class="sync-ctrl-btn sync-ctrl-btn--plus" data-delta="0.5" data-target="subDelayVal">+</button>
                 </div>
-                <div class="sync-shortcuts-hint"><span class="key-badge">D</span> delay &nbsp; <span class="key-badge">E</span> advance</div>
+                <div class="sync-nudge-strip">
+                  <button class="sync-chip" data-target="subDelayVal" data-delta="-2.0">−2s</button>
+                  <button class="sync-chip" data-target="subDelayVal" data-delta="-1.0">−1s</button>
+                  <button class="sync-chip" data-target="subDelayVal" data-delta="-0.5">−500ms</button>
+                  <button class="sync-chip sync-chip--mid">0</button>
+                  <button class="sync-chip" data-target="subDelayVal" data-delta="0.5">+500ms</button>
+                  <button class="sync-chip" data-target="subDelayVal" data-delta="1.0">+1s</button>
+                  <button class="sync-chip" data-target="subDelayVal" data-delta="2.0">+2s</button>
+                </div>
+                <div class="sync-kb-hint"><span class="key-badge">D</span> −500ms &nbsp;&nbsp; <span class="key-badge">E</span> +500ms</div>
               </div>
-              <div class="sync-section-label" style="margin-top:14px;">Subtitle Speed</div>
-              <div class="sync-row">
-                <label class="sync-label">Speed factor</label>
-                <div class="sync-spinbox">
-                  <button class="sync-spin-btn" data-delta="-0.1" data-target="subSpeedVal">−</button>
-                  <span class="sync-spin-val" id="subSpeedVal">1.000</span>
-                  <span class="sync-spin-unit">fps</span>
-                  <button class="sync-spin-btn" data-delta="0.1" data-target="subSpeedVal">+</button>
+              <div class="sync-card sync-card--compact">
+                <div class="sync-card-label">Subtitle Speed</div>
+                <div class="sync-control-row">
+                  <button class="sync-ctrl-btn sync-ctrl-btn--minus" data-delta="-0.1" data-target="subSpeedVal">−</button>
+                  <div class="sync-display">
+                    <span class="sync-display-val" id="subSpeedVal">1.000</span>
+                    <span class="sync-display-unit">× speed</span>
+                  </div>
+                  <button class="sync-ctrl-btn sync-ctrl-btn--plus" data-delta="0.1" data-target="subSpeedVal">+</button>
                 </div>
               </div>
             </div>
+
             <div class="tool-modal-footer">
-              <button class="tool-modal-btn tool-modal-btn--secondary" id="syncResetBtn">Reset</button>
-              <button class="tool-modal-btn tool-modal-btn--primary" id="syncToolClose2">Close</button>
+              <button class="tool-modal-btn tool-modal-btn--ghost" id="syncResetBtn"><i class="fa-solid fa-rotate-left"></i> Reset All</button>
+              <button class="tool-modal-btn tool-modal-btn--primary" id="syncToolClose2">Done</button>
             </div>
           </div>
         </div>
@@ -562,19 +907,56 @@
               </div>
               <button class="tool-modal-close" id="aboutClose"><i class="fa-solid fa-xmark"></i></button>
             </div>
-            <div class="about-body">
+
+            <!-- Hero Section -->
+            <div class="about-hero">
               <img src="../assets/icons/icon.ico" alt="Anime Player" class="about-icon-img">
-              <div class="about-name">Anime Player</div>
-              <div class="about-version" id="aboutVersionLabel">v2.0.0</div>
-              <p class="about-desc">Advanced open-source media player built for anime.<br>Supports MKV, MP4, EAC3, DTS, ASS/SSA subtitles and more.</p>
-              <div class="about-links">
-                <a href="https://github.com/animeredits/Anime-Player" class="about-link"><i class="fa-brands fa-github"></i> GitHub</a>
+              <div class="about-hero-text">
+                <div class="about-name">Anime Player</div>
+                <div class="about-version-wrap">
+                  <span class="about-version" id="aboutVersionLabel">—</span>
+                  <span class="about-platform-badge" id="aboutPlatformBadge">—</span>
+                  <span class="about-arch-badge" id="aboutArchBadge">—</span>
+                </div>
+                <p class="about-desc">A free, open-source media player crafted for anime fans.<br>MKV · MP4 · EAC3 · DTS · ASS/SSA subtitles · Multi-audio · Chapters</p>
               </div>
-              <div class="about-copy">© 2025 animeredits — MIT License</div>
             </div>
+
+            <!-- System Info Grid — OS, GPU, HW Accel only -->
+            <div class="about-info-grid">
+              <div class="about-info-row">
+                <span class="about-info-label"><i class="fa-solid fa-computer"></i> OS</span>
+                <span class="about-info-value" id="aboutOsValue">—</span>
+              </div>
+              <div class="about-info-row">
+                <span class="about-info-label"><i class="fa-solid fa-microchip"></i> GPU</span>
+                <span class="about-info-value" id="aboutGpuValue">—</span>
+              </div>
+              <div class="about-info-row">
+                <span class="about-info-label"><i class="fa-solid fa-bolt"></i> HW Accel</span>
+                <span class="about-info-value" id="aboutHwAccelValue">—</span>
+              </div>
+            </div>
+
+            <!-- Update Status Area -->
+            <div class="about-update-area" id="aboutUpdateArea">
+              <div class="about-update-status" id="aboutUpdateStatus"></div>
+            </div>
+
+            <!-- Links -->
+            <div class="about-links">
+              <a href="https://github.com/animeredits/Anime-Player" class="about-link" target="_blank">
+                <i class="fa-brands fa-github"></i> GitHub
+              </a>
+              <a href="https://github.com/animeredits/Anime-Player/releases" class="about-link" target="_blank">
+                <i class="fa-solid fa-tag"></i> Releases
+              </a>
+            </div>
+            <div class="about-copy" id="aboutCopyYear">© 2025 animeredits — MIT License</div>
+
             <div class="tool-modal-footer">
               <button class="tool-modal-btn tool-modal-btn--secondary" id="aboutCheckUpdate">
-                <i class="fa-solid fa-rotate"></i> Check for Updates
+                <i class="fa-solid fa-rotate" id="aboutUpdateIcon"></i> Check for Updates
               </button>
               <button class="tool-modal-btn tool-modal-btn--primary" id="aboutClose2">Close</button>
             </div>

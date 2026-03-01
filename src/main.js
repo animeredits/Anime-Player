@@ -12,6 +12,7 @@ const os = require('os');
 // Populated async at startup via app.getGPUInfo(); used to pick ffmpeg hwaccel.
 let gpuVendor = 'unknown';   // 'nvidia' | 'amd' | 'intel' | 'unknown'
 let hwAccelArgs = [];         // prepended to every ffmpeg spawn that decodes video
+let _cachedGpuName = '';      // full GPU description string, cached at startup
 let ffmpegExecutable = null;
 let ffprobeExecutable = null;
 
@@ -50,6 +51,10 @@ async function detectGpuAndSetHwAccel() {
     // Notify renderer about GPU info for display in UI
     if (appState.win) {
       appState.win.webContents.send('gpu-info', { vendor: gpuVendor, gpus });
+    }
+    // Cache the GPU description for instant about-modal retrieval
+    if (gpus.length > 0) {
+      _cachedGpuName = gpus[0].description || gpus[0].model || gpuVendor.toUpperCase();
     }
   } catch (e) {
     console.warn('GPU detection failed:', e.message);
@@ -153,7 +158,6 @@ function getMimeType(filePath) {
 }
 
 const streamServer = http.createServer((req, res) => {
-  // Note: subtitle requests (/subtitle/*) removed — subtitles now served as
   // Blob URLs directly in the renderer, no disk files or HTTP needed.
 
   // Handle audio track stream requests  (/audio/<trackIndex>?ss=<seconds>)
@@ -279,9 +283,6 @@ function initApp() {
   resolveBinaryPaths();
 
   // ── Start stream server only in the primary instance ──────────────────────
-  // Previously this ran at module load time (before the single-instance lock
-  // check), so every second instance tried to bind port 54321 and crashed with
-  // EADDRINUSE. Moving it here ensures it only runs once we know we hold the lock.
   streamServer.listen(STREAM_PORT, '127.0.0.1', () => {
     console.log(`Stream server running on http://127.0.0.1:${STREAM_PORT}`);
   });
@@ -485,41 +486,29 @@ function createTray() {
 function updateTrayMenu() {
   if (!appState.tray || appState.tray.isDestroyed()) return;
 
+  const iconPath = (name) => {
+    const p = path.join(__dirname, `../assets/icons/${name}.png`);
+    return fs.existsSync(p) ? p : undefined;
+  };
+
+  const isVisible = appState.win && appState.win.isVisible();
+
   const contextMenu = Menu.buildFromTemplate([
-    { 
-      label: appState.win.isVisible() ? 'Hide Anime Player' : 'Show Anime Player', 
-      click: toggleWindowVisibility 
+    {
+      label: isVisible ? 'Hide Anime Player in taskbar' : 'Show Anime Player in taskbar',
+      click: () => toggleWindowVisibility()
     },
-    { type: "separator" },
-    { 
-      label: appState.playback.status === 'playing' ? 'Pause' : 'Play', 
-      click: () => sendPlaybackCommand('play-pause') 
-    },
-    { label: "Next", click: () => sendPlaybackCommand('next') },
-    { label: "Previous", click: () => sendPlaybackCommand('previous') },
-    { type: "separator" },
-    { label: "Increase Volume", click: () => sendPlaybackCommand('increase-volume') },
-    { label: "Decrease Volume", click: () => sendPlaybackCommand('decrease-volume') },
-    { label: "Mute", click: () => sendPlaybackCommand('mute') },
-    { type: "separator" },
-    { 
-      label: `Shuffle: ${appState.playback.shuffle === 'on' ? 'On' : 'Off'}`,
-      click: () => sendPlaybackCommand('shuffle')
-    },
-    { 
-      label: `Repeat: ${formatRepeatState(appState.playback.repeat)}`,
-      click: () => sendPlaybackCommand('repeat')
-    },
-    { type: "separator" },
-    { 
-      label: "Quit Anime Player", 
+    { type: 'separator' },
+    {
+      label: 'Quit',
+      icon: iconPath('quit'),
       click: () => {
         appState.isQuitting = true;
         app.quit();
       },
       enabled: !isUpdating
     }
-]);
+  ]);
   
   appState.tray.setContextMenu(contextMenu);
 }
@@ -540,6 +529,31 @@ function formatRepeatState(state) {
       case 'one': return 'One';
       case 'all': return 'All';
       default: return 'Off';
+  }
+}
+
+// Set volume
+function setVolume(percentage) {
+  appState.playback.volume = Math.max(0, Math.min(100, percentage));
+  if (appState.win) {
+    appState.win.webContents.send('volume-set', appState.playback.volume);
+  }
+  updateTrayMenu();
+}
+
+// Set repeat state
+function setRepeatState(state) {
+  appState.playback.repeat = state;
+  if (appState.win) {
+    appState.win.webContents.send('repeat-state-set', state);
+  }
+  updateTrayMenu();
+}
+
+// Set playback speed
+function setPlaybackSpeed(speed) {
+  if (appState.win) {
+    appState.win.webContents.send('playback-speed-set', speed);
   }
 }
 
@@ -632,6 +646,46 @@ function setupIPCHandlers() {
     }
   });
 
+  // ── App info — uses pre-cached GPU data so it returns INSTANTLY ───────────
+  ipcMain.handle('get-app-info', () => {
+    // Detect proper Windows marketing name from build number
+    let osDisplayName = '';
+    if (process.platform === 'win32') {
+      try {
+        const buildStr = os.release().split('.')[2] || '0';
+        const build = parseInt(buildStr, 10);
+        osDisplayName = build >= 22000 ? 'Windows 11' : 'Windows 10';
+        osDisplayName += ` (Build ${build})`;
+      } catch (_) {
+        osDisplayName = `Windows (${os.release()})`;
+      }
+    } else if (process.platform === 'darwin') {
+      osDisplayName = `macOS ${os.release()}`;
+    } else {
+      osDisplayName = `Linux ${os.release()}`;
+    }
+
+    // Use the already-cached GPU name from startup detection (no async call)
+    let gpuName = 'Unknown';
+    if (_cachedGpuName) {
+      gpuName = _cachedGpuName;
+    } else if (gpuVendor && gpuVendor !== 'unknown') {
+      gpuName = gpuVendor.toUpperCase();
+    }
+
+    const platformMap = { win32: 'Windows', darwin: 'macOS', linux: 'Linux' };
+    return {
+      version:      app.getVersion(),
+      platform:     process.platform,
+      platformName: platformMap[process.platform] || process.platform,
+      osDisplay:    osDisplayName,
+      arch:         process.arch,
+      gpuName,
+      hwAccel:      hwAccelArgs.join(' ') || 'none',
+      copyrightYear: new Date().getFullYear(),
+    };
+  });
+
   // Window control
   ipcMain.on("Minimize", () => appState.win?.minimize());
   ipcMain.on("Maximize", () => {
@@ -704,6 +758,23 @@ function setupIPCHandlers() {
   ipcMain.on("delete-playback-entry", handleDeletePlaybackEntry);
 
   // App Update — single handler
+  // Check for updates (manual trigger from renderer — safe to call any time)
+  ipcMain.on('check-for-updates', () => {
+    if (!net.isOnline()) {
+      appState.win?.webContents.send('update-error', 'No internet connection');
+      return;
+    }
+    autoUpdater.checkForUpdates().catch(err => {
+      console.warn('[Updater] Manual check failed:', err.message);
+      appState.win?.webContents.send('update-error', err.message);
+    });
+  });
+
+  // Updater window minimize
+  ipcMain.on('updater-minimize', () => {
+    updaterWindow?.minimize();
+  });
+
   ipcMain.on('start-update-download', () => {
     autoUpdater.downloadUpdate();
   });
@@ -1636,6 +1707,7 @@ function setupAutoUpdater() {
 
   autoUpdater.on('update-not-available', () => {
     console.log('[Updater] App is up to date');
+    appState.win?.webContents.send('update-not-available');
   });
 
   autoUpdater.on('download-progress', (progress) => {
@@ -1700,13 +1772,14 @@ function doUpdateCheck() {
 
 function createUpdaterWindow() {
   updaterWindow = new BrowserWindow({
-    width: 380,
-    height: 240,
+    width: 400,
+    height: 280,
     resizable: false,
     maximizable: false,
     closable: false,
     minimizable: true,
     frame: false,
+    transparent: false,
     show: false,
     alwaysOnTop: true,
     webPreferences: {
@@ -1722,11 +1795,6 @@ function createUpdaterWindow() {
 }
 
 app.on('will-quit', () => {
-  // globalShortcut can only be used after the app is ready.
-  // When a second instance is blocked by the single-instance lock it calls
-  // app.quit() before app.whenReady() fires, so 'will-quit' fires in a
-  // not-yet-ready state. Guard against that to prevent the crash:
-  // "globalShortcut cannot be used before the app is ready"
   if (app.isReady()) {
     globalShortcut.unregisterAll();
   }
