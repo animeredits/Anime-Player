@@ -82,4 +82,8 @@ contextBridge.exposeInMainWorld('electron', {
   // Shutdown Controls
   sendShutdownRequest: () => ipcRenderer.send('shutdown-pc'),
   setShutdownTimer: (minutes) => ipcRenderer.send('shutdown-after-time', minutes),
+
+  // Hot-reload (development only)
+  reloadRenderer: () => ipcRenderer.invoke('reload-renderer'),
+  getDevMode: () => ipcRenderer.invoke('get-dev-mode'),
 });

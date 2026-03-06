@@ -27,6 +27,7 @@
     },
     "devDependencies": {
         "@electron/packager": "^0.0.0",
+        "chokidar": "^3.5.3",
         "cross-env": "^10.1.0",
         "depcheck": "^1.4.7",
         "electron": "^39.2.7",

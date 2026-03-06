@@ -398,16 +398,64 @@ appState.win.webContents.on('before-input-event', (event, input) => {
   setupWindowEvents();
 
 
+  // ─────────────────────────────────────────────────────────────────────────
+  // HOT RELOAD SETUP - Watch files and reload without restarting the app
+  // ─────────────────────────────────────────────────────────────────────────
   if (!app.isPackaged) {
-  try {
-    require('electron-reload')(__dirname, {
-      electron: path.join(__dirname, '..', 'node_modules', '.bin', 'electron'),
-      hardResetMethod: 'exit'
-    });
-  } catch (e) {
-    console.log('electron-reload not available');
+    try {
+      require('electron-reload')(__dirname, {
+        electron: path.join(__dirname, '..', 'node_modules', '.bin', 'electron'),
+        hardResetMethod: 'exit',
+        // Watch the src directory and related files
+        awaitWriteFinish: {
+          stabilityWaitMs: 1000,
+          pollInterval: 100
+        }
+      });
+      console.log('✅ Hot-reload enabled for development');
+    } catch (e) {
+      console.warn('⚠️ electron-reload not available, hot-reload disabled');
+    }
+    
+    // Watch CSS and JS files for changes and reload renderer without app restart
+    const chokidar = require('chokidar');
+    const watchPaths = [
+      path.join(__dirname, '*.js'),      // Main process JS
+      path.join(__dirname, '*.html'),    // HTML files
+      path.join(__dirname, '..', 'src', '*.js'),
+      path.join(__dirname, '..', 'src', '*.css')
+    ];
+    
+    try {
+      const watcher = chokidar.watch(watchPaths, {
+        ignored: /node_modules/,
+        awaitWriteFinish: {
+          stabilityWaitMs: 1000,
+          pollInterval: 100
+        }
+      });
+      
+      watcher.on('change', (filePath) => {
+        console.log(`🔄 File changed: ${path.basename(filePath)}`);
+        if (appState.win && !appState.win.isDestroyed()) {
+          // For CSS/HTML changes, reload the renderer
+          if (filePath.endsWith('.css') || filePath.endsWith('.html')) {
+            console.log('🎨 Reloading renderer...');
+            appState.win.webContents.reloadIgnoringCache();
+          }
+          // For JS changes in renderer, also reload
+          else if (filePath.includes('renderer') || filePath.includes('src')) {
+            console.log('⚡ Reloading renderer...');
+            appState.win.webContents.reloadIgnoringCache();
+          }
+        }
+      });
+      
+      console.log('✅ File watcher initialized for hot-reload');
+    } catch (e) {
+      console.log('💡 Chokidar not available - basic electron-reload will handle file changes');
+    }
   }
-}
 
 // Handle file/folder open from context menu
   ipcMain.handle("open-folder", async (event, folderPath) => {
@@ -683,8 +731,25 @@ function setupIPCHandlers() {
       gpuName,
       hwAccel:      hwAccelArgs.join(' ') || 'none',
       copyrightYear: new Date().getFullYear(),
+      isDev:        !app.isPackaged, // Add dev mode indicator
     };
   });
+
+  // ── Hot-reload handlers (development only) ─────────────────────────────────
+  if (!app.isPackaged) {
+    ipcMain.handle('reload-renderer', () => {
+      if (appState.win && !appState.win.isDestroyed()) {
+        console.log('🔄 Manual renderer reload requested');
+        appState.win.webContents.reloadIgnoringCache();
+        return { success: true, message: 'Renderer reloading...' };
+      }
+      return { success: false, message: 'Window not available' };
+    });
+
+    ipcMain.handle('get-dev-mode', () => {
+      return true;
+    });
+  }
 
   // Window control
   ipcMain.on("Minimize", () => appState.win?.minimize());
