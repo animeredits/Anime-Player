@@ -5409,15 +5409,57 @@ function _captureAndFreeze() {
 	if (!video.videoWidth || !video.videoHeight) return;
 	_ensureFreezeCanvas();
 
-	// Match canvas resolution to actual video pixels for sharp snapshot
-	_freezeCanvas.width = video.videoWidth;
-	_freezeCanvas.height = video.videoHeight;
+	const rotationAngle = parseInt(video.dataset.rotation) || 0;
+	const vw = video.videoWidth;
+	const vh = video.videoHeight;
+
+	// Bake the rotation into the canvas pixel data so the canvas itself can
+	// remain a simple 100%×100% overlay with no CSS transform.
+	// Applying the video's CSS transform to the canvas causes tiling artefacts
+	// because the canvas pixel dimensions and CSS dimensions fight each other.
+	_freezeCtx.save();
+	_freezeCtx.setTransform(1, 0, 0, 1, 0, 0); // reset any previous transform
+
+	switch (rotationAngle) {
+		case 90:
+			// Swap canvas dimensions, rotate CW 90°
+			_freezeCanvas.width  = vh;
+			_freezeCanvas.height = vw;
+			_freezeCtx.translate(vh, 0);
+			_freezeCtx.rotate(Math.PI / 2);
+			break;
+		case -90:
+			// Swap canvas dimensions, rotate CCW 90°
+			_freezeCanvas.width  = vh;
+			_freezeCanvas.height = vw;
+			_freezeCtx.translate(0, vw);
+			_freezeCtx.rotate(-Math.PI / 2);
+			break;
+		case 180:
+			_freezeCanvas.width  = vw;
+			_freezeCanvas.height = vh;
+			_freezeCtx.translate(vw, vh);
+			_freezeCtx.rotate(Math.PI);
+			break;
+		default:
+			_freezeCanvas.width  = vw;
+			_freezeCanvas.height = vh;
+			break;
+	}
+
+	// Keep canvas CSS as a plain full-size overlay — no CSS transform needed
+	_freezeCanvas.style.transform       = '';
+	_freezeCanvas.style.transformOrigin = '';
+	_freezeCanvas.style.width           = '100%';
+	_freezeCanvas.style.height          = '100%';
 
 	try {
-		_freezeCtx.drawImage(video, 0, 0, _freezeCanvas.width, _freezeCanvas.height);
+		_freezeCtx.drawImage(video, 0, 0, vw, vh);
+		_freezeCtx.restore();
 		_freezeCanvas.style.display = 'block';
 		_freezeActive = true;
 	} catch (e) {
+		_freezeCtx.restore();
 		// drawImage can fail if video is in error state — just skip freeze
 		_freezeActive = false;
 	}
@@ -5426,7 +5468,14 @@ function _captureAndFreeze() {
 function _releaseFreezeFrame() {
 	clearTimeout(_seekSpinnerTimer);
 	cancelAnimationFrame(_rafHandle);
-	if (_freezeCanvas) _freezeCanvas.style.display = 'none';
+	if (_freezeCanvas) {
+		_freezeCanvas.style.display = 'none';
+		// Reset transform/dimensions so the canvas is neutral for the next seek
+		_freezeCanvas.style.transform       = '';
+		_freezeCanvas.style.transformOrigin = '';
+		_freezeCanvas.style.width           = '100%';
+		_freezeCanvas.style.height          = '100%';
+	}
 	_freezeActive = false;
 	// Loader completely disabled
 }
