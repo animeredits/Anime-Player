@@ -31,9 +31,6 @@
 
     <!-- ── Fonts and Icons ────────────────────────────────────────────── -->
     <!-- Combine all 3 Material Symbols variants into one request -->
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,300,0,0&family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@24,300,0,0&family=Material+Symbols+Sharp:opsz,wght,FILL,GRAD@20,100,0,0" />
-    <link rel="stylesheet" href="https://site-assets.fontawesome.com/releases/v6.4.2/css/all.css" />
     <link rel="stylesheet" href="styles.css" />
     
     <!-- ── Modal Animations ──────────────────────────────────────────────── -->
@@ -250,6 +247,45 @@
         display: none !important;
         pointer-events: none;
       }
+
+      /* ── SVG Icons (replaces Font Awesome CDN) ───────────────────────── */
+      .svg-icon {
+        width: 1em;
+        height: 1em;
+        vertical-align: -0.125em;
+        display: inline-block;
+        filter: invert(1) opacity(0.85);
+        pointer-events: none;
+        flex-shrink: 0;
+      }
+      @keyframes fa-spin {
+        from { transform: rotate(0deg); }
+        to   { transform: rotate(360deg); }
+      }
+      .fa-spin { animation: fa-spin 1s linear infinite; }
+      .fa-xs   { width: 0.75em;  height: 0.75em;  }
+      .fa-sm   { width: 0.875em; height: 0.875em; }
+      .fa-lg   { width: 1.25em;  height: 1.25em;  }
+      .fa-xl   { width: 1.5em;   height: 1.5em;   }
+      .fa-2x   { width: 2em;     height: 2em;     }
+      .cm-icon .svg-icon             { width: 14px; height: 14px; vertical-align: middle; }
+      .nav-row-icon .svg-icon        { width: 13px; height: 13px; vertical-align: middle; }
+      .tool-modal-icon               { width: 18px; height: 18px; vertical-align: middle; margin-right: 4px; }
+      .vfx-icon .svg-icon            { width: 15px; height: 15px; vertical-align: middle; }
+      .sync-tab .svg-icon            { width: 13px; height: 13px; vertical-align: middle; margin-right: 3px; }
+      .vfx-tab .svg-icon             { width: 13px; height: 13px; vertical-align: middle; margin-right: 3px; }
+      .about-info-label .svg-icon    { width: 14px; height: 14px; vertical-align: middle; margin-right: 4px; }
+      .about-link .svg-icon          { width: 14px; height: 14px; vertical-align: middle; margin-right: 4px; }
+      .tool-modal-btn .svg-icon,
+      .vfx-reset .svg-icon           { width: 13px; height: 13px; vertical-align: middle; margin-right: 3px; }
+      .viz-search-icon               { width: 13px; height: 13px; vertical-align: middle; opacity: 0.6; }
+      .playlist-search-icon          { width: 13px; height: 13px; vertical-align: middle; opacity: 0.6; flex-shrink: 0; }
+      .viz-upload-btn .svg-icon      { width: 13px; height: 13px; vertical-align: middle; margin-right: 4px; }
+      .gif-modal-icon .svg-icon      { width: 28px; height: 28px; opacity: 0.9; }
+      .gif-modal-btn .svg-icon       { width: 13px; height: 13px; vertical-align: middle; margin-right: 3px; }
+      .vfx-temp-cool .svg-icon,
+      .vfx-temp-warm .svg-icon       { width: 13px; height: 13px; vertical-align: middle; }
+      .about-update-status .svg-icon { width: 14px; height: 14px; vertical-align: middle; margin-right: 4px; }
     </style>
   </head>
   <body>
@@ -265,17 +301,17 @@
             <a href="javascript:void(0)" class="dropbtn">Media</a>
             <div class="dropdown-content">
               <a id="openFileButton" class="nav-row">
-                <span class="nav-row-icon"><i class="fa-solid fa-file-video"></i></span>
+                <span class="nav-row-icon"><img class="svg-icon" src="../assets/icons/fa/file-video.svg" alt=""></span>
                 <span class="nav-row-text">Open Files...</span>
                 <span class="nav-row-shortcut">Ctrl+O</span>
               </a>
               <a id="openFolderButton" class="nav-row">
-                <span class="nav-row-icon"><i class="fa-solid fa-folder-open"></i></span>
+                <span class="nav-row-icon"><img class="svg-icon" src="../assets/icons/fa/folder-open.svg" alt=""></span>
                 <span class="nav-row-text">Open Folder...</span>
                 <span class="nav-row-shortcut">Ctrl+F</span>
               </a>
               <a class="quit nav-row">
-                <span class="nav-row-icon"><i class="fa-solid fa-right-from-bracket"></i></span>
+                <span class="nav-row-icon"><img class="svg-icon" src="../assets/icons/fa/right-from-bracket.svg" alt=""></span>
                 <span class="nav-row-text">Quit...</span>
                 <span class="nav-row-shortcut">Ctrl+Q</span>
               </a>
@@ -287,21 +323,21 @@
               <!-- Speed sub-menu -->
               <div class="sub-dropdown">
                 <a href="javascript:void(0)" class="sub-dropbtn nav-row">
-                  <span class="nav-row-icon"><i class="fa-solid fa-gauge-high"></i></span>
+                  <span class="nav-row-icon"><img class="svg-icon" src="../assets/icons/fa/gauge-high.svg" alt=""></span>
                   <span class="nav-row-text">Speed</span>
                 </a>
                 <div class="sub-dropdown-content">
-                  <a href="javascript:void(0)" class="speed-option nav-row" data-speed="faster"><span class="nav-row-icon"><i class="fa-solid fa-forward-fast"></i></span><span class="nav-row-text">Faster</span></a>
-                  <a href="javascript:void(0)" class="speed-option nav-row" data-speed="faster-fine"><span class="nav-row-icon"><i class="fa-solid fa-forward"></i></span><span class="nav-row-text">Faster (fine)</span></a>
-                  <a href="javascript:void(0)" class="speed-option nav-row" data-speed="normal"><span class="nav-row-icon"><i class="fa-solid fa-play"></i></span><span class="nav-row-text">Normal Speed</span></a>
-                  <a href="javascript:void(0)" class="speed-option nav-row" data-speed="slower-fine"><span class="nav-row-icon"><i class="fa-solid fa-backward"></i></span><span class="nav-row-text">Slower (fine)</span></a>
-                  <a href="javascript:void(0)" class="speed-option nav-row" data-speed="slower"><span class="nav-row-icon"><i class="fa-solid fa-backward-fast"></i></span><span class="nav-row-text">Slower</span></a>
+                  <a href="javascript:void(0)" class="speed-option nav-row" data-speed="faster"><span class="nav-row-icon"><img class="svg-icon" src="../assets/icons/fa/forward-fast.svg" alt=""></span><span class="nav-row-text">Faster</span></a>
+                  <a href="javascript:void(0)" class="speed-option nav-row" data-speed="faster-fine"><span class="nav-row-icon"><img class="svg-icon" src="../assets/icons/fa/forward.svg" alt=""></span><span class="nav-row-text">Faster (fine)</span></a>
+                  <a href="javascript:void(0)" class="speed-option nav-row" data-speed="normal"><span class="nav-row-icon"><img class="svg-icon" src="../assets/icons/fa/play.svg" alt=""></span><span class="nav-row-text">Normal Speed</span></a>
+                  <a href="javascript:void(0)" class="speed-option nav-row" data-speed="slower-fine"><span class="nav-row-icon"><img class="svg-icon" src="../assets/icons/fa/backward.svg" alt=""></span><span class="nav-row-text">Slower (fine)</span></a>
+                  <a href="javascript:void(0)" class="speed-option nav-row" data-speed="slower"><span class="nav-row-icon"><img class="svg-icon" src="../assets/icons/fa/backward-fast.svg" alt=""></span><span class="nav-row-text">Slower</span></a>
                 </div>
               </div>
               <!-- Playlist -->
               <div class="sub-dropdown">
                 <a href="javascript:void(0)" class="sub-dropbtn nav-row">
-                  <span class="nav-row-icon"><i class="fa-solid fa-list"></i></span>
+                  <span class="nav-row-icon"><img class="svg-icon" src="../assets/icons/fa/list.svg" alt=""></span>
                   <span class="nav-row-text">Playlist</span>
                 </a>
                 <div class="sub-dropdown-content play-list"></div>
@@ -309,51 +345,51 @@
               <!-- Sort By -->
               <div class="sub-dropdown">
                 <a href="javascript:void(0)" class="sub-dropbtn nav-row">
-                  <span class="nav-row-icon"><i class="fa-solid fa-sort"></i></span>
+                  <span class="nav-row-icon"><img class="svg-icon" src="../assets/icons/fa/sort.svg" alt=""></span>
                   <span class="nav-row-text">Sort By</span>
                 </a>
                 <div class="sub-dropdown-content sort-dropdown">
                   <a href="javascript:void(0)" data-sort="name" class="sort-option active nav-row">
-                    <span class="nav-row-icon nav-sort-check"><i class="fa-solid fa-check"></i></span><span class="nav-row-text">Name</span><span class="nav-row-shortcut">Alt+N</span>
+                    <span class="nav-row-icon nav-sort-check"><img class="svg-icon" src="../assets/icons/fa/check.svg" alt=""></span><span class="nav-row-text">Name</span><span class="nav-row-shortcut">Alt+N</span>
                   </a>
                   <a href="javascript:void(0)" data-sort="date" class="sort-option nav-row">
                     <span class="nav-row-icon nav-sort-check"></span><span class="nav-row-text">Date</span><span class="nav-row-shortcut">Alt+D</span>
                   </a>
                   <div class="sort-divider"></div>
                   <a href="javascript:void(0)" data-sort="ascending" class="sort-order active nav-row">
-                    <span class="nav-row-icon nav-sort-check"><i class="fa-solid fa-check"></i></span><span class="nav-row-text">Ascending</span>
+                    <span class="nav-row-icon nav-sort-check"><img class="svg-icon" src="../assets/icons/fa/check.svg" alt=""></span><span class="nav-row-text">Ascending</span>
                   </a>
                   <a href="javascript:void(0)" data-sort="descending" class="sort-order nav-row">
                     <span class="nav-row-icon nav-sort-check"></span><span class="nav-row-text">Descending</span>
                   </a>
                   <div class="sort-divider"></div>
                   <a href="javascript:void(0)" class="toggle-sort-order nav-row">
-                    <span class="nav-row-icon"><i class="fa-solid fa-arrow-right-arrow-left"></i></span><span class="nav-row-text">Toggle Order</span><span class="nav-row-shortcut">Alt+O</span>
+                    <span class="nav-row-icon"><img class="svg-icon" src="../assets/icons/fa/arrow-right-arrow-left.svg" alt=""></span><span class="nav-row-text">Toggle Order</span><span class="nav-row-shortcut">Alt+O</span>
                   </a>
                 </div>
               </div>
               <div class="sort-divider"></div>
               <a href="javascript:void(0)" class="nav-row">
-                <span class="nav-row-icon"><i class="fa-solid fa-play"></i></span>
+                <span class="nav-row-icon"><img class="svg-icon" src="../assets/icons/fa/play.svg" alt=""></span>
                 <span class="nav-row-text">Play</span>
               </a>
               <a href="javascript:void(0)" class="nextbtn nav-row">
-                <span class="nav-row-icon"><i class="fa-solid fa-forward-step"></i></span>
+                <span class="nav-row-icon"><img class="svg-icon" src="../assets/icons/fa/forward-step.svg" alt=""></span>
                 <span class="nav-row-text">Next</span>
                 <span class="nav-row-shortcut">N</span>
               </a>
               <a href="javascript:void(0)" class="previousbtn nav-row">
-                <span class="nav-row-icon"><i class="fa-solid fa-backward-step"></i></span>
+                <span class="nav-row-icon"><img class="svg-icon" src="../assets/icons/fa/backward-step.svg" alt=""></span>
                 <span class="nav-row-text">Previous</span>
                 <span class="nav-row-shortcut">P</span>
               </a>
               <a href="javascript:void(0)" class="stopPlayback nav-row">
-                <span class="nav-row-icon"><i class="fa-solid fa-stop"></i></span>
+                <span class="nav-row-icon"><img class="svg-icon" src="../assets/icons/fa/stop.svg" alt=""></span>
                 <span class="nav-row-text">Stop</span>
               </a>
               <div class="sub-dropdown" id="navChaptersDropdown">
                 <a href="javascript:void(0)" class="sub-dropbtn nav-row" id="nav-chapters-btn">
-                  <span class="nav-row-icon"><i class="fa-solid fa-list-ol"></i></span>
+                  <span class="nav-row-icon"><img class="svg-icon" src="../assets/icons/fa/list-ol.svg" alt=""></span>
                   <span class="nav-row-text">Chapters</span>
                 </a>
                 <div class="sub-dropdown-content chapters-list-nav" id="chaptersListNav"></div>
@@ -365,28 +401,28 @@
             <div class="dropdown-content">
               <div class="sub-dropdown">
                 <a href="javascript:void(0)" class="sub-dropbtn nav-row">
-                  <span class="nav-row-icon"><i class="fa-solid fa-music"></i></span>
+                  <span class="nav-row-icon"><img class="svg-icon" src="../assets/icons/fa/music.svg" alt=""></span>
                   <span class="nav-row-text">Audio Track</span>
                 </a>
                 <div class="sub-dropdown-content audio-track-list"></div>
               </div>
               <div class="sub-dropdown" id="audioDeviceDropdown">
                 <a href="javascript:void(0)" class="sub-dropbtn nav-row">
-                  <span class="nav-row-icon"><i class="fa-solid fa-volume-high"></i></span>
+                  <span class="nav-row-icon"><img class="svg-icon" src="../assets/icons/fa/volume-high.svg" alt=""></span>
                   <span class="nav-row-text">Audio Device</span>
                 </a>
                 <div class="sub-dropdown-content audio-device-list"></div>
               </div>
               <div class="sub-dropdown" id="audioLogoDropdown">
                 <a href="javascript:void(0)" class="sub-dropbtn nav-row">
-                  <span class="nav-row-icon"><i class="fa-solid fa-waveform-lines"></i></span>
+                  <span class="nav-row-icon"><img class="svg-icon" src="../assets/icons/fa/waveform-lines.svg" style="color: #fff;" alt=""></span>
                   <span class="nav-row-text">Visualization</span>
                 </a>
                 <div class="sub-dropdown-content viz-panel" id="logoOptions">
                   <!-- GIF Search Bar -->
                   <div class="viz-search-bar" id="gifSearchContainer">
                     <div class="viz-search-inner">
-                      <i class="fa-solid fa-magnifying-glass viz-search-icon"></i>
+                      <img class="svg-icon viz-search-icon" src="../assets/icons/fa/magnifying-glass.svg" alt="">
                       <input type="text" class="viz-search-input" id="gifSearchInput" placeholder="Search GIFs on Giphy…" autocomplete="off" />
                       <button class="viz-search-clear" id="gifSearchClear" title="Clear">&#x2715;</button>
                     </div>
@@ -453,23 +489,23 @@
                   <!-- Upload -->
                   <div class="viz-section-label">Custom</div>
                   <a href="javascript:void(0)" class="viz-upload-btn" id="customLogoLink">
-                    <i class="fa-solid fa-upload"></i> Upload GIF / Image
+                    <img class="svg-icon" src="../assets/icons/fa/upload.svg" alt=""> Upload GIF / Image
                   </a>
                   <input type="file" id="customLogoInput" accept="image/*,image/gif" style="display:none;" />
                 </div>
               </div>
               <a class="increase-volume nav-row">
-                <span class="nav-row-icon"><i class="fa-solid fa-volume-high"></i></span>
+                <span class="nav-row-icon"><img class="svg-icon" src="../assets/icons/fa/volume-high.svg" alt=""></span>
                 <span class="nav-row-text">Increase Volume</span>
                 <span class="nav-row-shortcut">&#8679;</span>
               </a>
               <a class="decrease-volume nav-row">
-                <span class="nav-row-icon"><i class="fa-solid fa-volume-low"></i></span>
+                <span class="nav-row-icon"><img class="svg-icon" src="../assets/icons/fa/volume-low.svg" alt=""></span>
                 <span class="nav-row-text">Decrease Volume</span>
                 <span class="nav-row-shortcut">&#8681;</span>
               </a>
               <a class="mute-btn nav-row">
-                <span class="nav-row-icon" style="color:rgba(220,80,80,0.9)"><i class="fa-solid fa-volume-xmark"></i></span>
+                <span class="nav-row-icon" style="color:rgba(220,80,80,0.9)"><img class="svg-icon" src="../assets/icons/fa/volume-xmark.svg" alt=""></span>
                 <span class="nav-row-text">Mute</span>
                 <span class="nav-row-shortcut">M</span>
               </a>
@@ -479,13 +515,13 @@
             <a href="javascript:void(0)" class="dropbtn">Video</a>
             <div class="dropdown-content">
               <a class="fullscreen-button nav-row" id="nav-fullscreen-btn">
-                <span class="nav-row-icon"><i class="fa-solid fa-expand"></i></span>
+                <span class="nav-row-icon"><img class="svg-icon" src="../assets/icons/fa/expand.svg" alt=""></span>
                 <span class="nav-row-text">Full Screen</span>
                 <span class="nav-row-shortcut">F</span>
               </a>
               <div class="sub-dropdown">
                 <a href="javascript:void(0)" class="sub-dropbtn nav-row">
-                  <span class="nav-row-icon"><i class="fa-solid fa-magnifying-glass-plus"></i></span>
+                  <span class="nav-row-icon"><img class="svg-icon" src="../assets/icons/fa/magnifying-glass-plus.svg" alt=""></span>
                   <span class="nav-row-text">Zoom</span>
                 </a>
                 <div class="sub-dropdown-content zoom-track-list" id="zoom-track-list">
@@ -494,16 +530,16 @@
                   <a data-zoom-level="2" class="nav-row"><span class="nav-row-icon"></span><span class="nav-row-text">2×</span></a>
                   <a data-zoom-level="3" class="nav-row"><span class="nav-row-icon"></span><span class="nav-row-text">2.5×</span></a>
                   <a data-zoom-level="4" class="nav-row"><span class="nav-row-icon"></span><span class="nav-row-text">3×</span></a>
-                  <a data-zoom-level="5" class="nav-row"><span class="nav-row-icon"><i class="fa-solid fa-rotate-left"></i></span><span class="nav-row-text">Reset</span></a>
+                  <a data-zoom-level="5" class="nav-row"><span class="nav-row-icon"><img class="svg-icon" src="../assets/icons/fa/rotate-left.svg" alt=""></span><span class="nav-row-text">Reset</span></a>
                 </div>
               </div>
               <div class="sub-dropdown">
                 <a href="javascript:void(0)" class="sub-dropbtn nav-row">
-                  <span class="nav-row-icon"><i class="fa-solid fa-rectangle"></i></span>
+                  <span class="nav-row-icon"><img class="svg-icon" src="../assets/icons/fa/aspect-ratio.svg" alt=""></span>
                   <span class="nav-row-text">Aspect Ratio</span>
                 </a>
                 <div class="sub-dropdown-content aspect-ratio-list" id="aspect-ratio-list">
-                  <a data-aspect-ratio="original" class="aspect-ratio-option nav-row"><span class="nav-row-icon nav-aspect-check"><i class="fa-solid fa-check"></i></span><span class="nav-row-text">Original</span></a>
+                  <a data-aspect-ratio="original" class="aspect-ratio-option nav-row"><span class="nav-row-icon nav-aspect-check"><img class="svg-icon" src="../assets/icons/fa/check.svg" alt=""></span><span class="nav-row-text">Original</span></a>
                   <a data-aspect-ratio="fit" class="aspect-ratio-option nav-row"><span class="nav-row-icon nav-aspect-check"></span><span class="nav-row-text">Fit (Contain)</span></a>
                   <a data-aspect-ratio="fill" class="aspect-ratio-option nav-row"><span class="nav-row-icon nav-aspect-check"></span><span class="nav-row-text">Fill (Stretch)</span></a>
                   <div class="sort-divider"></div>
@@ -519,12 +555,12 @@
             <a href="javascript:void(0)" class="dropbtn">Subtitle</a>
             <div class="dropdown-content">
               <a class="nav-row add-subtitle-btn">
-                <span class="nav-row-icon"><i class="fa-solid fa-plus"></i></span>
+                <span class="nav-row-icon"><img class="svg-icon" src="../assets/icons/fa/plus.svg" alt=""></span>
                 <span class="nav-row-text">Add Subtitle file...</span>
               </a>
               <div class="sub-dropdown">
                 <a href="javascript:void(0)" class="sub-dropbtn nav-row">
-                  <span class="nav-row-icon"><i class="fa-solid fa-closed-captioning"></i></span>
+                  <span class="nav-row-icon"><img class="svg-icon" src="../assets/icons/fa/closed-captioning.svg" alt=""></span>
                   <span class="nav-row-text">Subtitle Track</span>
                 </a>
                 <div class="sub-dropdown-content subtitle-track-list"></div>
@@ -536,7 +572,7 @@
             <div class="dropdown-content">
               <div class="sub-dropdown">
                 <a href="javascript:void(0)" class="sub-dropbtn nav-row">
-                  <span class="nav-row-icon"><i class="fa-solid fa-sliders"></i></span>
+                  <span class="nav-row-icon"><img class="svg-icon" src="../assets/icons/fa/sliders.svg" alt=""></span>
                   <span class="nav-row-text">Audio Effects</span>
                 </a>
                 <div class="sub-dropdown-content">
@@ -548,17 +584,17 @@
                 </div>
               </div>
               <a href="javascript:void(0)" id="openVideoEffectsBtn" class="nav-row">
-                <span class="nav-row-icon"><i class="fa-solid fa-palette"></i></span>
+                <span class="nav-row-icon"><img class="svg-icon" src="../assets/icons/fa/palette.svg" alt=""></span>
                 <span class="nav-row-text">Video Effects</span>
                 <span class="nav-row-shortcut">Ctrl+E</span>
               </a>
               <a href="javascript:void(0)" id="openSyncToolBtn" class="nav-row">
-                <span class="nav-row-icon"><i class="fa-solid fa-sliders-h"></i></span>
+                <span class="nav-row-icon"><img class="svg-icon" src="../assets/icons/fa/sliders.svg" alt=""></span>
                 <span class="nav-row-text">Track Sync</span>
                 <span class="nav-row-shortcut">Ctrl+Y</span>
               </a>
               <a href="javascript:void(0)" id="sleep-timer" class="nav-row">
-                <span class="nav-row-icon"><i class="fa-solid fa-clock"></i></span>
+                <span class="nav-row-icon"><img class="svg-icon" src="../assets/icons/fa/clock.svg" alt=""></span>
                 <span class="nav-row-text">Sleep Timer</span>
                 <span class="nav-row-shortcut">Ctrl+T</span>
               </a>
@@ -568,17 +604,17 @@
             <a href="javascript:void(0)" class="dropbtn">Help</a>
             <div class="dropdown-content">
               <a id="showShortcuts" class="nav-row">
-                <span class="nav-row-icon"><i class="fa-solid fa-keyboard"></i></span>
+                <span class="nav-row-icon"><img class="svg-icon" src="../assets/icons/fa/keyboard.svg" alt=""></span>
                 <span class="nav-row-text">Shortcuts</span>
                 <span class="nav-row-shortcut">Shift+/</span>
               </a>
               <div class="sort-divider"></div>
               <a href="javascript:void(0)" id="checkUpdateBtn" class="nav-row">
-                <span class="nav-row-icon"><i class="fa-solid fa-rotate"></i></span>
+                <span class="nav-row-icon"><img class="svg-icon" src="../assets/icons/fa/rotate.svg" alt=""></span>
                 <span class="nav-row-text">Check for Updates</span>
               </a>
               <a href="javascript:void(0)" id="showAboutBtn" class="nav-row">
-                <span class="nav-row-icon"><i class="fa-solid fa-circle-info"></i></span>
+                <span class="nav-row-icon"><img class="svg-icon" src="../assets/icons/fa/circle-info.svg" alt=""></span>
                 <span class="nav-row-text">About</span>
               </a>
             </div>
@@ -590,7 +626,7 @@
         <!-- Custom Confirm Dialog -->
         <div id="customConfirmDialog" class="gif-modal">
           <div class="gif-modal-content">
-            <div class="gif-modal-icon"><i class="fa-solid fa-floppy-disk"></i></div>
+            <div class="gif-modal-icon"><img class="svg-icon" src="../assets/icons/fa/floppy-disk.svg" alt=""></div>
             <h2 class="gif-modal-title">Save as Default Logo?</h2>
             <p class="gif-modal-subtitle">This image will appear in the audio visualization dropdown.</p>
             <div class="gif-modal-checkbox">
@@ -606,7 +642,7 @@
             <div class="gif-modal-actions">
               <button id="cancelButton" class="gif-modal-btn gif-modal-btn--cancel">Cancel</button>
               <button id="confirmButton" class="gif-modal-btn gif-modal-btn--confirm">
-                <i class="fa-solid fa-check"></i>&nbsp;Save
+                <img class="svg-icon" src="../assets/icons/fa/check.svg" alt="">&nbsp;Save
               </button>
             </div>
           </div>
@@ -617,17 +653,17 @@
           <div class="tool-modal-inner vfx-modal-inner">
             <div class="tool-modal-header">
               <div class="tool-modal-title-wrap">
-                <i class="fa-solid fa-wand-magic-sparkles tool-modal-icon"></i>
+                <img class="svg-icon tool-modal-icon" src="../assets/icons/fa/wand-magic-sparkles.svg" alt="">
                 <span class="tool-modal-title">Video Effects</span>
               </div>
-              <button class="tool-modal-close" id="videoEffectsClose"><i class="fa-solid fa-xmark"></i></button>
+              <button class="tool-modal-close" id="videoEffectsClose"><img class="svg-icon" src="../assets/icons/fa/xmark.svg" alt=""></button>
             </div>
 
             <!-- VFX Tab bar -->
             <div class="vfx-tabs">
-              <button class="vfx-tab active" data-vfx-tab="color"><i class="fa-solid fa-droplet"></i> Color</button>
-              <button class="vfx-tab" data-vfx-tab="enhance"><i class="fa-solid fa-sparkles"></i> Enhance</button>
-              <button class="vfx-tab" data-vfx-tab="temp"><i class="fa-solid fa-temperature-half"></i> Temperature</button>
+              <button class="vfx-tab active" data-vfx-tab="color"><img class="svg-icon" src="../assets/icons/fa/droplet.svg" alt=""> Color</button>
+              <button class="vfx-tab" data-vfx-tab="enhance"><img class="svg-icon" src="../assets/icons/fa/sparkles.svg" alt=""> Enhance</button>
+              <button class="vfx-tab" data-vfx-tab="temp"><img class="svg-icon" src="../assets/icons/fa/temperature-half.svg" alt=""> Temperature</button>
             </div>
 
             <div class="tool-modal-body vfx-body">
@@ -637,48 +673,48 @@
                 <div class="vfx-slider-group">
                   <div class="vfx-row">
                     <div class="vfx-row-left">
-                      <span class="vfx-icon"><i class="fa-solid fa-palette"></i></span>
+                      <span class="vfx-icon"><img class="svg-icon" src="../assets/icons/fa/palette.svg" alt=""></span>
                       <label class="vfx-label">Hue</label>
                     </div>
                     <input type="range" class="vfx-slider" id="hueSlider" min="-180" max="180" value="0">
                     <span class="vfx-val" id="hueValue">0°</span>
-                    <button class="vfx-reset" data-target="hueSlider" data-default="0" title="Reset"><i class="fa-solid fa-rotate-left"></i></button>
+                    <button class="vfx-reset" data-target="hueSlider" data-default="0" title="Reset"><img class="svg-icon" src="../assets/icons/fa/rotate-left.svg" alt=""></button>
                   </div>
                   <div class="vfx-row">
                     <div class="vfx-row-left">
-                      <span class="vfx-icon"><i class="fa-solid fa-sun"></i></span>
+                      <span class="vfx-icon"><img class="svg-icon" src="../assets/icons/fa/sun.svg" alt=""></span>
                       <label class="vfx-label">Brightness</label>
                     </div>
                     <input type="range" class="vfx-slider" id="brightnessSlider" min="0" max="200" value="100">
                     <span class="vfx-val" id="brightnessValue">100%</span>
-                    <button class="vfx-reset" data-target="brightnessSlider" data-default="100" title="Reset"><i class="fa-solid fa-rotate-left"></i></button>
+                    <button class="vfx-reset" data-target="brightnessSlider" data-default="100" title="Reset"><img class="svg-icon" src="../assets/icons/fa/rotate-left.svg" alt=""></button>
                   </div>
                   <div class="vfx-row">
                     <div class="vfx-row-left">
-                      <span class="vfx-icon"><i class="fa-solid fa-circle-half-stroke"></i></span>
+                      <span class="vfx-icon"><img class="svg-icon" src="../assets/icons/fa/circle-half-stroke.svg" alt=""></span>
                       <label class="vfx-label">Contrast</label>
                     </div>
                     <input type="range" class="vfx-slider" id="contrastSlider" min="0" max="200" value="100">
                     <span class="vfx-val" id="contrastValue">100%</span>
-                    <button class="vfx-reset" data-target="contrastSlider" data-default="100" title="Reset"><i class="fa-solid fa-rotate-left"></i></button>
+                    <button class="vfx-reset" data-target="contrastSlider" data-default="100" title="Reset"><img class="svg-icon" src="../assets/icons/fa/rotate-left.svg" alt=""></button>
                   </div>
                   <div class="vfx-row">
                     <div class="vfx-row-left">
-                      <span class="vfx-icon"><i class="fa-solid fa-eye-dropper"></i></span>
+                      <span class="vfx-icon"><img class="svg-icon" src="../assets/icons/fa/eye-dropper.svg" alt=""></span>
                       <label class="vfx-label">Saturation</label>
                     </div>
                     <input type="range" class="vfx-slider" id="saturationSlider" min="0" max="200" value="100">
                     <span class="vfx-val" id="saturationValue">100%</span>
-                    <button class="vfx-reset" data-target="saturationSlider" data-default="100" title="Reset"><i class="fa-solid fa-rotate-left"></i></button>
+                    <button class="vfx-reset" data-target="saturationSlider" data-default="100" title="Reset"><img class="svg-icon" src="../assets/icons/fa/rotate-left.svg" alt=""></button>
                   </div>
                   <div class="vfx-row">
                     <div class="vfx-row-left">
-                      <span class="vfx-icon"><i class="fa-solid fa-sliders"></i></span>
+                      <span class="vfx-icon"><img class="svg-icon" src="../assets/icons/fa/sliders.svg" alt=""></span>
                       <label class="vfx-label">Gamma</label>
                     </div>
                     <input type="range" class="vfx-slider" id="gammaSlider" min="10" max="300" value="100">
                     <span class="vfx-val" id="gammaValue">1.00</span>
-                    <button class="vfx-reset" data-target="gammaSlider" data-default="100" title="Reset"><i class="fa-solid fa-rotate-left"></i></button>
+                    <button class="vfx-reset" data-target="gammaSlider" data-default="100" title="Reset"><img class="svg-icon" src="../assets/icons/fa/rotate-left.svg" alt=""></button>
                   </div>
                 </div>
               </div>
@@ -689,7 +725,7 @@
 
                   <div class="vfx-toggle-row">
                     <div class="vfx-toggle-left">
-                      <span class="vfx-icon"><i class="fa-solid fa-maximize"></i></span>
+                      <span class="vfx-icon"><img class="svg-icon" src="../assets/icons/fa/maximize.svg" alt=""></span>
                       <label class="vfx-label" for="sharpenToggle">Sharpen</label>
                     </div>
                     <label class="vfx-switch">
@@ -704,14 +740,14 @@
                     </div>
                     <input type="range" class="vfx-slider" id="sharpenSlider" min="0" max="100" value="0">
                     <span class="vfx-val" id="sharpenValue">0</span>
-                    <button class="vfx-reset" data-target="sharpenSlider" data-default="0" title="Reset"><i class="fa-solid fa-rotate-left"></i></button>
+                    <button class="vfx-reset" data-target="sharpenSlider" data-default="0" title="Reset"><img class="svg-icon" src="../assets/icons/fa/rotate-left.svg" alt=""></button>
                   </div>
 
                   <div class="vfx-divider"></div>
 
                   <div class="vfx-toggle-row">
                     <div class="vfx-toggle-left">
-                      <span class="vfx-icon"><i class="fa-solid fa-droplet-slash"></i></span>
+                      <span class="vfx-icon"><img class="svg-icon" src="../assets/icons/fa/droplet-slash.svg" alt=""></span>
                       <label class="vfx-label" for="blurToggle">Blur</label>
                     </div>
                     <label class="vfx-switch">
@@ -726,14 +762,14 @@
                     </div>
                     <input type="range" class="vfx-slider" id="blurSlider" min="0" max="20" value="0">
                     <span class="vfx-val" id="blurValue">0px</span>
-                    <button class="vfx-reset" data-target="blurSlider" data-default="0" title="Reset"><i class="fa-solid fa-rotate-left"></i></button>
+                    <button class="vfx-reset" data-target="blurSlider" data-default="0" title="Reset"><img class="svg-icon" src="../assets/icons/fa/rotate-left.svg" alt=""></button>
                   </div>
 
                   <div class="vfx-divider"></div>
 
                   <div class="vfx-toggle-row">
                     <div class="vfx-toggle-left">
-                      <span class="vfx-icon"><i class="fa-solid fa-circle-dot"></i></span>
+                      <span class="vfx-icon"><img class="svg-icon" src="../assets/icons/fa/circle-dot.svg" alt=""></span>
                       <label class="vfx-label" for="vignetteToggle">Vignette</label>
                     </div>
                     <label class="vfx-switch">
@@ -748,7 +784,7 @@
                     </div>
                     <input type="range" class="vfx-slider" id="vignetteSlider" min="0" max="100" value="0">
                     <span class="vfx-val" id="vignetteValue">0%</span>
-                    <button class="vfx-reset" data-target="vignetteSlider" data-default="0" title="Reset"><i class="fa-solid fa-rotate-left"></i></button>
+                    <button class="vfx-reset" data-target="vignetteSlider" data-default="0" title="Reset"><img class="svg-icon" src="../assets/icons/fa/rotate-left.svg" alt=""></button>
                   </div>
 
                 </div>
@@ -759,18 +795,18 @@
                 <div class="vfx-slider-group">
                   <div class="vfx-temp-header">
                     <div class="vfx-temp-scale">
-                      <span class="vfx-temp-cool"><i class="fa-solid fa-snowflake"></i> Cool</span>
-                      <span class="vfx-temp-warm"><i class="fa-solid fa-fire"></i> Warm</span>
+                      <span class="vfx-temp-cool"><img class="svg-icon" src="../assets/icons/fa/snowflake.svg" alt=""> Cool</span>
+                      <span class="vfx-temp-warm"><img class="svg-icon" src="../assets/icons/fa/fire.svg" alt=""> Warm</span>
                     </div>
                   </div>
                   <div class="vfx-row">
                     <div class="vfx-row-left">
-                      <span class="vfx-icon"><i class="fa-solid fa-temperature-half"></i></span>
+                      <span class="vfx-icon"><img class="svg-icon" src="../assets/icons/fa/temperature-half.svg" alt=""></span>
                       <label class="vfx-label">Warmth</label>
                     </div>
                     <input type="range" class="vfx-slider vfx-slider--warm" id="warmthSlider" min="-100" max="100" value="0">
                     <span class="vfx-val" id="warmthValue">0</span>
-                    <button class="vfx-reset" data-target="warmthSlider" data-default="0" title="Reset"><i class="fa-solid fa-rotate-left"></i></button>
+                    <button class="vfx-reset" data-target="warmthSlider" data-default="0" title="Reset"><img class="svg-icon" src="../assets/icons/fa/rotate-left.svg" alt=""></button>
                   </div>
                   <p class="vfx-hint">Drag left for a cooler blue tint, right for a warmer amber tone.</p>
                 </div>
@@ -779,7 +815,7 @@
             </div><!-- /vfx-body -->
 
             <div class="tool-modal-footer">
-              <button class="tool-modal-btn tool-modal-btn--ghost" id="videoEffectsResetAll"><i class="fa-solid fa-rotate-left"></i> Reset All</button>
+              <button class="tool-modal-btn tool-modal-btn--ghost" id="videoEffectsResetAll"><img class="svg-icon" src="../assets/icons/fa/rotate-left.svg" alt=""> Reset All</button>
               <button class="tool-modal-btn tool-modal-btn--primary" id="videoEffectsClose2">Done</button>
             </div>
           </div>
@@ -790,16 +826,16 @@
           <div class="tool-modal-inner tool-modal-inner--sync">
             <div class="tool-modal-header">
               <div class="tool-modal-title-wrap">
-                <i class="fa-solid fa-sliders tool-modal-icon"></i>
+                <img class="svg-icon tool-modal-icon" src="../assets/icons/fa/sliders.svg" alt="">
                 <span class="tool-modal-title">Track Sync</span>
               </div>
-              <button class="tool-modal-close" id="syncToolClose"><i class="fa-solid fa-xmark"></i></button>
+              <button class="tool-modal-close" id="syncToolClose"><img class="svg-icon" src="../assets/icons/fa/xmark.svg" alt=""></button>
             </div>
             <!-- Tabs -->
             <div class="sync-tabs">
-              <button class="sync-tab active" data-tab="audio"><i class="fa-solid fa-volume-high"></i> Audio</button>
-              <button class="sync-tab" data-tab="video"><i class="fa-solid fa-film"></i> Video</button>
-              <button class="sync-tab" data-tab="subtitle"><i class="fa-solid fa-closed-captioning"></i> Subtitle</button>
+              <button class="sync-tab active" data-tab="audio"><img class="svg-icon" src="../assets/icons/fa/volume-high.svg" alt=""> Audio</button>
+              <button class="sync-tab" data-tab="video"><img class="svg-icon" src="../assets/icons/fa/film.svg" alt=""> Video</button>
+              <button class="sync-tab" data-tab="subtitle"><img class="svg-icon" src="../assets/icons/fa/closed-captioning.svg" alt=""> Subtitle</button>
             </div>
 
             <!-- Tab: Audio -->
@@ -891,7 +927,7 @@
             </div>
 
             <div class="tool-modal-footer">
-              <button class="tool-modal-btn tool-modal-btn--ghost" id="syncResetBtn"><i class="fa-solid fa-rotate-left"></i> Reset All</button>
+              <button class="tool-modal-btn tool-modal-btn--ghost" id="syncResetBtn"><img class="svg-icon" src="../assets/icons/fa/rotate-left.svg" alt=""> Reset All</button>
               <button class="tool-modal-btn tool-modal-btn--primary" id="syncToolClose2">Done</button>
             </div>
           </div>
@@ -902,10 +938,10 @@
           <div class="tool-modal-inner tool-modal-inner--about">
             <div class="tool-modal-header">
               <div class="tool-modal-title-wrap">
-                <i class="fa-solid fa-circle-info tool-modal-icon"></i>
+                <img class="svg-icon tool-modal-icon" src="../assets/icons/fa/circle-info.svg" alt="">
                 <span class="tool-modal-title">About Anime Player</span>
               </div>
-              <button class="tool-modal-close" id="aboutClose"><i class="fa-solid fa-xmark"></i></button>
+              <button class="tool-modal-close" id="aboutClose"><img class="svg-icon" src="../assets/icons/fa/xmark.svg" alt=""></button>
             </div>
 
             <!-- Hero Section -->
@@ -925,15 +961,15 @@
             <!-- System Info Grid — OS, GPU, HW Accel only -->
             <div class="about-info-grid">
               <div class="about-info-row">
-                <span class="about-info-label"><i class="fa-solid fa-computer"></i> OS</span>
+                <span class="about-info-label"><img class="svg-icon" src="../assets/icons/fa/computer.svg" alt=""> OS</span>
                 <span class="about-info-value" id="aboutOsValue">—</span>
               </div>
               <div class="about-info-row">
-                <span class="about-info-label"><i class="fa-solid fa-microchip"></i> GPU</span>
+                <span class="about-info-label"><img class="svg-icon" src="../assets/icons/fa/microchip.svg" alt=""> GPU</span>
                 <span class="about-info-value" id="aboutGpuValue">—</span>
               </div>
               <div class="about-info-row">
-                <span class="about-info-label"><i class="fa-solid fa-bolt"></i> HW Accel</span>
+                <span class="about-info-label"><img class="svg-icon" src="../assets/icons/fa/bolt.svg" alt=""> HW Accel</span>
                 <span class="about-info-value" id="aboutHwAccelValue">—</span>
               </div>
             </div>
@@ -946,17 +982,17 @@
             <!-- Links -->
             <div class="about-links">
               <a href="https://github.com/animeredits/Anime-Player" class="about-link" target="_blank">
-                <i class="fa-brands fa-github"></i> GitHub
+                <img class="svg-icon" src="../assets/icons/fa/github.svg" alt=""> GitHub
               </a>
               <a href="https://github.com/animeredits/Anime-Player/releases" class="about-link" target="_blank">
-                <i class="fa-solid fa-tag"></i> Releases
+                <img class="svg-icon" src="../assets/icons/fa/tag.svg" alt=""> Releases
               </a>
             </div>
             <div class="about-copy" id="aboutCopyYear">© 2025 animeredits — MIT License</div>
 
             <div class="tool-modal-footer">
               <button class="tool-modal-btn tool-modal-btn--secondary" id="aboutCheckUpdate">
-                <i class="fa-solid fa-rotate" id="aboutUpdateIcon"></i> Check for Updates
+                <img class="svg-icon" id="aboutUpdateIcon" src="../assets/icons/fa/rotate.svg" alt=""> Check for Updates
               </button>
               <button class="tool-modal-btn tool-modal-btn--primary" id="aboutClose2">Close</button>
             </div>
@@ -1048,26 +1084,26 @@
             <!-- Group 1: Playback Controls -->
             <li>
               <a id="contextTogglePlayPause">
-                <span class="cm-icon"><i class="fa-solid fa-play"></i></span>
+                <span class="cm-icon"><img class="svg-icon" src="../assets/icons/fa/play.svg" alt=""></span>
                 <span class="cm-text">Play</span>
               </a>
             </li>
             <li>
               <a class="stopPlayback">
-                <span class="cm-icon"><i class="fa-solid fa-stop"></i></span>
+                <span class="cm-icon"><img class="svg-icon" src="../assets/icons/fa/stop.svg" alt=""></span>
                 <span class="cm-text">Stop</span>
               </a>
             </li>
             <li>
               <a class="previousbtn">
-                <span class="cm-icon"><i class="fa-solid fa-backward-step"></i></span>
+                <span class="cm-icon"><img class="svg-icon" src="../assets/icons/fa/backward-step.svg" alt=""></span>
                 <span class="cm-text">Previous</span>
                 <span class="cm-shortcut">P</span>
               </a>
             </li>
             <li>
               <a class="nextbtn">
-                <span class="cm-icon"><i class="fa-solid fa-forward-step"></i></span>
+                <span class="cm-icon"><img class="svg-icon" src="../assets/icons/fa/forward-step.svg" alt=""></span>
                 <span class="cm-text">Next</span>
                 <span class="cm-shortcut">N</span>
               </a>
@@ -1078,17 +1114,17 @@
             <!-- Group 2: Tracks & Media -->
             <li id="context-menu-audio-track" class="cm-sub-item">
               <a href="javascript:void(0)">
-                <span class="cm-icon"><i class="fa-solid fa-headphones"></i></span>
+                <span class="cm-icon"><img class="svg-icon" src="../assets/icons/fa/headphones.svg" alt=""></span>
                 <span class="cm-text">Audio</span>
-                <span class="cm-arrow"><i class="fa-solid fa-chevron-right"></i></span>
+                <span class="cm-arrow"><img class="svg-icon" src="../assets/icons/fa/chevron-right.svg" alt=""></span>
               </a>
               <div class="cm-submenu">
                 <ul>
                   <li class="cm-sub-item">
                     <a href="javascript:void(0)">
-                      <span class="cm-icon"><i class="fa-solid fa-music"></i></span>
+                      <span class="cm-icon"><img class="svg-icon" src="../assets/icons/fa/music.svg" alt=""></span>
                       <span class="cm-text">Audio Track</span>
-                      <span class="cm-arrow"><i class="fa-solid fa-chevron-right"></i></span>
+                      <span class="cm-arrow"><img class="svg-icon" src="../assets/icons/fa/chevron-right.svg" alt=""></span>
                     </a>
                     <div class="cm-submenu">
                       <div class="audio-track-list cm-dynamic-list">
@@ -1098,9 +1134,9 @@
                   </li>
                   <li class="cm-sub-item" id="cm-audio-device-item">
                     <a href="javascript:void(0)">
-                      <span class="cm-icon"><i class="fa-solid fa-volume-high"></i></span>
+                      <span class="cm-icon"><img class="svg-icon" src="../assets/icons/fa/volume-high.svg" alt=""></span>
                       <span class="cm-text">Audio Device</span>
-                      <span class="cm-arrow"><i class="fa-solid fa-chevron-right"></i></span>
+                      <span class="cm-arrow"><img class="svg-icon" src="../assets/icons/fa/chevron-right.svg" alt=""></span>
                     </a>
                     <div class="cm-submenu">
                       <div class="audio-device-list cm-dynamic-list">
@@ -1110,14 +1146,14 @@
                   </li>
                   <li class="cm-sub-item" id="cm-viz-item">
                     <a href="javascript:void(0)">
-                      <span class="cm-icon"><i class="fa-solid fa-waveform-lines"></i></span>
+                      <span class="cm-icon"><img class="svg-icon" src="../assets/icons/fa/waveform-lines.svg" alt=""></span>
                       <span class="cm-text">Visualization</span>
-                      <span class="cm-arrow"><i class="fa-solid fa-chevron-right"></i></span>
+                      <span class="cm-arrow"><img class="svg-icon" src="../assets/icons/fa/chevron-right.svg" alt=""></span>
                     </a>
                     <div class="cm-submenu cm-viz-panel">
                       <div class="viz-search-bar viz-search-bar--cm">
                         <div class="viz-search-inner">
-                          <i class="fa-solid fa-magnifying-glass viz-search-icon"></i>
+                          <img class="svg-icon viz-search-icon" src="../assets/icons/fa/magnifying-glass.svg" alt="">
                           <input type="text" class="viz-search-input" id="gifSearchInputCM" placeholder="Search GIFs…" autocomplete="off" />
                         </div>
                       </div>
@@ -1132,28 +1168,28 @@
                         <div class="viz-preset-item" data-src="../assets/gif/8752356467101843848.gif"><div class="viz-thumb-wrap"><img src="../assets/gif/8752356467101843848.gif" loading="lazy"/></div><span>Oshi No Ko</span></div>
                       </div>
                       <a href="javascript:void(0)" class="viz-upload-btn" id="customLogoLinkCM">
-                        <i class="fa-solid fa-upload"></i> Upload
+                        <img class="svg-icon" src="../assets/icons/fa/upload.svg" alt=""> Upload
                       </a>
                     </div>
                   </li>
                   <li class="cm-divider"></li>
                   <li>
                     <a class="increase-volume">
-                      <span class="cm-icon"><i class="fa-solid fa-volume-high" style="opacity:0.9"></i></span>
+                      <span class="cm-icon"><img class="svg-icon" style="opacity:0.9" src="../assets/icons/fa/volume-high.svg" alt=""></span>
                       <span class="cm-text">Increase Volume</span>
                       <span class="cm-shortcut">&#8679;</span>
                     </a>
                   </li>
                   <li>
                     <a class="decrease-volume">
-                      <span class="cm-icon"><i class="fa-solid fa-volume-low"></i></span>
+                      <span class="cm-icon"><img class="svg-icon" src="../assets/icons/fa/volume-low.svg" alt=""></span>
                       <span class="cm-text">Decrease Volume</span>
                       <span class="cm-shortcut">&#8681;</span>
                     </a>
                   </li>
                   <li>
                     <a class="mute">
-                      <span class="cm-icon cm-icon-mute"><i class="fa-solid fa-volume-xmark"></i></span>
+                      <span class="cm-icon cm-icon-mute"><img class="svg-icon" src="../assets/icons/fa/volume-xmark.svg" alt=""></span>
                       <span class="cm-text">Mute</span>
                       <span class="cm-shortcut">M</span>
                     </a>
@@ -1164,15 +1200,15 @@
 
             <li class="cm-sub-item">
               <a href="javascript:void(0)">
-                <span class="cm-icon"><i class="fa-solid fa-film"></i></span>
+                <span class="cm-icon"><img class="svg-icon" src="../assets/icons/fa/film.svg" alt=""></span>
                 <span class="cm-text">Video</span>
-                <span class="cm-arrow"><i class="fa-solid fa-chevron-right"></i></span>
+                <span class="cm-arrow"><img class="svg-icon" src="../assets/icons/fa/chevron-right.svg" alt=""></span>
               </a>
               <div class="cm-submenu">
                 <ul>
                   <li>
                     <a class="fullscreen-button">
-                      <span class="cm-icon"><i class="fa-solid fa-expand"></i></span>
+                      <span class="cm-icon"><img class="svg-icon" src="../assets/icons/fa/expand.svg" alt=""></span>
                       <span class="cm-text">Full Screen</span>
                       <span class="cm-shortcut">F</span>
                     </a>
@@ -1180,9 +1216,9 @@
                   <li class="cm-divider"></li>
                   <li class="cm-sub-item">
                     <a href="javascript:void(0)">
-                      <span class="cm-icon"><i class="fa-solid fa-magnifying-glass-plus"></i></span>
+                      <span class="cm-icon"><img class="svg-icon" src="../assets/icons/fa/magnifying-glass-plus.svg" alt=""></span>
                       <span class="cm-text">Zoom</span>
-                      <span class="cm-arrow"><i class="fa-solid fa-chevron-right"></i></span>
+                      <span class="cm-arrow"><img class="svg-icon" src="../assets/icons/fa/chevron-right.svg" alt=""></span>
                     </a>
                     <div class="cm-submenu">
                       <ul class="zoom-track-list">
@@ -1192,19 +1228,19 @@
                         <li><a data-zoom-level="3"><span class="cm-icon"></span><span class="cm-text">2.5×</span></a></li>
                         <li><a data-zoom-level="4"><span class="cm-icon"></span><span class="cm-text">3×</span></a></li>
                         <li class="cm-divider"></li>
-                        <li><a data-zoom-level="5"><span class="cm-icon"><i class="fa-solid fa-rotate-left"></i></span><span class="cm-text">Reset</span></a></li>
+                        <li><a data-zoom-level="5"><span class="cm-icon"><img class="svg-icon" src="../assets/icons/fa/rotate-left.svg" alt=""></span><span class="cm-text">Reset</span></a></li>
                       </ul>
                     </div>
                   </li>
                   <li class="cm-sub-item">
                     <a href="javascript:void(0)">
-                      <span class="cm-icon"><i class="fa-solid fa-rectangle"></i></span>
+                      <span class="cm-icon"><img class="svg-icon" src="../assets/icons/fa/aspect-ratio.svg" alt=""></span>
                       <span class="cm-text">Aspect Ratio</span>
-                      <span class="cm-arrow"><i class="fa-solid fa-chevron-right"></i></span>
+                      <span class="cm-arrow"><img class="svg-icon" src="../assets/icons/fa/chevron-right.svg" alt=""></span>
                     </a>
                     <div class="cm-submenu">
                       <ul class="cm-aspect-ratio-list">
-                        <li><a data-aspect-ratio="original" class="cm-aspect-ratio-option"><span class="cm-icon cm-aspect-check"><i class="fa-solid fa-check"></i></span><span class="cm-text">Original</span></a></li>
+                        <li><a data-aspect-ratio="original" class="cm-aspect-ratio-option"><span class="cm-icon cm-aspect-check"><img class="svg-icon" src="../assets/icons/fa/check.svg" alt=""></span><span class="cm-text">Original</span></a></li>
                         <li><a data-aspect-ratio="fit" class="cm-aspect-ratio-option"><span class="cm-icon cm-aspect-check"></span><span class="cm-text">Fit (Contain)</span></a></li>
                         <li><a data-aspect-ratio="fill" class="cm-aspect-ratio-option"><span class="cm-icon cm-aspect-check"></span><span class="cm-text">Fill (Stretch)</span></a></li>
                         <li class="cm-divider"></li>
@@ -1221,15 +1257,15 @@
 
             <li class="cm-sub-item">
               <a href="javascript:void(0)">
-                <span class="cm-icon"><i class="fa-solid fa-closed-captioning"></i></span>
+                <span class="cm-icon"><img class="svg-icon" src="../assets/icons/fa/closed-captioning.svg" alt=""></span>
                 <span class="cm-text">Subtitle</span>
-                <span class="cm-arrow"><i class="fa-solid fa-chevron-right"></i></span>
+                <span class="cm-arrow"><img class="svg-icon" src="../assets/icons/fa/chevron-right.svg" alt=""></span>
               </a>
               <div class="cm-submenu">
                 <ul>
                   <li>
                     <a class="add-subtitle-btn">
-                      <span class="cm-icon"><i class="fa-solid fa-plus"></i></span>
+                      <span class="cm-icon"><img class="svg-icon" src="../assets/icons/fa/plus.svg" alt=""></span>
                       <span class="cm-text">Add Subtitle File...</span>
                     </a>
                   </li>
@@ -1243,26 +1279,26 @@
 
             <li class="cm-sub-item">
               <a href="javascript:void(0)">
-                <span class="cm-icon"><i class="fa-solid fa-forward"></i></span>
+                <span class="cm-icon"><img class="svg-icon" src="../assets/icons/fa/forward.svg" alt=""></span>
                 <span class="cm-text">Playback</span>
-                <span class="cm-arrow"><i class="fa-solid fa-chevron-right"></i></span>
+                <span class="cm-arrow"><img class="svg-icon" src="../assets/icons/fa/chevron-right.svg" alt=""></span>
               </a>
               <div class="cm-submenu">
                 <ul>
                   <!-- Speed sub-menu -->
                   <li class="cm-sub-item">
                     <a href="javascript:void(0)">
-                      <span class="cm-icon"><i class="fa-solid fa-gauge-high"></i></span>
+                      <span class="cm-icon"><img class="svg-icon" src="../assets/icons/fa/gauge-high.svg" alt=""></span>
                       <span class="cm-text">Speed</span>
-                      <span class="cm-arrow"><i class="fa-solid fa-chevron-right"></i></span>
+                      <span class="cm-arrow"><img class="svg-icon" src="../assets/icons/fa/chevron-right.svg" alt=""></span>
                     </a>
                     <div class="cm-submenu">
                       <ul>
-                        <li><a href="javascript:void(0)" class="speed-option" data-speed="faster"><span class="cm-icon"><i class="fa-solid fa-forward-fast"></i></span><span class="cm-text">Faster</span></a></li>
-                        <li><a href="javascript:void(0)" class="speed-option" data-speed="faster-fine"><span class="cm-icon"><i class="fa-solid fa-forward"></i></span><span class="cm-text">Faster (fine)</span></a></li>
-                        <li><a href="javascript:void(0)" class="speed-option" data-speed="normal"><span class="cm-icon"><i class="fa-solid fa-play"></i></span><span class="cm-text">Normal Speed</span></a></li>
-                        <li><a href="javascript:void(0)" class="speed-option" data-speed="slower-fine"><span class="cm-icon"><i class="fa-solid fa-backward"></i></span><span class="cm-text">Slower (fine)</span></a></li>
-                        <li><a href="javascript:void(0)" class="speed-option" data-speed="slower"><span class="cm-icon"><i class="fa-solid fa-backward-fast"></i></span><span class="cm-text">Slower</span></a></li>
+                        <li><a href="javascript:void(0)" class="speed-option" data-speed="faster"><span class="cm-icon"><img class="svg-icon" src="../assets/icons/fa/forward-fast.svg" alt=""></span><span class="cm-text">Faster</span></a></li>
+                        <li><a href="javascript:void(0)" class="speed-option" data-speed="faster-fine"><span class="cm-icon"><img class="svg-icon" src="../assets/icons/fa/forward.svg" alt=""></span><span class="cm-text">Faster (fine)</span></a></li>
+                        <li><a href="javascript:void(0)" class="speed-option" data-speed="normal"><span class="cm-icon"><img class="svg-icon" src="../assets/icons/fa/play.svg" alt=""></span><span class="cm-text">Normal Speed</span></a></li>
+                        <li><a href="javascript:void(0)" class="speed-option" data-speed="slower-fine"><span class="cm-icon"><img class="svg-icon" src="../assets/icons/fa/backward.svg" alt=""></span><span class="cm-text">Slower (fine)</span></a></li>
+                        <li><a href="javascript:void(0)" class="speed-option" data-speed="slower"><span class="cm-icon"><img class="svg-icon" src="../assets/icons/fa/backward-fast.svg" alt=""></span><span class="cm-text">Slower</span></a></li>
                       </ul>
                     </div>
                   </li>
@@ -1270,28 +1306,28 @@
                   <!-- Sort By -->
                   <li class="cm-sub-item">
                     <a href="javascript:void(0)">
-                      <span class="cm-icon"><i class="fa-solid fa-sort"></i></span>
+                      <span class="cm-icon"><img class="svg-icon" src="../assets/icons/fa/sort.svg" alt=""></span>
                       <span class="cm-text">Sort By</span>
-                      <span class="cm-arrow"><i class="fa-solid fa-chevron-right"></i></span>
+                      <span class="cm-arrow"><img class="svg-icon" src="../assets/icons/fa/chevron-right.svg" alt=""></span>
                     </a>
                     <div class="cm-submenu">
                       <ul class="sort-dropdown">
-                        <li><a href="javascript:void(0)" data-sort="name" class="sort-option active"><span class="cm-icon cm-check"><i class="fa-solid fa-check"></i></span><span class="cm-text">Name</span><span class="cm-shortcut">Alt+N</span></a></li>
+                        <li><a href="javascript:void(0)" data-sort="name" class="sort-option active"><span class="cm-icon cm-check"><img class="svg-icon" src="../assets/icons/fa/check.svg" alt=""></span><span class="cm-text">Name</span><span class="cm-shortcut">Alt+N</span></a></li>
                         <li><a href="javascript:void(0)" data-sort="date" class="sort-option"><span class="cm-icon cm-check"></span><span class="cm-text">Date</span><span class="cm-shortcut">Alt+D</span></a></li>
                         <li class="cm-divider"></li>
-                        <li><a href="javascript:void(0)" data-sort="ascending" class="sort-order active"><span class="cm-icon cm-check"><i class="fa-solid fa-check"></i></span><span class="cm-text">Ascending</span></a></li>
+                        <li><a href="javascript:void(0)" data-sort="ascending" class="sort-order active"><span class="cm-icon cm-check"><img class="svg-icon" src="../assets/icons/fa/check.svg" alt=""></span><span class="cm-text">Ascending</span></a></li>
                         <li><a href="javascript:void(0)" data-sort="descending" class="sort-order"><span class="cm-icon cm-check"></span><span class="cm-text">Descending</span></a></li>
                         <li class="cm-divider"></li>
-                        <li><a href="javascript:void(0)" class="toggle-sort-order"><span class="cm-icon"><i class="fa-solid fa-arrow-right-arrow-left"></i></span><span class="cm-text">Toggle Order</span><span class="cm-shortcut">Alt+O</span></a></li>
+                        <li><a href="javascript:void(0)" class="toggle-sort-order"><span class="cm-icon"><img class="svg-icon" src="../assets/icons/fa/arrow-right-arrow-left.svg" alt=""></span><span class="cm-text">Toggle Order</span><span class="cm-shortcut">Alt+O</span></a></li>
                       </ul>
                     </div>
                   </li>
                   <!-- Chapters sub-menu -->
                   <li class="cm-sub-item" id="cm-chapters-item">
                     <a href="javascript:void(0)">
-                      <span class="cm-icon"><i class="fa-solid fa-list-ol"></i></span>
+                      <span class="cm-icon"><img class="svg-icon" src="../assets/icons/fa/list-ol.svg" alt=""></span>
                       <span class="cm-text">Chapters</span>
-                      <span class="cm-arrow"><i class="fa-solid fa-chevron-right"></i></span>
+                      <span class="cm-arrow"><img class="svg-icon" src="../assets/icons/fa/chevron-right.svg" alt=""></span>
                     </a>
                     <div class="cm-submenu">
                       <div class="chapters-list-cm cm-dynamic-list" id="chaptersListCM">
@@ -1302,7 +1338,7 @@
                   <!-- Sleep Timer -->
                   <li>
                     <a id="context-menu-shutdown-timer">
-                      <span class="cm-icon"><i class="fa-solid fa-clock"></i></span>
+                      <span class="cm-icon"><img class="svg-icon" src="../assets/icons/fa/clock.svg" alt=""></span>
                       <span class="cm-text">Sleep Timer</span>
                       <span class="cm-shortcut">Ctrl+T</span>
                     </a>
@@ -1316,9 +1352,9 @@
             <!-- Group 3: Playlist & Media -->
             <li id="context-menu-playlist" class="cm-sub-item">
               <a href="javascript:void(0)">
-                <span class="cm-icon"><i class="fa-solid fa-list"></i></span>
+                <span class="cm-icon"><img class="svg-icon" src="../assets/icons/fa/list.svg" alt=""></span>
                 <span class="cm-text" id="context-play-list">Playlist</span>
-                <span class="cm-arrow"><i class="fa-solid fa-chevron-right"></i></span>
+                <span class="cm-arrow"><img class="svg-icon" src="../assets/icons/fa/chevron-right.svg" alt=""></span>
               </a>
               <div class="cm-submenu">
                 <div class="play-list cm-dynamic-list">
@@ -1329,22 +1365,22 @@
 
             <li class="cm-sub-item">
               <a href="javascript:void(0)">
-                <span class="cm-icon"><i class="fa-solid fa-folder-open"></i></span>
+                <span class="cm-icon"><img class="svg-icon" src="../assets/icons/fa/folder-open.svg" alt=""></span>
                 <span class="cm-text">Open Media</span>
-                <span class="cm-arrow"><i class="fa-solid fa-chevron-right"></i></span>
+                <span class="cm-arrow"><img class="svg-icon" src="../assets/icons/fa/chevron-right.svg" alt=""></span>
               </a>
               <div class="cm-submenu">
                 <ul>
                   <li>
                     <a id="contextOpenFile">
-                      <span class="cm-icon"><i class="fa-solid fa-file-video"></i></span>
+                      <span class="cm-icon"><img class="svg-icon" src="../assets/icons/fa/file-video.svg" alt=""></span>
                       <span class="cm-text">Open File</span>
                       <span class="cm-shortcut">Ctrl+O</span>
                     </a>
                   </li>
                   <li>
                     <a id="contextOpenFolder">
-                      <span class="cm-icon"><i class="fa-solid fa-folder"></i></span>
+                      <span class="cm-icon"><img class="svg-icon" src="../assets/icons/fa/folder.svg" alt=""></span>
                       <span class="cm-text">Open Folder</span>
                       <span class="cm-shortcut">Ctrl+F</span>
                     </a>
@@ -1358,7 +1394,7 @@
             <!-- Group 4: Quit -->
             <li>
               <a id="quit">
-                <span class="cm-icon"><i class="fa-solid fa-right-from-bracket"></i></span>
+                <span class="cm-icon"><img class="svg-icon" src="../assets/icons/fa/right-from-bracket.svg" alt=""></span>
                 <span class="cm-text quit">Quit</span>
                 <span class="cm-shortcut">Ctrl+Q</span>
               </a>

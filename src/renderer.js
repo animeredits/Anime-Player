@@ -306,8 +306,10 @@ function saveCustomLogo(filePath, fileName) {
 		const labelSpan = document.createElement("span");
 		labelSpan.textContent = fileName.length > 10 ? fileName.substring(0,10)+'…' : fileName;
 
-		const delIcon = document.createElement("i");
-		delIcon.className = "fa-solid fa-trash-can";
+		const delIcon = document.createElement("img");
+		delIcon.className = "svg-icon";
+		delIcon.src = "../assets/icons/fa/trash-can.svg";
+		delIcon.alt = "";
 		delIcon.style.cssText = "font-size:9px;color:rgba(255,80,80,0.7);cursor:pointer;margin-left:auto;";
 		delIcon.addEventListener("click", (e) => {
 			e.stopPropagation();
@@ -1170,7 +1172,7 @@ document.addEventListener('DOMContentLoaded', () => {
 			const iconEl   = document.getElementById('aboutUpdateIcon');
 			if (statusEl) {
 				statusEl.className = 'about-update-status about-update-status--checking';
-				statusEl.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin"></i> Checking for updates…';
+				statusEl.innerHTML = '<img class="svg-icon fa-spin" src="../assets/icons/fa/circle-notch.svg" alt=""> Checking for updates…';
 			}
 			if (iconEl) iconEl.classList.add('fa-spin');
 			showStatusMessage('Checking for updates…');
@@ -1186,7 +1188,7 @@ document.addEventListener('DOMContentLoaded', () => {
 				if (el && el.classList.contains('about-update-status--checking')) {
 					_setUpdateStatus(
 						'about-update-status--ok',
-						'<i class="fa-solid fa-circle-check"></i> You\'re up to date!'
+						'<img class="svg-icon" src="../assets/icons/fa/circle-check.svg" alt=""> You\'re up to date!'
 					);
 					showStatusMessage('Anime Player is up to date', 3000);
 				}
@@ -2185,8 +2187,10 @@ function updatePlaylistDropdown(mediaFiles) {
 		const searchWrap = document.createElement("div");
 		searchWrap.classList.add("playlist-search-wrap");
 
-		const searchIcon = document.createElement("i");
-		searchIcon.className = "fa-solid fa-magnifying-glass playlist-search-icon";
+		const searchIcon = document.createElement("img");
+		searchIcon.className = "svg-icon playlist-search-icon";
+		searchIcon.src = "../assets/icons/fa/magnifying-glass.svg";
+		searchIcon.alt = "";
 		searchWrap.appendChild(searchIcon);
 
 		const searchInput = document.createElement("input");
@@ -2197,7 +2201,7 @@ function updatePlaylistDropdown(mediaFiles) {
 
 		const clearBtn = document.createElement("button");
 		clearBtn.classList.add("playlist-search-clear");
-		clearBtn.innerHTML = '<i class="fa-solid fa-xmark"></i>';
+		clearBtn.innerHTML = '<img class="svg-icon" src="../assets/icons/fa/xmark.svg" alt="">';
 		clearBtn.style.display = "none";
 		clearBtn.addEventListener("click", (e) => {
 			e.stopPropagation();
@@ -2649,18 +2653,18 @@ function updateSortUI() {
 		el.classList.toggle('active', isActive);
 		// Update cm-check icon (context menu)
 		const cmCheck = el.querySelector('.cm-check');
-		if (cmCheck) cmCheck.innerHTML = isActive ? '<i class="fa-solid fa-check"></i>' : '';
+		if (cmCheck) cmCheck.innerHTML = isActive ? '<img class="svg-icon" src="../assets/icons/fa/check.svg" alt="">' : '';
 		// Update nav-sort-check icon (nav bar)
 		const navCheck = el.querySelector('.nav-sort-check');
-		if (navCheck) navCheck.innerHTML = isActive ? '<i class="fa-solid fa-check"></i>' : '';
+		if (navCheck) navCheck.innerHTML = isActive ? '<img class="svg-icon" src="../assets/icons/fa/check.svg" alt="">' : '';
 	});
 	document.querySelectorAll('[data-sort="ascending"], [data-sort="descending"]').forEach(el => {
 		const isActive = el.dataset.sort === sortDirection;
 		el.classList.toggle('active', isActive);
 		const cmCheck = el.querySelector('.cm-check');
-		if (cmCheck) cmCheck.innerHTML = isActive ? '<i class="fa-solid fa-check"></i>' : '';
+		if (cmCheck) cmCheck.innerHTML = isActive ? '<img class="svg-icon" src="../assets/icons/fa/check.svg" alt="">' : '';
 		const navCheck = el.querySelector('.nav-sort-check');
-		if (navCheck) navCheck.innerHTML = isActive ? '<i class="fa-solid fa-check"></i>' : '';
+		if (navCheck) navCheck.innerHTML = isActive ? '<img class="svg-icon" src="../assets/icons/fa/check.svg" alt="">' : '';
 	});
 }
 
@@ -3928,11 +3932,11 @@ function updateFullscreenIcon(fullscreen) {
 				"../assets/icons/full-screen.png";
 		}
 		// Update FA icon if present (context menu / nav bar)
-		const icon = button.querySelector("i.fa-solid");
+		const icon = button.querySelector(".svg-icon");
 		if (icon) {
-			icon.className = isFullscreen ?
-				"fa-solid fa-compress" :
-				"fa-solid fa-expand";
+			icon.src = isFullscreen ?
+				"../assets/icons/fa/compress.svg" :
+				"../assets/icons/fa/expand.svg";
 		}
 		// Update text span if present (nav bar)
 		const textSpan = button.querySelector(".nav-row-text");
@@ -4255,10 +4259,10 @@ document.addEventListener("DOMContentLoaded", function() {
 
 		if (video.paused) {
 			textElement.innerText = "Play";
-			iconElement.innerHTML = '<i class="fa-solid fa-play"></i>';
+			iconElement.innerHTML = '<img class="svg-icon" src="../assets/icons/fa/play.svg" alt="">';
 		} else {
 			textElement.innerText = "Pause";
-			iconElement.innerHTML = '<i class="fa-solid fa-pause"></i>';
+			iconElement.innerHTML = '<img class="svg-icon" src="../assets/icons/fa/pause.svg" alt="">';
 		}
 	}
 
@@ -4890,7 +4894,7 @@ function updateAspectRatioUI(activeRatio) {
 		activeOption.classList.add('active');
 		const icon = activeOption.querySelector('.nav-aspect-check');
 		if (icon) {
-			icon.innerHTML = '<i class="fa-solid fa-check"></i>';
+			icon.innerHTML = '<img class="svg-icon" src="../assets/icons/fa/check.svg" alt="">';
 		}
 	}
 }
@@ -4911,7 +4915,7 @@ function updateAspectRatioUICM(activeRatio) {
 		activeOption.classList.add('active');
 		const icon = activeOption.querySelector('.cm-aspect-check');
 		if (icon) {
-			icon.innerHTML = '<i class="fa-solid fa-check"></i>';
+			icon.innerHTML = '<img class="svg-icon" src="../assets/icons/fa/check.svg" alt="">';
 		}
 	}
 }
@@ -6330,7 +6334,7 @@ document.addEventListener('DOMContentLoaded', () => {
 		updateDialog.show(info?.version);
 		_setUpdateStatus(
 			'about-update-status--available',
-			`<i class="fa-solid fa-arrow-up-from-bracket"></i> Update v${info?.version || ''} available — click to install`
+			`<img class="svg-icon" src="../assets/icons/fa/arrow-up-from-bracket.svg" alt=""> Update v${info?.version || ''} available — click to install`
 		);
 	});
 
@@ -6339,7 +6343,7 @@ document.addEventListener('DOMContentLoaded', () => {
 		window.electron.onUpdateNotAvailable(() => {
 			_setUpdateStatus(
 				'about-update-status--ok',
-				'<i class="fa-solid fa-circle-check"></i> You\'re up to date!'
+				'<img class="svg-icon" src="../assets/icons/fa/circle-check.svg" alt=""> You\'re up to date!'
 			);
 			showStatusMessage('Anime Player is up to date', 3000);
 		});
@@ -6355,7 +6359,7 @@ document.addEventListener('DOMContentLoaded', () => {
 		    !statusEl.classList.contains('about-update-status--available')) {
 			_setUpdateStatus(
 				'about-update-status--error',
-				'<i class="fa-solid fa-triangle-exclamation"></i> Update check failed — check your connection.'
+				'<img class="svg-icon" src="../assets/icons/fa/triangle-exclamation.svg" alt=""> Update check failed — check your connection.'
 			);
 		} else if (statusEl) {
 			// Still clear the icon spinner and timer
@@ -6677,10 +6681,10 @@ function _updateEffectUI(activeKey) {
 		el.classList.toggle('effect-active', isActive);
 		// Update cm-check icon (context menu)
 		const cmCheck = el.querySelector('.cm-check');
-		if (cmCheck) cmCheck.innerHTML = isActive ? '<i class="fa-solid fa-check"></i>' : '';
+		if (cmCheck) cmCheck.innerHTML = isActive ? '<img class="svg-icon" src="../assets/icons/fa/check.svg" alt="">' : '';
 		// Update nav-effect-check icon (nav bar)
 		const navCheck = el.querySelector('.nav-effect-check');
-		if (navCheck) navCheck.innerHTML = isActive ? '<i class="fa-solid fa-check"></i>' : '';
+		if (navCheck) navCheck.innerHTML = isActive ? '<img class="svg-icon" src="../assets/icons/fa/check.svg" alt="">' : '';
 	});
 }
 
