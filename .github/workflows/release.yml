@@ -14,6 +14,9 @@ permissions:
   contents: write
   actions: read
 
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
 jobs:
   # Build for Linux
   build-linux:
@@ -71,12 +74,53 @@ jobs:
           name: windows-build
           path: dist/*.exe 
 
-# Release Job
+  # Auto-tagging job (only on main branch pushes)
+  tag-release:
+    name: Auto Tag Release
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+    needs: [build-linux, build-windows]
+    outputs:
+      tag_created: ${{ steps.create_tag.outputs.tag_created }}
+      version: ${{ steps.get_version.outputs.version }}
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Get Version from package.json
+        id: get_version
+        run: |
+          VERSION=$(node -p "require('./package.json').version")
+          echo "version=v$VERSION" >> $GITHUB_OUTPUT
+
+      - name: Check if Tag Exists
+        id: check_tag
+        run: |
+          TAG_EXISTS=$(git ls-remote --tags origin "${{ steps.get_version.outputs.version }}" | wc -l)
+          echo "tag_exists=$TAG_EXISTS" >> $GITHUB_OUTPUT
+
+      - name: Set Git User
+        if: steps.check_tag.outputs.tag_exists == '0'
+        run: |
+          git config --global user.email "actions@github.com"
+          git config --global user.name "GitHub Actions"
+
+      - name: Create and Push Tag
+        id: create_tag
+        if: steps.check_tag.outputs.tag_exists == '0'
+        run: |
+          git tag -a "${{ steps.get_version.outputs.version }}" -m "Release ${{ steps.get_version.outputs.version }}"
+          git push origin "${{ steps.get_version.outputs.version }}"
+          echo "tag_created=true" >> $GITHUB_OUTPUT
+
+# Release Job (runs on direct tag push OR after tag-release creates a tag)
   release:
     name: Publish Release
     needs: [build-linux, build-windows]
     runs-on: ubuntu-latest
-    if: startsWith(github.ref, 'refs/tags/v')
+    if: startsWith(github.ref, 'refs/tags/v') || (github.ref == 'refs/heads/main' && needs.tag-release.outputs.tag_created == 'true')
 
     steps:
       - name: Checkout Code
@@ -94,41 +138,25 @@ jobs:
           name: windows-build
           path: windows-dist/
 
+      - name: Extract Tag Version
+        id: extract_tag
+        run: |
+          if [[ "${{ github.ref }}" == refs/tags/* ]]; then
+            TAG="${{ github.ref }}"
+            TAG="${TAG#refs/tags/}"
+            echo "version=$TAG" >> $GITHUB_OUTPUT
+          else
+            VERSION=$(node -p "require('./package.json').version")
+            echo "version=v$VERSION" >> $GITHUB_OUTPUT
+          fi
+
       - name: Upload Release Assets using `gh release`
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.GH_TOKEN }}
         run: |
-          gh release create ${{ github.ref }} \
-            --title "Anime Player ${{ github.ref }}" \
+          gh release create "${{ steps.extract_tag.outputs.version }}" \
+            --title "Anime Player ${{ steps.extract_tag.outputs.version }}" \
             --notes "New release of Anime Player" \
             --clobber \
             linux-dist/*.AppImage \
             windows-dist/*.exe
-
-  # Auto-tagging job
-  tag-release:
-    name: Auto Tag Release
-    runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main'
-    steps:
-      - name: Checkout Code
-        uses: actions/checkout@v4
-
-      - name: Set Git User
-        run: |
-          git config --global user.email "actions@github.com"
-          git config --global user.name "GitHub Actions"
-
-      - name: Check if Tag Exists
-        id: check_tag
-        run: |
-          VERSION=$(node -p "require('./package.json').version")
-          TAG_EXISTS=$(git ls-remote --tags origin "v$VERSION" | wc -l)
-          echo "VERSION=v$VERSION" >> $GITHUB_ENV
-          echo "TAG_EXISTS=$TAG_EXISTS" >> $GITHUB_ENV
-
-      - name: Create and Push Tag
-        if: env.TAG_EXISTS == '0'
-        run: |
-          git tag -a "$VERSION" -m "Release $VERSION"
-          git push origin "$VERSION"
