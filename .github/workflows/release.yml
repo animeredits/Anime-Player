@@ -80,7 +80,6 @@ jobs:
     runs-on: macos-latest
     # IMPORTANT: Set to false to skip Mac builds until signing is configured
     # Change to: if: true  OR  remove this line entirely to enable
-    if: false
 
     steps:
       - name: Checkout Code
