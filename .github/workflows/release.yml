@@ -74,6 +74,57 @@ jobs:
           name: windows-build
           path: dist/*.exe 
 
+  # Build for macOS
+  build-macos:
+    name: Build for macOS
+    runs-on: macos-latest
+    # IMPORTANT: Set to false to skip Mac builds until signing is configured
+    # Change to: if: true  OR  remove this line entirely to enable
+    if: false
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install Dependencies
+        run: npm ci
+
+      # OPTIONAL: Code signing - only needed for signed distributions
+      # See: MAC_BUILD_SETUP.md for instructions
+      # Uncomment when ready with certificates:
+      #
+      # - name: Import Apple Signing Certificate
+      #   uses: apple-actions/import-codesign-certs@v2
+      #   with:
+      #     p12-file-base64: ${{ secrets.APPLE_SIGNING_CERT_BASE64 }}
+      #     p12-password: ${{ secrets.APPLE_SIGNING_CERT_PASSWORD }}
+      #
+      # - name: Set Signing Identity
+      #   run: |
+      #     echo "CSC_IDENTITY_AUTO_DISCOVERY=false" >> $GITHUB_ENV
+      #     echo "CSC_NAME=${{ secrets.APPLE_SIGNING_CERT_NAME }}" >> $GITHUB_ENV
+      #     echo "APPLE_TEAM_ID=${{ secrets.APPLE_TEAM_ID }}" >> $GITHUB_ENV
+
+      - name: Build for macOS
+        env:
+          GH_TOKEN: ${{ secrets.GH_TOKEN }}
+          # For unsigned builds (development):
+          CSC_IDENTITY_AUTO_DISCOVERY: false
+        run: npm run dist -- --mac
+
+      - name: Upload macOS Build Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: macos-build
+          path: |
+            dist/*.dmg
+            dist/*.zip
+
   # Auto-tagging job (only on main branch pushes)
   tag-release:
     name: Auto Tag Release
@@ -138,6 +189,13 @@ jobs:
           name: windows-build
           path: windows-dist/
 
+      # Optional: Download macOS artifacts when Mac builds are enabled
+      # - name: Download macOS Artifacts
+      #   uses: actions/download-artifact@v4
+      #   with:
+      #     name: macos-build
+      #     path: macos-dist/
+
       - name: Extract Tag Version
         id: extract_tag
         run: |
@@ -160,3 +218,6 @@ jobs:
             --clobber \
             linux-dist/*.AppImage \
             windows-dist/*.exe
+            # Optional: Add macOS artifacts when available
+            # macos-dist/*.dmg \
+            # macos-dist/*.zip
