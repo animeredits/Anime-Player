@@ -1562,19 +1562,30 @@ function playVideoByIndex(index, skipHistoryUpdate = false) {
 video.addEventListener("ended", () => {
 	const nextIndex = getNextIndex();
 	if (nextIndex !== null) {
+		// ── Seamless next-video transition ──────────────────────────────────
+		const _mc  = document.querySelector(".video-controls-container");
+		const _nav = document.querySelector("nav");
+		const _na  = document.querySelector(".nav-arrows");
+		const _wb  = document.querySelector(".win-buttons");
+		video.style.cursor = "none";
+		if (_nav) { _nav.classList.add("hidden"); _nav.classList.remove("visible"); }
+		if (_mc)  { _mc.classList.add("hidden");  _mc.classList.remove("visible"); }
+		if (_na)  { _na.classList.add("hidden"); }
+		if (_wb)  { _wb.classList.add("hidden");  _wb.classList.remove("visible"); }
+		// ────────────────────────────────────────────────────────────────────
 		playVideoByIndex(nextIndex);
 	} else {
 		stopPlayback();
 
 		// Shutdown PC if the "Shutdown at end of playlist" checkbox is checked
 		if (isShutdownAtPlaylistEndEnabled) {
-			window.electron.sendShutdownRequest(); // Send shutdown request to main process
+			window.electron.sendShutdownRequest();
 		}
 	}
 
 	// Shutdown PC if the "Shutdown at end of video" checkbox is checked
 	if (isShutdownAtVideoEndEnabled) {
-		window.electron.sendShutdownRequest(); // Send shutdown request to main process
+		window.electron.sendShutdownRequest(); 
 	}
 });
 
