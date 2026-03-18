@@ -1472,7 +1472,9 @@ currentMedia.addEventListener("loadedmetadata", async () => {
 	updateDurationDisplay();
 	resetZoom(showStatusMessage(''));
 	updateVideoTitle(video.dataset.videoId);
-	highlightCurrentVideo(video.dataset.videoId);
+	// ✅ Use full filePath for highlighting (not just videoId)
+	const filePathToHighlight = mediaFiles[currentVideoIndex] || video.dataset.videoId;
+	highlightCurrentVideo(filePathToHighlight);
 	video.currentTime = 0;
 
 	// Load chapters from video file
@@ -1519,12 +1521,14 @@ function playMediaFile(filePath) {
 	if (!mediaFiles.includes(filePath)) {
 		mediaFiles.push(filePath);
 		updatePlaylistDropdown(mediaFiles);
+		// ✅ FIXED: Highlight after playlist update
+		highlightCurrentVideo(filePath);
 		updateVideoTitle(realFileName);
 	}
 
 	currentVideoIndex = mediaFiles.indexOf(filePath);
 	loadMediaFile(filePath, realFileName);
-	highlightCurrentVideo(realFileName);
+	highlightCurrentVideo(filePath);  // ✅ Pass full filePath, not just filename
 	updateNavigationButtons();
 }
 
@@ -1557,7 +1561,7 @@ function playVideoByIndex(index, skipHistoryUpdate = false) {
 	const realFileName = pathParts[pathParts.length - 1];
 
 	loadMediaFile(filePath, realFileName);
-	highlightCurrentVideo(realFileName);
+	highlightCurrentVideo(filePath);  // ✅ Pass full filePath, not just filename
 	updateNavigationButtons();
 }
 
@@ -1598,28 +1602,42 @@ openFileButton.addEventListener("click", async () => {
 		if (!result) return;
 
 		if (result.singleFile) {
-			const alreadyInPlaylist = mediaFiles.indexOf(result.currentFile);
+			// ✅ Resolve currentFile in case it has short name
+			const resolvedCurrent = await window.electron.invoke('get-real-filename', result.currentFile);
+
+			const alreadyInPlaylist = mediaFiles.indexOf(resolvedCurrent);
 			if (alreadyInPlaylist !== -1) {
 				// File is already in current playlist — just switch to it, don't reload
 				currentVideoIndex = alreadyInPlaylist;
 				playMediaFile(mediaFiles[currentVideoIndex]);
 				return;
 			}
-			// New file not in playlist — replace with sibling files from its folder
-			mediaFiles = result.siblingFiles;
-			currentVideoIndex = mediaFiles.indexOf(result.currentFile);
+
+			// ✅ Resolve all sibling files in case they have short names
+			const resolvedSiblings = await Promise.all(
+				result.siblingFiles.map(fp => window.electron.invoke('get-real-filename', fp))
+			);
+
+			mediaFiles = resolvedSiblings;
+			currentVideoIndex = mediaFiles.indexOf(resolvedCurrent);
 			if (currentVideoIndex === -1) {
-				mediaFiles = [result.currentFile];
+				mediaFiles = [resolvedCurrent];
 				currentVideoIndex = 0;
 			}
 		} else {
-			// Multiple files: REPLACE entire playlist, play first selected file instantly
-			mediaFiles = result.files;
+			// ✅ Resolve all selected files in case they have short names
+			const resolvedFiles = await Promise.all(
+				result.files.map(fp => window.electron.invoke('get-real-filename', fp))
+			);
+
+			mediaFiles = resolvedFiles;
 			currentVideoIndex = 0;
 		}
 
 		playMediaFile(mediaFiles[currentVideoIndex]);
 		updatePlaylistDropdown(mediaFiles);
+		// ✅ FIXED: Highlight after playlist update
+		highlightCurrentVideo(mediaFiles[currentVideoIndex]);
 		showStatusMessage(`Loaded ${mediaFiles.length} video(s)`);
 	} catch (error) {
 		console.error("Error opening files:", error);
@@ -1631,12 +1649,19 @@ openFolderButton.addEventListener("click", async () => {
 	try {
 		const folderFiles = await window.electron.openFolderDialog();
 		if (folderFiles.length > 0) {
+			// ✅ Resolve all folder files in case they have short names
+			const resolvedFiles = await Promise.all(
+				folderFiles.map(fp => window.electron.invoke('get-real-filename', fp))
+			);
+
 			// Replace entire playlist with folder contents
-			mediaFiles = folderFiles;
+			mediaFiles = resolvedFiles;
 			currentVideoIndex = 0; // Always play first video in folder
 			playMediaFile(mediaFiles[currentVideoIndex]);
 			updatePlaylistDropdown(mediaFiles);
-			showStatusMessage(`Loaded ${folderFiles.length} video(s) from folder`);
+			// ✅ FIXED: Highlight after playlist update
+			highlightCurrentVideo(mediaFiles[currentVideoIndex]);
+			showStatusMessage(`Loaded ${resolvedFiles.length} video(s) from folder`);
 		}
 	} catch (error) {
 		console.error("Error opening folder:", error);
@@ -1775,6 +1800,14 @@ function getPreviousIndex() {
 }
 
 
+
+// ✅ OPTIMIZED: Centralized debounce logic to prevent duplication
+function clearLoadingFlagAfterDelay(delayMs = 500) {
+	setTimeout(() => {
+		isLoadingFile = false;
+	}, delayMs);
+}
+
 // ✅ Play next video while tracking playback history
 function playNext() {
 	// ✅ Debounce rapid calls to prevent streaming errors
@@ -1824,9 +1857,7 @@ function playNext() {
 	showStatusMessage("Next");
 	
 	// Clear debounce flag after file loading completes (with safety timeout)
-	setTimeout(() => {
-		isLoadingFile = false;
-	}, 500);
+	clearLoadingFlagAfterDelay(500);
 }
 
 // ✅ Play previous video correctly
@@ -1854,9 +1885,7 @@ function playPrevious() {
 		showStatusMessage("Previous");
 		
 		// Clear debounce flag after file loading completes
-		setTimeout(() => {
-			isLoadingFile = false;
-		}, 500);
+		clearLoadingFlagAfterDelay(500);
 		return;
 	}
 
@@ -1877,9 +1906,7 @@ function playPrevious() {
 	showStatusMessage("Previous Video");
 	
 	// Clear debounce flag after file loading completes
-	setTimeout(() => {
-		isLoadingFile = false;
-	}, 500);
+	clearLoadingFlagAfterDelay(500);
 }
 
 // ✅ Ensure buttons are updated properly
@@ -1953,14 +1980,30 @@ function stopPlayback() {
 	}
 }
 
-// Event listener for stop playback using querySelectorAll and forEach
-document.querySelectorAll(".stopPlayback").forEach(button => {
-	button.addEventListener("click", () => {
-		stopPlayback();
-		updateNavigationButtons(); // Ensure buttons are updated when stopped
-	});
-});
 
+// ✅ OPTIMIZED: Consolidated playback control listeners (single loop instead of 3)
+function attachPlaybackControlListeners() {
+	const buttonMappings = [
+		{
+			selector: ".stopPlayback", callback: () => {
+				stopPlayback();
+				updateNavigationButtons();
+			}
+		},
+		{ selector: ".previousbtn", callback: playPrevious },
+		{ selector: ".nextbtn", callback: playNext }
+	];
+
+	buttonMappings.forEach(({ selector, callback }) => {
+		document.querySelectorAll(selector).forEach(button => {
+			button.addEventListener("click", callback);
+		});
+	});
+}
+
+attachPlaybackControlListeners();
+
+// Keep direct button references
 prevButton.addEventListener("click", playPrevious);
 nextButton.addEventListener("click", playNext);
 
@@ -2227,11 +2270,21 @@ function updatePlaylistDropdown(mediaFiles) {
 			fileLink.textContent = realFileName; // Use real filename
 			fileLink.classList.add("playlist-item");
 
+			// ✅ CRITICAL FIX: Store full filePath as data attribute
+			fileLink.dataset.filePath = filePath;
+			fileLink.dataset.index = index;
+
 			fileLink.addEventListener("click", () => {
-				playVideoByIndex(index);
-				highlightCurrentVideo(realFileName);
-				// Close context menu if open (playlist lives in both navbar & CM)
-				if (window._hideContextMenu) window._hideContextMenu();
+				// ✅ CRITICAL FIX: Find current index DYNAMICALLY
+				const currentIndex = mediaFiles.indexOf(fileLink.dataset.filePath);
+				if (currentIndex !== -1) {
+					playVideoByIndex(currentIndex);
+					highlightCurrentVideo(filePath);  // Pass full path
+					// Close context menu if open (playlist lives in both navbar & CM)
+					if (window._hideContextMenu) window._hideContextMenu();
+				} else {
+					console.error('❌ Video not found in playlist:', fileLink.dataset.filePath);
+				}
 			});
 
 			playlistContainer.appendChild(fileLink);
@@ -2403,9 +2456,9 @@ document.addEventListener("keydown", (e) => {
 }, true); // Use capture phase to intercept before other handlers
 
 // ✅ Function to HIGHLIGHT CURRENT VIDEO (All Containers)
-function highlightCurrentVideo(fileName) {
-	// Extract filename from path if needed
-	const pathParts = fileName.split(/[/\\]/);
+function highlightCurrentVideo(filePathOrName) {
+	// Extract filename from path if it's a full path
+	const pathParts = filePathOrName.split(/[/\\]/);
 	const realFileName = pathParts[pathParts.length - 1];
 
 	// Update ALL playlist containers
@@ -2415,9 +2468,20 @@ function highlightCurrentVideo(fileName) {
 			item.classList.remove("highlight");
 		});
 
-		// Add highlight to matching items
+		// ✅ CRITICAL FIX: Match by data-filePath first (most reliable)
 		playlistContainer.querySelectorAll(".playlist-item").forEach(item => {
-			if (item.textContent.trim() === realFileName) {
+			let shouldHighlight = false;
+
+			// ✅ Priority 1: Match by data-filePath (stored full path)
+			if (item.dataset.filePath && item.dataset.filePath === filePathOrName) {
+				shouldHighlight = true;
+			}
+			// ✅ Priority 2: Fall back to filename matching (for compatibility)
+			else if (!item.dataset.filePath && item.textContent.trim() === realFileName) {
+				shouldHighlight = true;
+			}
+
+			if (shouldHighlight) {
 				item.classList.add("highlight");
 
 				// ✅ ONLY scroll if container is VISIBLE
@@ -2486,24 +2550,7 @@ function togglePlaylist() {
 	}
 }
 
-// Playlist navigation logic
-function handlePlaylistNavigation(event) {
-    const playlistContainer = document.querySelector(".playlist-container");
-    const playlistItems = Array.from(playlistContainer.querySelectorAll(".playlist-item"));
-    if (playlistItems.length === 0) return;
 
-    const currentIndex = playlistItems.findIndex(item => item.classList.contains("highlight"));
-
-    if (event.key === "ArrowDown") {
-        event.preventDefault();
-        const nextIndex = (currentIndex + 1) % playlistItems.length;
-        playlistItems[nextIndex].click();
-    } else if (event.key === "ArrowUp") {
-        event.preventDefault();
-        const prevIndex = (currentIndex - 1 + playlistItems.length) % playlistItems.length;
-        playlistItems[prevIndex].click();
-    }
-}
 
 // Reusable scroll function
 function scrollToHighlighted(playlistContainer) {
@@ -2519,48 +2566,6 @@ function scrollToHighlighted(playlistContainer) {
 	}
 }
 
-// KEYBOARD NAVIGATION for playlist
-document.addEventListener("keydown", function(event) {
-	const playlistContainer = document.querySelector(".playlist-container");
-
-	if (playlistContainer && playlistContainer.classList.contains("show")) {
-		// Don't hijack arrow keys while user types in the playlist search box
-		const activeEl = document.activeElement;
-		if (activeEl && (activeEl.tagName === 'INPUT' || activeEl.tagName === 'TEXTAREA')) return;
-
-		const playlistItems = Array.from(playlistContainer.querySelectorAll(".playlist-item"));
-		if (playlistItems.length === 0) return;
-
-		const currentIndex = playlistItems.findIndex(item => item.classList.contains("highlight"));
-
-		if (event.key === "ArrowDown") {
-			event.preventDefault();
-			const nextIndex = (currentIndex + 1) % playlistItems.length;
-			playlistItems[nextIndex].click();
-		} else if (event.key === "ArrowUp") {
-			event.preventDefault();
-			const prevIndex = (currentIndex - 1 + playlistItems.length) % playlistItems.length;
-			playlistItems[prevIndex].click();
-		}
-	}
-});
-
-// Main keydown event listener
-document.addEventListener("keydown", function (event) {
-    if (isPlaylistVisible()) {
-        handlePlaylistNavigation(event);
-    } else {
-        handleVolumeControl(event);
-    }
-});
-
-// Playlist visibility check
-function isPlaylistVisible() {
-    const playlistContainer = document.querySelector(".playlist-container");
-    return playlistContainer && playlistContainer.classList.contains("show");
-}
-
-
 // Hide playlist on outside click
 window.addEventListener("click", function(event) {
 	const playlistContainer = document.querySelector(".playlist-container");
@@ -2569,20 +2574,6 @@ window.addEventListener("click", function(event) {
 	}
 });
 
-
-
-// Volume control logic
-function handleVolumeControl(event) {
-    if (event.key === "ArrowUp") {
-        event.preventDefault();
-        updateVolume(Math.min(2, gainNode.gain.value + 0.05));
-        showStatusMessage(`Volume: ${(Math.min(2, gainNode.gain.value + 0.05) * 100).toFixed(0)}%`);
-    } else if (event.key === "ArrowDown") {
-        event.preventDefault();
-        updateVolume(Math.max(0, gainNode.gain.value - 0.05));
-        showStatusMessage(`Volume: ${(Math.max(0, gainNode.gain.value - 0.05) * 100).toFixed(0)}%`);
-    }
-}
 
 // ✅ Sort playlist and instantly play FIRST video of sorted result
 function sortPlaylist() {
@@ -4141,6 +4132,114 @@ document.addEventListener("DOMContentLoaded", function() {
 	}
 
 
+	// ── Function to adjust submenu positions dynamically ──
+	// This ensures submenus stay within the viewport both vertically and horizontally
+	function adjustSubmenuPositions(contextMenu, menuTop, menuLeft, screenHeight, screenWidth) {
+		const SUBMENU_MARGIN = 10; // pixels to keep from screen edge
+		const contextMenuWidth = contextMenu.offsetWidth;
+
+		// Set up hover listeners on parent items to adjust submenu positions
+		const parentItems = contextMenu.querySelectorAll('.cm-sub-item');
+
+		parentItems.forEach(parentItem => {
+			const submenu = parentItem.querySelector('.cm-submenu');
+			if (!submenu) return;
+
+			// Update on hover to handle dynamic content changes
+			parentItem.addEventListener('mouseenter', () => {
+				adjustSingleSubmenuPosition(parentItem, submenu, menuTop, menuLeft, screenHeight, screenWidth, contextMenuWidth);
+			});
+		});
+
+		// Also do initial pass on all submenus
+		parentItems.forEach(parentItem => {
+			const submenu = parentItem.querySelector('.cm-submenu');
+			if (submenu) {
+				adjustSingleSubmenuPosition(parentItem, submenu, menuTop, menuLeft, screenHeight, screenWidth, contextMenuWidth);
+			}
+		});
+	}
+
+	function adjustSingleSubmenuPosition(parentItem, submenu, menuTop, menuLeft, screenHeight, screenWidth, contextMenuWidth) {
+		// Force reflow to get accurate measurements
+		const submenuHeight = submenu.offsetHeight;
+		const submenuWidth = submenu.offsetWidth;
+		const parentRect = parentItem.getBoundingClientRect();
+
+		// Calculate submenu position relative to viewport
+		const submenuTopPos = parentRect.top; // relative to viewport
+		const submenuBottomPos = parentRect.bottom; // relative to viewport
+
+		// ── VERTICAL ADJUSTMENT ──
+		// Check if submenu would extend below screen
+		let topValue = 'auto';
+		let bottomValue = 'auto';
+
+		// Try to align submenu top with parent item top (top: -4px keeps natural alignment)
+		const proposedTop = submenuTopPos - menuTop;
+
+		// Check if submenu fits below parent item
+		if (submenuTopPos + submenuHeight > screenHeight - 10) {
+			// Not enough space below — try to position so it fits above
+			const spaceAbove = submenuTopPos - submenuHeight;
+			if (spaceAbove < 10) {
+				// Not enough space above either — align to top of screen with margin
+				topValue = `${10 - menuTop}px`;
+			} else {
+				// Position above the parent item
+				topValue = `${-submenuHeight - 4}px`;
+			}
+		} else {
+			// Enough space below — use default positioning (top: -4px aligns with parent)
+			topValue = '-4px';
+		}
+
+		submenu.style.top = topValue;
+		submenu.style.bottom = bottomValue;
+
+		// ── HORIZONTAL ADJUSTMENT ──
+		// The horizontal flipping is already handled in showContextMenu
+		// But we need to add proper margin to prevent touch-edge overflow
+
+		// Get current left/right values
+		const currentLeft = submenu.style.left;
+		const currentRight = submenu.style.right;
+
+		// Check right-opening submenu
+		if (currentRight === '' || currentRight === 'auto') {
+			// Submenu opens to the right (left: 100%)
+			const submenuRightEdge = menuLeft + contextMenuWidth + submenuWidth;
+			if (submenuRightEdge > screenWidth - 10) {
+				// Would overflow right edge
+				submenu.style.left = 'auto';
+				submenu.style.right = '100%';
+				submenu.style.marginRight = '12px';
+				submenu.style.marginLeft = 'auto';
+			} else {
+				submenu.style.left = '100%';
+				submenu.style.right = 'auto';
+				submenu.style.marginLeft = '12px';
+				submenu.style.marginRight = 'auto';
+			}
+		} else {
+			// Submenu opens to the left (right: 100%)
+			const submenuLeftEdge = menuLeft - submenuWidth;
+			if (submenuLeftEdge < 10) {
+				// Would overflow left edge — flip back to right
+				submenu.style.left = '100%';
+				submenu.style.right = 'auto';
+				submenu.style.marginLeft = '12px';
+				submenu.style.marginRight = 'auto';
+			} else {
+				submenu.style.right = '100%';
+				submenu.style.left = 'auto';
+				submenu.style.marginRight = '12px';
+				submenu.style.marginLeft = 'auto';
+			}
+		}
+	}
+
+
 	// Function to show the context menu
 	function showContextMenu(event) {
 		event.preventDefault();
@@ -4198,12 +4297,16 @@ document.addEventListener("DOMContentLoaded", function() {
 			contextMenu.querySelectorAll('.cm-submenu').forEach(sub => {
 				sub.style.left  = 'auto';
 				sub.style.right = '100%';
+				sub.style.marginLeft = 'auto';
+				sub.style.marginRight = '12px';
 			});
 		} else {
 			// Enough room on the right — use default (left:100%)
 			contextMenu.querySelectorAll('.cm-submenu').forEach(sub => {
-				sub.style.left  = '';
-				sub.style.right = '';
+				sub.style.left  = '100%';
+				sub.style.right = 'auto';
+				sub.style.marginLeft = '12px';
+				sub.style.marginRight = 'auto';
 			});
 		}
 
@@ -4211,6 +4314,9 @@ document.addEventListener("DOMContentLoaded", function() {
 		contextMenu.style.top  = `${top}px`;
 		contextMenu.style.left = `${left}px`;
 		contextMenu.style.visibility = "visible";
+
+		// ── Adjust submenu vertical positions to stay within viewport ──
+		adjustSubmenuPositions(contextMenu, top, left, screenHeight, screenWidth);
 
 		updateContextTogglePlayPause();
 	}
@@ -6243,21 +6349,23 @@ document.querySelector("#window-close").addEventListener("click", () => {
 });
 
 // ✅ Modified function to handle file open from system
-window.electron.onFileOpen((filePath) => {
+window.electron.onFileOpen(async (filePath) => {
 	if (filePath) {
+		// Get real long filename from main process (fixes Windows 8.3 short names)
+		const realPath = await window.electron.invoke('get-real-filename', filePath);
 		if (!isFirstFileOpened) {
 			// First file - initialize playlist and start playing it
-			mediaFiles = [filePath];
+			mediaFiles = [realPath];
 			currentVideoIndex = 0;
 			isFirstFileOpened = true;
 			updatePlaylistDropdown(mediaFiles);
-			playMediaFile(filePath, filePath.split("/").pop());
+			playMediaFile(realPath, realPath.split(/[/\\]/).pop());
 		} else {
 			// Subsequent files (e.g. multi-select from Explorer / second-instance) —
 			// add to playlist but do NOT auto-play. The first file already started;
 			// overriding it here would cause the last-received file to win instead.
-			if (!mediaFiles.includes(filePath)) {
-				mediaFiles.push(filePath);
+			if (!mediaFiles.includes(realPath)) {
+				mediaFiles.push(realPath);
 				updatePlaylistDropdown(mediaFiles);
 				// Do not call playMediaFile here — first file stays playing.
 			}
@@ -6271,13 +6379,20 @@ window.electron.openFolderFromContext(async (folderPath) => {
 		const receivedFiles = await window.electron.invoke("open-folder", folderPath);
 
 		if (Array.isArray(receivedFiles) && receivedFiles.length > 0) {
+			// Resolve real filenames for all files (fixes Windows 8.3 short names)
+			const resolvedFiles = await Promise.all(
+				receivedFiles.map(filePath => window.electron.invoke('get-real-filename', filePath))
+			);
+
 			// Always REPLACE old playlist with the new folder's files
-			mediaFiles = receivedFiles;
+			mediaFiles = resolvedFiles;
 			currentVideoIndex = 0;
 			isFirstFileOpened = true;
-			updatePlaylistDropdown(mediaFiles);
 			playMediaFile(mediaFiles[currentVideoIndex]);
-			showStatusMessage(`Loaded ${receivedFiles.length} video(s) from folder`);
+			updatePlaylistDropdown(mediaFiles);
+			// ✅ FIXED: Highlight after playlist update
+			highlightCurrentVideo(mediaFiles[currentVideoIndex]);
+			showStatusMessage(`Loaded ${resolvedFiles.length} video(s) from folder`);
 		}
 	} catch (error) {
 		console.error("❌ Error loading folder:", error);
