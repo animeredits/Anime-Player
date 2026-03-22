@@ -90,7 +90,7 @@
             "warningsAsErrors": false,
             "allowToChangeInstallationDirectory": true,
             "differentialPackage": true,
-            "include": "./script/installer.nsh"
+            "include": "./build/installer.nsh"
         },
         "fileAssociations": [
             {

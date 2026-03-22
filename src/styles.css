@@ -54,6 +54,45 @@ body {
   transition: opacity 0.8s ease-in-out, visibility 0.7s ease-in-out;
 }
 
+
+      /* ── SVG Icons ───────────────────────── */
+      .svg-icon {
+        width: 1em;
+        height: 1em;
+        vertical-align: -0.125em;
+        display: inline-block;
+        filter: invert(1) opacity(0.85);
+        pointer-events: none;
+        flex-shrink: 0;
+      }
+      @keyframes fa-spin {
+        from { transform: rotate(0deg); }
+        to   { transform: rotate(360deg); }
+      }
+      .fa-spin { animation: fa-spin 1s linear infinite; }
+      .fa-xs   { width: 0.75em;  height: 0.75em;  }
+      .fa-sm   { width: 0.875em; height: 0.875em; }
+      .fa-lg   { width: 1.25em;  height: 1.25em;  }
+      .fa-xl   { width: 1.5em;   height: 1.5em;   }
+      .fa-2x   { width: 2em;     height: 2em;     }
+      .cm-icon .svg-icon             { width: 14px; height: 14px; vertical-align: middle; }
+      .nav-row-icon .svg-icon        { width: 13px; height: 13px; vertical-align: middle; }
+      .tool-modal-icon               { width: 18px; height: 18px; vertical-align: middle; margin-right: 4px; }
+      .vfx-icon .svg-icon            { width: 15px; height: 15px; vertical-align: middle; }
+      .sync-tab .svg-icon            { width: 13px; height: 13px; vertical-align: middle; margin-right: 3px; }
+      .vfx-tab .svg-icon             { width: 13px; height: 13px; vertical-align: middle; margin-right: 3px; }
+      .about-info-label .svg-icon    { width: 14px; height: 14px; vertical-align: middle; margin-right: 4px; }
+      .about-link .svg-icon          { width: 14px; height: 14px; vertical-align: middle; margin-right: 4px; }
+      .tool-modal-btn .svg-icon,
+      .vfx-reset .svg-icon           { width: 13px; height: 13px; vertical-align: middle; margin-right: 3px; }
+      .viz-search-icon               { width: 13px; height: 13px; vertical-align: middle; opacity: 0.6; }
+      .playlist-search-icon          { width: 13px; height: 13px; vertical-align: middle; opacity: 0.6; flex-shrink: 0; }
+      .viz-upload-btn .svg-icon      { width: 13px; height: 13px; vertical-align: middle; margin-right: 4px; }
+      .gif-modal-icon .svg-icon      { width: 28px; height: 28px; opacity: 0.9; }
+      .gif-modal-btn .svg-icon       { width: 13px; height: 13px; vertical-align: middle; margin-right: 3px; }
+      .vfx-temp-cool .svg-icon,
+      .vfx-temp-warm .svg-icon       { width: 13px; height: 13px; vertical-align: middle; }
+      .about-update-status .svg-icon { width: 14px; height: 14px; vertical-align: middle; margin-right: 4px; }
 /* Navigation Bar */
 nav {
   display: block;
@@ -653,35 +692,44 @@ nav > * {
 
 /*  GIF / Logo Save Modal (redesigned)  */
 .gif-modal {
-  display: none;
-  position: fixed;
-  inset: 0;
-  z-index: 9999;
-  justify-content: center;
-  align-items: center;
-  background: rgba(0, 0, 0, 0.55);
-  pointer-events: auto;
+        display: none;
+        position: fixed;
+        inset: 0;
+        z-index: 9999;
+        justify-content: center;
+        align-items: center;
+        background: rgba(0, 0, 0, 0.55);
+        backdrop-filter: blur(6px);
+        pointer-events: auto;
+        animation: modal-overlay-in 0.35s ease-out;
 }
+
+   .gif-modal.closing {
+        animation: modal-overlay-out 0.35s ease-in forwards;
+      }
+
 
 .gif-modal-content {
   width: 340px;
-  padding: 28px 28px 24px;
-  border-radius: 16px;
-  background: rgba(30, 30, 40, 0.92);
-  backdrop-filter: blur(24px) saturate(160%);
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.6), 0 0 0 1px rgba(255,255,255,0.04);
-  color: #fff;
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  animation: gif-modal-in 0.22s cubic-bezier(0.34, 1.56, 0.64, 1);
+        padding: 28px 28px 24px;
+        border-radius: 16px;
+        background: rgba(30, 30, 40, 0.92);
+        backdrop-filter: blur(24px) saturate(160%);
+        border: 1px solid rgba(255, 255, 255, 0.12);
+        box-shadow: 0 24px 60px rgba(0, 0, 0, 0.6), 0 0 0 1px rgba(255,255,255,0.04);
+        color: #fff;
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        animation: ripple-modal-open 0.45s cubic-bezier(0.34, 1.56, 0.64, 1);
+        transform-origin: center;
 }
 
-@keyframes gif-modal-in {
-  from { opacity: 0; transform: scale(0.88) translateY(12px); }
-  to   { opacity: 1; transform: scale(1) translateY(0); }
-}
+      .gif-modal-content.closing {
+        animation: ripple-modal-close 0.35s ease-in forwards;
+      }
+
+
 
 .gif-modal-icon {
   font-size: 26px;
@@ -817,6 +865,28 @@ nav > * {
   max-height: 150px;
   object-fit: contain;
 }
+
+      .tool-modal-close:hover {
+        transform: rotate(90deg) scale(1.05);
+      }
+
+      .tool-modal-close:active {
+        transform: rotate(90deg) scale(0.95);
+      }
+
+      .gif-modal.show,
+      .modal.show,
+      .tool-modal.show {
+        display: flex !important;
+      }
+
+      .gif-modal.hidden,
+      .modal.hidden,
+      .tool-modal.hidden {
+        display: none !important;
+        pointer-events: none;
+      }
+
 
 /* ─ Visualization Panel ─ */
 /* FIX: "contain: paint" was the root cause of TWO bugs:
@@ -2333,10 +2403,10 @@ font-size: 11px;
   text-align: center;
 }
 
-/* Modal Background */
+/* Shortcut Modal */
 .modal {
-  display: none; /* Hidden by default */
-  position: fixed; /* Stay in place */
+  display: none;
+  position: fixed; 
   z-index: 99;
   top: 50%;
   left: 50%;
@@ -2345,28 +2415,32 @@ font-size: 11px;
   height: 70vh;
   overflow: hidden;
   pointer-events: auto;
+          animation: modal-overlay-in 0.35s ease-out;
+
 }
 
 /* Modal Content */
 .modal-content {
-  font-family: sans-serif;
-  backdrop-filter: blur(30px) saturate(180%);
-  background-color: #2f2f2fc5;
-  border-radius: 12px;
-  border: 1px solid rgba(255, 255, 255, 0.125);
-  margin: 15% auto; /* Centered */
-  padding: 20px;
-  width: auto;
-  height: auto;
-  max-width: 800px;
-  max-height: 302px;
-  border-radius: 16px;
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-  letter-spacing: 0.5px;
-  scrollbar-width: thin;
-  scrollbar-color: rgba(255,255,255,0.2) transparent;
+        font-family: sans-serif;
+        backdrop-filter: blur(30px) saturate(180%);
+        background-color: #2f2f2fc5;
+        border-radius: 12px;
+        border: 1px solid rgba(255, 255, 255, 0.125);
+        margin: 15% auto;
+        padding: 20px;
+        width: auto;
+        height: auto;
+        max-width: 800px;
+        max-height: 302px;
+        border-radius: 16px;
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+        letter-spacing: 0.5px;
+        scrollbar-width: thin;
+        scrollbar-color: rgba(255,255,255,0.2) transparent;
+        animation: ripple-modal-open 0.45s cubic-bezier(0.34, 1.56, 0.64, 1);
+        transform-origin: center;
 }
 
 /* Modal Header */
@@ -2426,6 +2500,9 @@ font-size: 11px;
   display: flex; /* Use flexbox to center the content */
   justify-content: center; /* Horizontally center the icon/text */
   align-items: center; /* Vertically center the icon/text */
+                  animation: modal-overlay-out 0.35s ease-in ;
+
+
 }
 
 /* Add a circle border when button is clicked or focused */
@@ -2435,6 +2512,14 @@ font-size: 11px;
   border: 2px solid #fff;
   border-radius: 50%;
 }
+
+     .modalClose:hover {
+        transform: rotate(90deg) scale(1.1);
+      }
+
+      .modalClose:active {
+        transform: rotate(90deg) scale(0.95);
+      }
 
 /* shortcut Modal list*/
 .modal-body {
@@ -3836,37 +3921,38 @@ video:-ms-fullscreen {
 }
 
 .tool-modal {
-  display: none;
-  position: fixed;
-  inset: 0;
-  z-index: 9999;
-  align-items: center;
-  justify-content: center;
-  -webkit-app-region: no-drag;
+   display: none;
+        position: fixed;
+        inset: 0;
+        z-index: 9999;
+        align-items: center;
+        justify-content: center;
+        -webkit-app-region: no-drag;
+        animation: modal-overlay-in 0.35s ease-out;
 }
 
 .tool-modal-inner {
-  background: var(--m-bg);
-  border: 1px solid var(--m-border);
-  border-radius: 14px;
-  box-shadow:
-    0 0 0 1px rgba(157,111,255,0.08),
-    0 24px 64px rgba(0,0,0,0.8),
-    inset 0 1px 0 rgba(255,255,255,0.05);
-  width: 600px;
-  max-width: 95vw;
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-  font-family: var(--m-sans);
-  position: relative;
-  animation: modal-rise 0.25s cubic-bezier(0.22, 1, 0.36, 1) both;
+        backdrop-filter: blur(30px) saturate(180%);
+        -webkit-backdrop-filter: blur(30px) saturate(180%);
+        background: #2f2f2fc5;
+        border: 1px solid rgba(255, 255, 255, 0.125);
+        border-radius: 14px;
+        box-shadow: 0 24px 64px rgba(0,0,0,0.7), 0 0 0 1px rgba(255,255,255,0.04);
+        width: 600px;
+        max-width: 95vw;
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+        font-family: "Fira Sans", sans-serif;
+        position: relative;
+        animation: ripple-modal-open 0.45s cubic-bezier(0.34, 1.56, 0.64, 1);
+        transform-origin: center;
 }
 
-/* Closing state — added by ModalAnimator */
-.tool-modal-inner.closing {
-  animation: modal-fall 0.22s cubic-bezier(0.4, 0, 1, 1) both !important;
-}
+  .tool-modal-inner.closing {
+        animation: ripple-modal-close 0.35s ease-in forwards;
+      }
+
 
 /* Switching: content cross-fade only */
 .tool-modal-inner.modal-switch-out {
@@ -3876,14 +3962,6 @@ video:-ms-fullscreen {
   animation: modal-switch-in 0.22s cubic-bezier(0.22, 1, 0.36, 1) both !important;
 }
 
-@keyframes modal-rise {
-  from { opacity: 0; transform: scale(0.93) translateY(12px); }
-  to   { opacity: 1; transform: scale(1)    translateY(0); }
-}
-@keyframes modal-fall {
-  from { opacity: 1; transform: scale(1)    translateY(0); }
-  to   { opacity: 0; transform: scale(0.95) translateY(6px); }
-}
 @keyframes modal-switch-out {
   from { opacity: 1; transform: scale(1) translateX(0); }
   to   { opacity: 0; transform: scale(0.96) translateX(-10px); }
@@ -3993,8 +4071,15 @@ video:-ms-fullscreen {
   border-radius: 6px;
   transition: background 0.15s, color 0.15s;
 }
-.tool-modal-close:hover { background: rgba(255,80,80,0.15); color: rgba(255,110,110,0.9); }
 
+
+      .tool-modal-close:hover {
+        transform: rotate(90deg) scale(1.05);
+      }
+
+      .tool-modal-close:active {
+        transform: rotate(90deg) scale(0.95);
+      }
 /* ── Body ────────────────────────────────────────────────────────────── */
 .tool-modal-body {
   padding: 0;
@@ -4072,6 +4157,61 @@ video:-ms-fullscreen {
   color: rgba(255,255,255,0.75);
   border-color: rgba(255,255,255,0.14);
 }
+
+      /* ── Animations ────────────────────────────────────────────────────── */
+      @keyframes modal-overlay-in {
+        from {
+          background-color: rgba(0, 0, 0, 0);
+          backdrop-filter: blur(0px);
+        }
+        to {
+          background-color: rgba(0, 0, 0, 0.55);
+          backdrop-filter: blur(6px);
+        }
+      }
+
+      @keyframes modal-overlay-out {
+        from {
+          background-color: rgba(0, 0, 0, 0.55);
+          backdrop-filter: blur(6px);
+        }
+        to {
+          background-color: rgba(0, 0, 0, 0);
+          backdrop-filter: blur(0px);
+        }
+      }
+
+      @keyframes ripple-modal-open {
+        0% {
+          opacity: 0;
+          transform: scale(0.3) translateY(20px);
+          filter: blur(10px);
+        }
+        50% {
+          opacity: 0.8;
+        }
+        100% {
+          opacity: 1;
+          transform: scale(1) translateY(0);
+          filter: blur(0px);
+        }
+      }
+
+      @keyframes ripple-modal-close {
+        0% {
+          opacity: 1;
+          transform: scale(1) translateY(0);
+          filter: blur(0px);
+        }
+        50% {
+          opacity: 0.7;
+        }
+        100% {
+          opacity: 0;
+          transform: scale(0.2) translateY(20px);
+          filter: blur(8px);
+        }
+      }
 
 /* ═══════════════════════════════════════════════════════════════════════════
    VIDEO EFFECTS — HUD-style tabbed interface
@@ -5237,160 +5377,4 @@ video:-ms-fullscreen {
 .context-menu:focus-within {
   outline: 1px solid rgba(111,163,239,0.35);
   outline-offset: -1px;
-}
-
-/* ─────────────────────────────────────────────────────────────
-   fa-local.css — Local SVG Icon Styles (No CDN Required)
-   ───────────────────────────────────────────────────────────── */
-
-/* ── Base icon style ─────────────────────────────────────────── */
-.svg-icon {
-  width: 1em;
-  height: 1em;
-  vertical-align: -0.125em;
-  display: inline-block;
-  filter: invert(1) opacity(0.85);
-  pointer-events: none;
-  flex-shrink: 0;
-}
-
-/* ── Spin animation (update checker spinner) ─────────────────── */
-@keyframes fa-spin {
-  from { transform: rotate(0deg); }
-  to   { transform: rotate(360deg); }
-}
-.fa-spin {
-  animation: fa-spin 1s linear infinite;
-}
-
-/* ── Sizes ───────────────────────────────────────────────────── */
-.fa-xs  { width: 0.75em;  height: 0.75em;  }
-.fa-sm  { width: 0.875em; height: 0.875em; }
-.fa-lg  { width: 1.25em;  height: 1.25em;  }
-.fa-xl  { width: 1.5em;   height: 1.5em;   }
-.fa-2x  { width: 2em;     height: 2em;     }
-.fa-2xl { width: 2em;     height: 2em;     }
-
-/* ── Context menu icons ──────────────────────────────────────── */
-.cm-icon .svg-icon {
-  width: 14px;
-  height: 14px;
-  vertical-align: middle;
-}
-
-/* ── Nav bar icons ───────────────────────────────────────────── */
-.nav-row-icon .svg-icon {
-  width: 13px;
-  height: 13px;
-  vertical-align: middle;
-}
-
-/* ── Tool modal header icon ──────────────────────────────────── */
-.tool-modal-icon {
-  width: 18px;
-  height: 18px;
-  vertical-align: middle;
-  margin-right: 4px;
-}
-
-/* ── VFX panel icons ─────────────────────────────────────────── */
-.vfx-icon .svg-icon {
-  width: 15px;
-  height: 15px;
-  vertical-align: middle;
-}
-
-/* ── Sync tab icons ──────────────────────────────────────────── */
-.sync-tab .svg-icon {
-  width: 13px;
-  height: 13px;
-  vertical-align: middle;
-  margin-right: 3px;
-}
-
-/* ── VFX tab icons ───────────────────────────────────────────── */
-.vfx-tab .svg-icon {
-  width: 13px;
-  height: 13px;
-  vertical-align: middle;
-  margin-right: 3px;
-}
-
-/* ── About modal icons ───────────────────────────────────────── */
-.about-info-label .svg-icon {
-  width: 14px;
-  height: 14px;
-  vertical-align: middle;
-  margin-right: 4px;
-}
-.about-link .svg-icon {
-  width: 14px;
-  height: 14px;
-  vertical-align: middle;
-  margin-right: 4px;
-}
-
-/* ── Button icons (reset, toolbar) ──────────────────────────── */
-.tool-modal-btn .svg-icon,
-.vfx-reset .svg-icon {
-  width: 13px;
-  height: 13px;
-  vertical-align: middle;
-  margin-right: 3px;
-}
-
-/* ── Viz / GIF search icon ───────────────────────────────────── */
-.viz-search-icon {
-  width: 13px;
-  height: 13px;
-  vertical-align: middle;
-  opacity: 0.6;
-}
-
-/* ── Playlist search icon ────────────────────────────────────── */
-.playlist-search-icon {
-  width: 13px;
-  height: 13px;
-  vertical-align: middle;
-  opacity: 0.6;
-  flex-shrink: 0;
-}
-
-/* ── Upload button icon ──────────────────────────────────────── */
-.viz-upload-btn .svg-icon {
-  width: 13px;
-  height: 13px;
-  vertical-align: middle;
-  margin-right: 4px;
-}
-
-/* ── GIF confirm modal icon ──────────────────────────────────── */
-.gif-modal-icon .svg-icon {
-  width: 28px;
-  height: 28px;
-  opacity: 0.9;
-}
-
-/* ── Confirm button icon ─────────────────────────────────────── */
-.gif-modal-btn .svg-icon {
-  width: 13px;
-  height: 13px;
-  vertical-align: middle;
-  margin-right: 3px;
-}
-
-/* ── Temperature panel icons ─────────────────────────────────── */
-.vfx-temp-cool .svg-icon,
-.vfx-temp-warm .svg-icon {
-  width: 13px;
-  height: 13px;
-  vertical-align: middle;
-}
-
-/* ── Update status icons ─────────────────────────────────────── */
-.about-update-status .svg-icon {
-  width: 14px;
-  height: 14px;
-  vertical-align: middle;
-  margin-right: 4px;
 }

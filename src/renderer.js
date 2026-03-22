@@ -1350,7 +1350,7 @@ async function loadMediaFile(filePath, fileName) {
 		document.getElementById("noMediaLogo").style.display = "block";
 		audioImage.style.display = "none";
 		document.getElementById("audioLogo").style.display = "none";
-		return;
+		return false; // ✅ Return false on empty path
 	}
 
 	try {
@@ -1456,13 +1456,20 @@ async function loadMediaFile(filePath, fileName) {
 		// Clear the loading flag so user can try again
 		isLoadingFile = false;
 		
-		// Show error message to user
+		// ✅ Show better error message with filename
+		const fileName = filePath ? filePath.split(/[/\\]/).pop() : "Unknown file";
 		if (error.message && error.message.includes('ERR_OUT_OF_RANGE')) {
-			showStatusMessage("Error: File stream corrupted. Try again.");
+			showStatusMessage(`Skipping: "${fileName}" (corrupted stream)`);
 		} else {
-			showStatusMessage("Error: Failed to load file. Try again.");
+			showStatusMessage(`Skipping: "${fileName}" (unable to load)`);
 		}
+		
+		// ✅ Return false to indicate load failure
+		return false;
 	}
+	
+	// ✅ Return true to indicate load success
+	return true;
 }
 
 // Ensure event listeners are only added once
@@ -1510,7 +1517,7 @@ function getVideoId() {
 }
 
 // ✅ Modified playMediaFile to handle both initial play and playlist updates
-function playMediaFile(filePath) {
+async function playMediaFile(filePath) {
 	if (!filePath) return;
 
 	// Extract REAL filename (not 8.3 short name)
@@ -1527,14 +1534,34 @@ function playMediaFile(filePath) {
 	}
 
 	currentVideoIndex = mediaFiles.indexOf(filePath);
-	loadMediaFile(filePath, realFileName);
+	// ✅ Make loadMediaFile call async and handle result
+	const loadSuccess = await loadMediaFile(filePath, realFileName);
+	
+	// ✅ If load failed, try next file
+	if (!loadSuccess) {
+		if (!window._fileSkipTracker) {
+			window._fileSkipTracker = new Set();
+		}
+		window._fileSkipTracker.add(currentVideoIndex);
+		const nextIndex = getNextIndex();
+		if (nextIndex !== null && window._fileSkipTracker.size < mediaFiles.length) {
+			await playVideoByIndex(nextIndex, true);
+			return;
+		}
+	}
+	
 	highlightCurrentVideo(filePath);  // ✅ Pass full filePath, not just filename
 	updateNavigationButtons();
 }
 
-// ✅ Function to play a video by its index
-function playVideoByIndex(index, skipHistoryUpdate = false) {
+// ✅ Function to play a video by its index (now with auto-skip for failed files)
+async function playVideoByIndex(index, skipHistoryUpdate = false) {
 	if (index < 0 || index >= mediaFiles.length) return;
+
+	// ✅ NEW: Track skipped files to prevent infinite loops
+	if (!window._fileSkipTracker) {
+		window._fileSkipTracker = new Set();
+	}
 
 	// Track navigation history so Previous button works after manual playlist selections
 	// (Only update if not called from playNext/playPrevious which manage history themselves)
@@ -1560,12 +1587,34 @@ function playVideoByIndex(index, skipHistoryUpdate = false) {
 	const pathParts = filePath.split(/[/\\]/);
 	const realFileName = pathParts[pathParts.length - 1];
 
-	loadMediaFile(filePath, realFileName);
-	highlightCurrentVideo(filePath);  // ✅ Pass full filePath, not just filename
+	// ✅ Try to load file and catch failures
+	const loadSuccess = await loadMediaFile(filePath, realFileName);
+	
+	// ✅ If file failed to load, skip to next file
+	if (!loadSuccess) {
+		window._fileSkipTracker.add(index);
+		const nextIndex = getNextIndex();
+		
+		// If we have a next file and haven't skipped too many, try next file
+		if (nextIndex !== null && window._fileSkipTracker.size < mediaFiles.length) {
+			await playVideoByIndex(nextIndex, skipHistoryUpdate);
+			return;
+		} else {
+			// All files failed or no more files
+			stopPlayback();
+			showStatusMessage("⚠️ No playable files in playlist");
+			return;
+		}
+	}
+	
+	// ✅ Reset skip tracker on successful load
+	window._fileSkipTracker.clear();
+	
+	highlightCurrentVideo(filePath);
 	updateNavigationButtons();
 }
 
-video.addEventListener("ended", () => {
+video.addEventListener("ended", async () => {
 	const nextIndex = getNextIndex();
 	if (nextIndex !== null) {
 		// ── Seamless next-video transition ──────────────────────────────────
@@ -1579,7 +1628,8 @@ video.addEventListener("ended", () => {
 		if (_na)  { _na.classList.add("hidden"); }
 		if (_wb)  { _wb.classList.add("hidden");  _wb.classList.remove("visible"); }
 		// ────────────────────────────────────────────────────────────────────
-		playVideoByIndex(nextIndex);
+		// ✅ Make playVideoByIndex async call
+		await playVideoByIndex(nextIndex);
 	} else {
 		stopPlayback();
 
@@ -4747,7 +4797,7 @@ document.addEventListener("keydown", (event) => {
 		}
 	}
 
-	if (event.ctrlKey && event.key === ";") {
+	if (event.shiftKey && event.key === ":") {
 		event.preventDefault();
 		togglePlaylist();
 	}
