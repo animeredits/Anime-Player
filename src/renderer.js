@@ -1797,8 +1797,29 @@ playPauseBtn.addEventListener("click", (e) => {
 	togglePlayPause();
 });
 
-video.addEventListener("play", () => updatePlayPauseIcon(true));
-video.addEventListener("pause", () => updatePlayPauseIcon(false));
+video.addEventListener("play", () => {
+	updatePlayPauseIcon(true);
+	if ('mediaSession' in navigator) navigator.mediaSession.playbackState = 'playing';
+	// Capture a video frame ~800ms after playback starts and push it to SMTC artwork.
+	// 800ms delay gives Chromium time to decode and render the first frame.
+	scheduleArtworkUpdate(800);
+});
+video.addEventListener("pause", () => {
+	updatePlayPauseIcon(false);
+	if ('mediaSession' in navigator) navigator.mediaSession.playbackState = 'paused';
+});
+
+// ── Wire OS media overlay buttons (Windows SMTC / macOS / Linux) ─────────────
+// These handlers let the media keys and overlay buttons control playback.
+if ('mediaSession' in navigator) {
+	navigator.mediaSession.setActionHandler('play', () => { if (video.paused) togglePlayPause(); });
+	navigator.mediaSession.setActionHandler('pause', () => { if (!video.paused) togglePlayPause(); });
+	navigator.mediaSession.setActionHandler('nexttrack', () => { if (nextButton) nextButton.click(); });
+	navigator.mediaSession.setActionHandler('previoustrack', () => { if (prevButton) prevButton.click(); });
+	navigator.mediaSession.setActionHandler('seekto', (details) => {
+		if (details.seekTime !== undefined) video.currentTime = details.seekTime;
+	});
+}
 
 // ✅ Function to get the next video index
 function getNextIndex() {
@@ -1971,9 +1992,67 @@ function updateNavigationButtons() {
 }
 
 
-// Function to update video title with truncation
-function updateVideoTitle(fileName) {
+// ── OS Media Overlay (Windows SMTC / macOS / Linux) ──────────────────────────
+//
+// STEP 1 — updateMediaSessionMetadata(title)
+//   Called immediately when a new file title is known.
+//   Sets title + artist straight away; artwork starts as the app icon so the
+//   overlay is never blank.
+//
+// STEP 2 — updateMediaSessionArtwork()
+//   Called ~800 ms after playback starts (once the first frame is rendered).
+//   Draws the current video frame onto a hidden canvas and converts it to a
+//   base64 JPEG data-URL — no HTTP request, no ffmpeg, works in dev AND prod.
+//   For audio-only files (no video track) the app icon stays as artwork.
+// ─────────────────────────────────────────────────────────────────────────────
 
+function updateMediaSessionMetadata(title) {
+	if (!('mediaSession' in navigator)) return;
+	navigator.mediaSession.metadata = new MediaMetadata({
+		title: title || 'Anime Player',
+		artist: 'Anime Player',
+		// Placeholder artwork — replaced by a real video frame once playback starts
+		artwork: [
+			{ src: 'http://127.0.0.1:54321/icon', sizes: '512x512', type: 'image/png' }
+		]
+	});
+}
+
+// Capture one video frame via canvas and push it as SMTC artwork.
+// Must be called AFTER the video element has rendered at least one frame.
+let _artworkUpdateTimer = null;
+function updateMediaSessionArtwork() {
+	if (!('mediaSession' in navigator)) return;
+	if (!navigator.mediaSession.metadata) return;
+	// Guard: need a decoded video frame
+	if (video.readyState < 2 || video.videoWidth === 0 || video.videoHeight === 0) return;
+	try {
+		const W = 320;
+		const H = Math.round(video.videoHeight * (W / video.videoWidth)) || 180;
+		const canvas = document.createElement('canvas');
+		canvas.width = W;
+		canvas.height = H;
+		canvas.getContext('2d').drawImage(video, 0, 0, W, H);
+		const dataUrl = canvas.toDataURL('image/jpeg', 0.85);
+		const meta = navigator.mediaSession.metadata;
+		// Re-set metadata so Windows picks up the new artwork immediately
+		navigator.mediaSession.metadata = new MediaMetadata({
+			title: meta.title,
+			artist: meta.artist,
+			artwork: [{ src: dataUrl, sizes: `${W}x${H}`, type: 'image/jpeg' }]
+		});
+	} catch (e) {
+		console.warn('[SMTC] Canvas thumbnail failed:', e.message);
+	}
+}
+
+// Schedule an artwork refresh, debounced so rapid play events don't stack up
+function scheduleArtworkUpdate(delayMs = 800) {
+	clearTimeout(_artworkUpdateTimer);
+	_artworkUpdateTimer = setTimeout(updateMediaSessionArtwork, delayMs);
+}
+
+function updateVideoTitle(fileName) {
 	if (!fileName || typeof fileName !== "string") {
 		console.error("Invalid fileName passed to updateVideoTitle:", fileName);
 		document.title = "Anime Player"; // Reset to default
@@ -1985,6 +2064,9 @@ function updateVideoTitle(fileName) {
 		const nameWithoutExtension = fileName.replace(/\.[^/.]+$/, "");
 		videoTitleElement.textContent = nameWithoutExtension;
 
+		// Update SMTC title/artist immediately (artwork frame captured on play)
+		updateMediaSessionMetadata(nameWithoutExtension);
+
 		// Update window title
 		document.title = nameWithoutExtension + " - Anime Player";
 	} else {
@@ -1992,6 +2074,8 @@ function updateVideoTitle(fileName) {
 		document.title = "Anime Player";
 	}
 }
+
+
 
 // Function to show video title when video is paused
 function showVideoTitle() {

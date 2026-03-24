@@ -8,6 +8,26 @@ const http = require('http');
 const { execFile, spawn } = require('child_process');
 const os = require('os');
 
+// ── CRITICAL: Must be set BEFORE app is ready so Windows SMTC shows "Anime Player"
+// instead of "Unknown app". In dev mode use process.execPath as the fallback ID.
+// Value must exactly match build.appId in package.json for packaged builds.
+// ── SMTC App Name fix ─────────────────────────────────────────────────────────
+// Must be set BEFORE app is ready. In packaged builds the NSIS installer
+// registers 'com.AnimePlayer' so Windows can resolve the display name.
+// In dev mode we explicitly set the app name so the SMTC header shows
+// "Anime Player" instead of "Unknown app" or the raw electron.exe path.
+if (app.isPackaged) {
+  app.setAppUserModelId('com.AnimePlayer');
+} else {
+  // Tell Electron the product name before the AUMID is set
+  app.setName('Anime Player');
+  // Use the current exe path — Windows will look up its FileDescription
+  // in the executable's version info and display that as the app name.
+  // In practice this shows "Anime Player" once the app is branded/packaged.
+  // For unbranded dev electron.exe it shows "Electron"; packaging fixes it.
+  app.setAppUserModelId(process.execPath);
+}
+
 // ── GPU detection state ────────────────────────────────────────────────────────
 // Populated async at startup via app.getGPUInfo(); used to pick ffmpeg hwaccel.
 let gpuVendor = 'unknown';   // 'nvidia' | 'amd' | 'intel' | 'unknown'
@@ -170,6 +190,60 @@ function getMimeType(filePath) {
 const streamServer = http.createServer((req, res) => {
   // Blob URLs directly in the renderer, no disk files or HTTP needed.
 
+  // ── Serve app icon for mediaSession artwork (Windows SMTC overlay icon) ──
+  if (req.url === '/icon') {
+    const iconPath = app.isPackaged
+      ? path.join(process.resourcesPath, 'assets', 'icons', 'icon.png')
+      : path.join(__dirname, '..', 'assets', 'icons', 'icon.png');
+    if (fs.existsSync(iconPath)) {
+      const iconData = fs.readFileSync(iconPath);
+      res.writeHead(200, {
+        'Content-Type': 'image/png',
+        'Access-Control-Allow-Origin': '*',
+        'Cache-Control': 'public, max-age=86400'
+      });
+      res.end(iconData);
+    } else {
+      res.writeHead(404);
+      res.end('Icon not found');
+    }
+    return;
+  }
+
+  // ── Serve video thumbnail for SMTC / mediaSession artwork ─────────────────
+  // Uses ffmpeg to grab the first keyframe and return it as JPEG.
+  // Falls back to /icon if ffmpeg fails or no file is loaded.
+  if (req.url === '/thumb') {
+    if (!streamState.filePath || !fs.existsSync(streamState.filePath)) {
+      res.writeHead(302, { Location: '/icon' });
+      res.end();
+      return;
+    }
+    const ffArgs = [
+      '-loglevel', 'error',
+      '-i', streamState.filePath,
+      '-an', '-vframes', '1',
+      '-vf', 'scale=320:-1',
+      '-f', 'image2', '-vcodec', 'mjpeg',
+      'pipe:1'
+    ];
+    const ffProc = spawn(ffmpegExecutable, ffArgs, { windowsHide: true });
+    const chunks = [];
+    ffProc.stdout.on('data', d => chunks.push(d));
+    ffProc.stderr.on('data', () => {});
+    ffProc.on('close', (code) => {
+      if (code === 0 && chunks.length > 0) {
+        res.writeHead(200, { 'Content-Type': 'image/jpeg', 'Access-Control-Allow-Origin': '*', 'Cache-Control': 'no-cache' });
+        res.end(Buffer.concat(chunks));
+      } else {
+        res.writeHead(302, { Location: '/icon' });
+        res.end();
+      }
+    });
+    ffProc.on('error', () => { res.writeHead(302, { Location: '/icon' }); res.end(); });
+    return;
+  }
+
   // Handle audio track stream requests  (/audio/<trackIndex>?ss=<seconds>)
   if (req.url.startsWith('/audio/')) {
     const trackIdx = parseInt(req.url.split('/audio/')[1].split('?')[0], 10);
@@ -303,10 +377,7 @@ function initApp() {
       console.error('[Stream] Server error:', err.message);
     }
   });
-  // ── Register app so NVIDIA GeForce Experience / NVIDIA App can detect it ──
-  // The NVIDIA overlay identifies apps by their AppUserModelId (Windows) and
-  // the executable path. Setting a consistent ID ensures it shows in GPU settings.
-  app.setAppUserModelId('com.animeplayer.app');
+  // ── AppUserModelId is set at module load (top of file) before app is ready ──
 
   // ── Chromium GPU / hardware decode flags ─────────────────────────────────
   app.commandLine.appendSwitch('autoplay-policy', 'no-user-gesture-required');
@@ -398,7 +469,7 @@ appState.win.webContents.on('before-input-event', (event, input) => {
       isFullscreen: appState.windowState.isFullscreen
       });
       appState.win.webContents.send('initial-play-state', appState.playback.status);
-      appState.win.webContents.openDevTools();
+      // appState.win.webContents.openDevTools();
       setTimeout(() => {
       createTray();
       updateThumbarButtons();
