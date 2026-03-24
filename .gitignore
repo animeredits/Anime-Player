@@ -2,7 +2,6 @@
 /dist/
 /out/
 /release/
-/build/
 
 # Electron Forge
 /.cache/
