@@ -6487,22 +6487,30 @@ window.electron.onFileOpen(async (filePath) => {
 	if (filePath) {
 		// Get real long filename from main process (fixes Windows 8.3 short names)
 		const realPath = await window.electron.invoke('get-real-filename', filePath);
+		
+		// Get all media files from the same folder (sorted)
+		const folderData = await window.electron.invoke('get-folder-media-files', realPath);
+		
 		if (!isFirstFileOpened) {
-			// First file - initialize playlist and start playing it
-			mediaFiles = [realPath];
-			currentVideoIndex = 0;
+			// First file - initialize playlist with ALL files from the folder
+			mediaFiles = folderData.files || [realPath];
+			currentVideoIndex = mediaFiles.indexOf(realPath);
+			if (currentVideoIndex === -1) {
+				currentVideoIndex = 0;
+			}
 			isFirstFileOpened = true;
 			updatePlaylistDropdown(mediaFiles);
-			playMediaFile(realPath, realPath.split(/[/\\]/).pop());
+			playMediaFile(mediaFiles[currentVideoIndex], mediaFiles[currentVideoIndex].split(/[/\\]/).pop());
 		} else {
-			// Subsequent files (e.g. multi-select from Explorer / second-instance) —
-			// add to playlist but do NOT auto-play. The first file already started;
-			// overriding it here would cause the last-received file to win instead.
-			if (!mediaFiles.includes(realPath)) {
-				mediaFiles.push(realPath);
-				updatePlaylistDropdown(mediaFiles);
-				// Do not call playMediaFile here — first file stays playing.
+			// Subsequent files - add all folder files to playlist (avoid duplicates)
+			const newFiles = folderData.files || [realPath];
+			for (const file of newFiles) {
+				if (!mediaFiles.includes(file)) {
+					mediaFiles.push(file);
+				}
 			}
+			updatePlaylistDropdown(mediaFiles);
+			// Do not auto-play - let the current file continue
 		}
 	}
 });

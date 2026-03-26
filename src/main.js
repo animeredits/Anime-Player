@@ -882,6 +882,7 @@ function setupIPCHandlers() {
   ipcMain.handle("open-file-dialog", handleOpenFileDialog);
   ipcMain.handle("open-folder-dialog", handleOpenFolderDialog);
   ipcMain.handle("delete-file", handleDeleteFile);
+  ipcMain.handle("get-folder-media-files", handleGetFolderMediaFiles);
 
   // Subtitle file dialog
   ipcMain.handle("open-subtitle-dialog", async () => {
@@ -1819,6 +1820,43 @@ async function handleOpenFolderDialog() {
   } catch (error) {
     console.error("Error reading folder:", error);
     return null;
+  }
+}
+
+// ── NEW: Get all media files from the folder containing a specific file ──
+// When a file is opened directly (e.g., from Windows), load all files in its folder
+async function handleGetFolderMediaFiles(event, filePath) {
+  try {
+    if (!filePath || typeof filePath !== 'string') {
+      return { files: [], currentFile: null };
+    }
+
+    // Get the directory containing the file
+    const folderPath = path.normalize(path.dirname(filePath));
+    
+    // Check if folder exists
+    if (!fs.existsSync(folderPath)) {
+      console.warn(`Folder does not exist: ${folderPath}`);
+      return { files: [filePath], currentFile: filePath }; // Fall back to single file
+    }
+
+    // Read all files in the folder
+    const files = await fs.promises.readdir(folderPath, { withFileTypes: true });
+ 
+    // Filter media files and sort them numerically
+    const mediaFiles = files
+      .filter(file => file.isFile() && MEDIA_EXTENSIONS.includes(path.extname(file.name).toLowerCase()))
+      .map(file => path.join(folderPath, file.name))
+      .sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
+ 
+    return {
+      files: mediaFiles.length > 0 ? mediaFiles : [filePath],
+      currentFile: filePath
+    };
+  } catch (error) {
+    console.error("Error reading folder media files:", error);
+    // Fallback: return just the single file
+    return { files: [filePath], currentFile: filePath };
   }
 }
 
