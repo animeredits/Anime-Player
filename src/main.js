@@ -63,19 +63,19 @@ async function detectGpuAndSetHwAccel() {
       // d3d11va = DirectX 11 Video Acceleration — works on all NVIDIA/Windows
       // Prefer d3d11va over cuda for broader codec support (HEVC, AV1, etc.)
       hwAccelArgs = ['-hwaccel', 'd3d11va'];
-      console.log('🟢 GPU: NVIDIA detected → ffmpeg hwaccel=d3d11va');
+      // console.log('🟢 GPU: NVIDIA detected → ffmpeg hwaccel=d3d11va');
     } else if (isAmd) {
       gpuVendor = 'amd';
       hwAccelArgs = ['-hwaccel', 'd3d11va'];
-      console.log('🟢 GPU: AMD detected → ffmpeg hwaccel=d3d11va');
+      // console.log('🟢 GPU: AMD detected → ffmpeg hwaccel=d3d11va');
     } else if (isIntel) {
       gpuVendor = 'intel';
       hwAccelArgs = ['-hwaccel', 'd3d11va'];
-      console.log('🟢 GPU: Intel detected → ffmpeg hwaccel=d3d11va');
+      // console.log('🟢 GPU: Intel detected → ffmpeg hwaccel=d3d11va');
     } else {
       gpuVendor = 'unknown';
       hwAccelArgs = [];
-      console.log('⚠️ GPU: Unknown vendor — no hwaccel');
+      // console.log('⚠️ GPU: Unknown vendor — no hwaccel');
     }
 
     // Notify renderer about GPU info for display in UI
@@ -87,7 +87,7 @@ async function detectGpuAndSetHwAccel() {
       _cachedGpuName = gpus[0].description || gpus[0].model || gpuVendor.toUpperCase();
     }
   } catch (e) {
-    console.warn('GPU detection failed:', e.message);
+    // console.warn('GPU detection failed:', e.message);
     hwAccelArgs = [];
   }
 }
@@ -102,7 +102,7 @@ function resolveBinaryPaths() {
     const binDir = path.join(process.resourcesPath, 'bin');
     ffmpegExecutable  = path.join(binDir, `ffmpeg${ext}`);
     ffprobeExecutable = path.join(binDir, `ffprobe${ext}`);
-    console.log('📦 Packed — using bundled ffmpeg:', ffmpegExecutable);
+    // console.log('📦 Packed — using bundled ffmpeg:', ffmpegExecutable);
   } else {
     // ── Development: use locally installed ffmpeg on developer PC ───────────
     // Priority order:
@@ -121,8 +121,8 @@ function resolveBinaryPaths() {
       || (fs.existsSync(path.join(localBin, `ffprobe${ext}`)) ? path.join(localBin, `ffprobe${ext}`) : null)
       || `ffprobe${ext}`;  // fallback: expect it in system PATH
 
-    console.log('🛠️  Dev — using ffmpeg:', ffmpegExecutable);
-    console.log('🛠️  Dev — using ffprobe:', ffprobeExecutable);
+    // console.log('🛠️  Dev — using ffmpeg:', ffmpegExecutable);
+    // console.log('🛠️  Dev — using ffprobe:', ffprobeExecutable);
   }
 }
 
@@ -301,7 +301,7 @@ const streamServer = http.createServer((req, res) => {
       'pipe:1'
     ];
 
-    console.log(`🎵 Audio ${trackIdx} codec=${codec} ch=${channels} resample=${needsResample} from=${startSec.toFixed(2)}s`);
+    // console.log(`🎵 Audio ${trackIdx} codec=${codec} ch=${channels} resample=${needsResample} from=${startSec.toFixed(2)}s`);
 
     const ffProc = spawn(ffmpegExecutable, ffArgs, { windowsHide: true });
     ffProc.stdout.pipe(res);
@@ -469,7 +469,7 @@ appState.win.webContents.on('before-input-event', (event, input) => {
       isFullscreen: appState.windowState.isFullscreen
       });
       appState.win.webContents.send('initial-play-state', appState.playback.status);
-      // appState.win.webContents.openDevTools();
+      appState.win.webContents.openDevTools();
       setTimeout(() => {
       createTray();
       updateThumbarButtons();
@@ -493,9 +493,8 @@ appState.win.webContents.on('before-input-event', (event, input) => {
           pollInterval: 100
         }
       });
-      console.log('✅ Hot-reload enabled for development');
+      // console.log('✅ Hot-reload enabled for development');
     } catch (e) {
-      console.warn('⚠️ electron-reload not available, hot-reload disabled');
     }
     
     // Watch CSS and JS files for changes and reload renderer without app restart
@@ -517,24 +516,24 @@ appState.win.webContents.on('before-input-event', (event, input) => {
       });
       
       watcher.on('change', (filePath) => {
-        console.log(`🔄 File changed: ${path.basename(filePath)}`);
+        // console.log(`🔄 File changed: ${path.basename(filePath)}`);
         if (appState.win && !appState.win.isDestroyed()) {
           // For CSS/HTML changes, reload the renderer
           if (filePath.endsWith('.css') || filePath.endsWith('.html')) {
-            console.log('🎨 Reloading renderer...');
+            // console.log('🎨 Reloading renderer...');
             appState.win.webContents.reloadIgnoringCache();
           }
           // For JS changes in renderer, also reload
           else if (filePath.includes('renderer') || filePath.includes('src')) {
-            console.log('⚡ Reloading renderer...');
+            // console.log('⚡ Reloading renderer...');
             appState.win.webContents.reloadIgnoringCache();
           }
         }
       });
       
-      console.log('✅ File watcher initialized for hot-reload');
+      // console.log('✅ File watcher initialized for hot-reload');
     } catch (e) {
-      console.log('💡 Chokidar not available - basic electron-reload will handle file changes');
+      // console.log('💡 Chokidar not available - basic electron-reload will handle file changes');
     }
   }
 
@@ -820,7 +819,7 @@ function setupIPCHandlers() {
   if (!app.isPackaged) {
     ipcMain.handle('reload-renderer', () => {
       if (appState.win && !appState.win.isDestroyed()) {
-        console.log('🔄 Manual renderer reload requested');
+        // console.log('🔄 Manual renderer reload requested');
         appState.win.webContents.reloadIgnoringCache();
         return { success: true, message: 'Renderer reloading...' };
       }
@@ -912,7 +911,7 @@ function setupIPCHandlers() {
       return;
     }
     autoUpdater.checkForUpdates().catch(err => {
-      console.warn('[Updater] Manual check failed:', err.message);
+      // console.warn('[Updater] Manual check failed:', err.message);
       appState.win?.webContents.send('update-error', err.message);
     });
   });
@@ -933,18 +932,18 @@ function setupIPCHandlers() {
     console.log('📂 set-stream-file called with:', filePath); // ← debug line
     try {
       const normalized = path.normalize(filePath);
-      console.log('📂 normalized:', normalized);
-      console.log('📂 exists:', fs.existsSync(normalized));
+      // console.log('📂 normalized:', normalized);
+      // console.log('📂 exists:', fs.existsSync(normalized));
 
       if (!fs.existsSync(normalized)) {
         return { success: false, error: 'File not found: ' + normalized };
       }
       streamState.filePath = normalized;
       streamState.mimeType = getMimeType(normalized);
-      console.log('✅ Stream file set:', streamState.filePath);
+      // console.log('✅ Stream file set:', streamState.filePath);
       return { success: true, port: STREAM_PORT };
     } catch (err) {
-      console.error('❌ set-stream-file error:', err);
+      // console.error('❌ set-stream-file error:', err);
       return { success: false, error: err.message };
     }
   });
@@ -1275,7 +1274,7 @@ function setupIPCHandlers() {
       const parsed = JSON.parse(probeStdout || '{}');
       const allStreams = parsed.streams || [];
       streams = allStreams.filter(s => s.codec_type === 'subtitle');
-      console.log(`[Sub] Found ${allStreams.length} total streams, ${streams.length} subtitle stream(s)`);
+      // console.log(`[Sub] Found ${allStreams.length} total streams, ${streams.length} subtitle stream(s)`);
       streams.forEach((s, i) =>
         console.log(`[Sub]   track ${i}: index=${s.index} codec=${s.codec_name} lang=${s.tags?.language} title=${s.tags?.title}`)
       );
@@ -1285,7 +1284,7 @@ function setupIPCHandlers() {
     }
 
     if (streams.length === 0) {
-      console.log('[Sub] No subtitle streams found in file');
+      // console.log('[Sub] No subtitle streams found in file');
       return { success: true, tracks: [] };
     }
 
@@ -1303,16 +1302,16 @@ function setupIPCHandlers() {
       const codec = (s.codec_name || '').toLowerCase();
       if (TEXT_CODECS.has(codec)) return true;
       if (IMAGE_CODECS.has(codec)) {
-        console.log(`[Sub] Skipping image-based subtitle stream ${s.index} (${codec}) — cannot convert to text`);
+        // console.log(`[Sub] Skipping image-based subtitle stream ${s.index} (${codec}) — cannot convert to text`);
         return false;
       }
       // Unknown codec — attempt extraction anyway, worst case FFmpeg fails
-      console.log(`[Sub] Unknown subtitle codec "${codec}" for stream ${s.index} — attempting extraction`);
+      // console.log(`[Sub] Unknown subtitle codec "${codec}" for stream ${s.index} — attempting extraction`);
       return true;
     });
 
     if (textStreams.length === 0) {
-      console.log('[Sub] All subtitle streams are image-based — no text subtitles available');
+      // console.log('[Sub] All subtitle streams are image-based — no text subtitles available');
       return { success: true, tracks: [] };
     }
 
@@ -1475,23 +1474,23 @@ function setupIPCHandlers() {
           if (code !== 0 || !raw.includes('WEBVTT')) {
             // Log FFmpeg's stderr to show why it failed
             const lastLine = errOut.split('\n').filter(Boolean).pop() || 'no output';
-            console.warn(`[Sub] FFmpeg stream ${streamIndex} failed (exit ${code}): ${lastLine}`);
+            // console.warn(`[Sub] FFmpeg stream ${streamIndex} failed (exit ${code}): ${lastLine}`);
             return resolve(null);
           }
 
           const cleaned = cleanVtt(raw);
           // A cleaned VTT with only the header and no cues is useless
           if (cleaned.split('\n').filter(l => l.includes('-->')).length === 0) {
-            console.warn(`[Sub] Stream ${streamIndex} produced 0 cues after cleaning`);
+            // console.warn(`[Sub] Stream ${streamIndex} produced 0 cues after cleaning`);
             return resolve(null);
           }
 
-          console.log(`[Sub] Stream ${streamIndex} OK — ${cleaned.split('\n').filter(l => l.includes('-->')).length} cues`);
+          // console.log(`[Sub] Stream ${streamIndex} OK — ${cleaned.split('\n').filter(l => l.includes('-->')).length} cues`);
           resolve(cleaned);
         });
 
         proc.on('error', (e) => {
-          console.error('[Sub] FFmpeg spawn error:', e.message);
+          //  console.error('[Sub] FFmpeg spawn error:', e.message);
           resolve(null);
         });
       });
@@ -1538,10 +1537,10 @@ function setupIPCHandlers() {
             const rawAss = await extractAssRaw(stream.index);
             if (rawAss) {
               cueStyles = parseAssStyleData(rawAss);
-              console.log(`[Sub] ASS styles parsed for stream ${stream.index}: ${Object.keys(cueStyles.styles).length} styles, ${cueStyles.events.length} events`);
+              // console.log(`[Sub] ASS styles parsed for stream ${stream.index}: ${Object.keys(cueStyles.styles).length} styles, ${cueStyles.events.length} events`);
             }
           } catch (e) {
-            console.warn('[Sub] ASS style parse failed:', e.message);
+            // console.warn('[Sub] ASS style parse failed:', e.message);
           }
             }
 
@@ -1557,7 +1556,7 @@ function setupIPCHandlers() {
     );
 
   const tracks = results.filter(Boolean);
-  console.log(`[Sub] ${tracks.length}/${textStreams.length} track(s) successfully extracted`);
+  // console.log(`[Sub] ${tracks.length}/${textStreams.length} track(s) successfully extracted`);
   return { success: true, tracks };
 });
 
@@ -1575,7 +1574,7 @@ function setupIPCHandlers() {
 
       execFile(ffprobeExecutable, args, { maxBuffer: 10 * 1024 * 1024 }, (err, stdout, stderr) => {
         if (err) {
-          console.error('ffprobe audio error:', err.message);
+          // console.error('ffprobe audio error:', err.message);
           return resolve({ success: true, tracks: [] });
         }
 
@@ -1597,7 +1596,7 @@ function setupIPCHandlers() {
 
         // Store in streamState so the HTTP server can map index → stream
         streamState.audioTracks = tracks;
-        console.log('🎵 Audio tracks found:', tracks.map(t => `${t.index}:${t.title}(${t.codec})`));
+        // console.log('🎵 Audio tracks found:', tracks.map(t => `${t.index}:${t.title}(${t.codec})`));
         resolve({ success: true, tracks });
       });
     });
@@ -1644,7 +1643,7 @@ ipcMain.handle('saveCustomLogo', async (event, fileBuffer, fileName) => {
 
       return { success: true, path: `file://${savePath}` };  // Return absolute path
   } catch (error) {
-      console.error('Failed to save logo:', error);
+      // console.error('Failed to save logo:', error);
       return { success: false, error: error.message };
   }
 });
@@ -1664,7 +1663,7 @@ ipcMain.handle('delete-logo', async (event, fileName) => {
       return { success: false, message: 'File not found' };
     }
   } catch (error) {
-    console.error('Failed to delete file:', error);
+    // console.error('Failed to delete file:', error);
     return { success: false, message: 'Failed to delete file' };
   }
 });
@@ -1695,8 +1694,8 @@ async function getRealLongFilename(filePath) {
           return path.extname(file.name).toLowerCase() === ext;
         });
         
-        console.log(`📁 Found ${candidateFiles.length} file(s) with extension "${ext}" for matching`);
-        console.log(`📊 Looking for file with size=${inputStats.size}, mtime=${inputStats.mtimeMs}`);
+        // // console.log(`📁 Found ${candidateFiles.length} file(s) with extension "${ext}" for matching`);
+        // // console.log(`📊 Looking for file with size=${inputStats.size}, mtime=${inputStats.mtimeMs}`);
         
         // ✅ IMPROVED: Check EACH candidate file
         for (const candidate of candidateFiles) {
@@ -1708,10 +1707,10 @@ async function getRealLongFilename(filePath) {
             const sizesMatch = candidateStats.size === inputStats.size;
             const timesMatch = Math.abs(candidateStats.mtimeMs - inputStats.mtimeMs) <= 1000;  // 1 second tolerance
             
-            console.log(`  ➜ "${candidate.name}": size=${candidateStats.size}, mtime=${candidateStats.mtimeMs}`);
+            // console.log(`  ➜ "${candidate.name}": size=${candidateStats.size}, mtime=${candidateStats.mtimeMs}`);
             
             if (sizesMatch && timesMatch) {
-              console.log(`✅ MATCHED! Resolved "${fileName}" → "${candidate.name}"`);
+              // console.log(`✅ MATCHED! Resolved "${fileName}" → "${candidate.name}"`);
               return candidateFullPath;
             }
           } catch (e) {
@@ -1720,14 +1719,14 @@ async function getRealLongFilename(filePath) {
         }
         
         // ✅ FALLBACK: If no exact match found, try size-only matching
-        console.warn(`⚠️ No exact match found for "${fileName}", trying size-only matching...`);
+        // console.warn(`⚠️ No exact match found for "${fileName}", trying size-only matching...`);
         for (const candidate of candidateFiles) {
           try {
             const candidateFullPath = path.join(dirPath, candidate.name);
             const candidateStats = await fs.promises.stat(candidateFullPath);
             
             if (candidateStats.size === inputStats.size) {
-              console.log(`✅ SIZE MATCH! Resolved "${fileName}" → "${candidate.name}"`);
+              // console.log(`✅ SIZE MATCH! Resolved "${fileName}" → "${candidate.name}"`);
               return candidateFullPath;
             }
           } catch (e) {
@@ -1746,7 +1745,7 @@ async function getRealLongFilename(filePath) {
     
     if (fileEntry && fileEntry.name !== fileName) {
       // We found a mismatch - use the real name from filesystem
-      console.log(`✅ String match resolved: "${fileName}" → "${fileEntry.name}"`);
+      // console.log(`✅ String match resolved: "${fileName}" → "${fileEntry.name}"`);
       return path.join(dirPath, fileEntry.name);
     }
     
@@ -1836,7 +1835,7 @@ async function handleGetFolderMediaFiles(event, filePath) {
     
     // Check if folder exists
     if (!fs.existsSync(folderPath)) {
-      console.warn(`Folder does not exist: ${folderPath}`);
+      // console.warn(`Folder does not exist: ${folderPath}`);
       return { files: [filePath], currentFile: filePath }; // Fall back to single file
     }
 
@@ -1854,7 +1853,7 @@ async function handleGetFolderMediaFiles(event, filePath) {
       currentFile: filePath
     };
   } catch (error) {
-    console.error("Error reading folder media files:", error);
+    // console.error("Error reading folder media files:", error);
     // Fallback: return just the single file
     return { files: [filePath], currentFile: filePath };
   }
@@ -1876,7 +1875,7 @@ async function handleDeleteFile(event, filePath) {
 
 function handleSavePlaybackTime(event, playbackTime, videoId) {
   if (!videoId) {
-    console.error("Error: videoId is undefined.");
+    // console.error("Error: videoId is undefined.");
     return;
   }
 
@@ -1887,7 +1886,7 @@ function handleSavePlaybackTime(event, playbackTime, videoId) {
     fs.writeFileSync(savePath, JSON.stringify(playbackData, null, 2));
     event.reply('playback-time-saved', true);
   } catch (err) {
-    console.error("Failed to save playback time:", err);
+    // console.error("Failed to save playback time:", err);
     event.reply('playback-time-saved', false);
   }
 }
@@ -1913,14 +1912,14 @@ async function handleLoadPlaybackTime(event, videoId) {
 
     return { time: 0 };
   } catch (error) {
-    console.error('Error loading playback time:', error);
+    // console.error('Error loading playback time:', error);
     return { time: 0 };
   }
 }
 
 function handleDeletePlaybackEntry(event, videoId) {
   if (!videoId) {
-    console.error("Error: videoId is undefined.");
+    // console.error("Error: videoId is undefined.");
     return;
   }
 
@@ -1933,7 +1932,7 @@ function handleDeletePlaybackEntry(event, videoId) {
       }
     }
   } catch (error) {
-    console.error("Error deleting playback entry:", error);
+    // console.error("Error deleting playback entry:", error);
   }
 }
 
@@ -1945,7 +1944,7 @@ function handleAppClose(event, playbackTime, videoId) {
     try {
       fs.writeFileSync(savePath, JSON.stringify(playbackData, null, 2));
     } catch (error) {
-      console.error("Error writing playback data:", error);
+      // console.error("Error writing playback data:", error);
     }
   }
 
@@ -1979,12 +1978,12 @@ function setupAutoUpdater() {
   autoUpdater.autoInstallOnAppQuit = false;
 
   autoUpdater.on('update-available', (info) => {
-    console.log('[Updater] Update available:', info.version);
+    // console.log('[Updater] Update available:', info.version);
     appState.win?.webContents.send('update-available', { version: info.version });
   });
 
   autoUpdater.on('update-not-available', () => {
-    console.log('[Updater] App is up to date');
+    // console.log('[Updater] App is up to date');
     appState.win?.webContents.send('update-not-available');
   });
 
@@ -2002,7 +2001,7 @@ function setupAutoUpdater() {
 
   autoUpdater.on('update-downloaded', (info) => {
     isUpdating = false;
-    console.log('[Updater] Download complete, will install on quit');
+    // console.log('[Updater] Download complete, will install on quit');
     // Tell the updater UI to show "Ready, restarting..." then main handles quit
     updaterWindow?.webContents.send('update-downloaded', { version: info.version });
     // Delay quit to let the UI animate
@@ -2013,7 +2012,7 @@ function setupAutoUpdater() {
   });
 
   autoUpdater.on('error', (error) => {
-    console.error('[Updater] Error:', error.message);
+    // console.error('[Updater] Error:', error.message);
     isUpdating = false;
     // Destroy the updater window safely (closable may be false)
     if (updaterWindow) {
@@ -2033,18 +2032,18 @@ function setupAutoUpdater() {
     if (updateCheckTimer) clearInterval(updateCheckTimer);
     updateCheckTimer = setInterval(doUpdateCheck, UPDATE_CHECK_INTERVAL);
   } else {
-    console.log('[Updater] Skipping update check in dev mode');
+    // console.log('[Updater] Skipping update check in dev mode');
   }
 }
 
 function doUpdateCheck() {
   if (!net.isOnline()) {
-    console.log('[Updater] Offline — skipping check');
+    // console.log('[Updater] Offline — skipping check');
     return;
   }
-  console.log('[Updater] Checking for updates...');
+  // console.log('[Updater] Checking for updates...');
   autoUpdater.checkForUpdates().catch(err => {
-    console.warn('[Updater] checkForUpdates failed:', err.message);
+    // console.warn('[Updater] checkForUpdates failed:', err.message);
   });
 }
 
@@ -2170,7 +2169,7 @@ function shutdownPC() {
   const command = process.platform === 'win32' ? 'shutdown /s /t 0' : 'shutdown -h now';
   exec(command, (error) => {
     if (error) {
-      console.error('Failed to shut down PC:', error);
+      // console.error('Failed to shut down PC:', error);
       dialog.showErrorBox('Shutdown Error', 'Failed to shut down the PC.');
     }
   });
@@ -2207,7 +2206,7 @@ ipcMain.handle('load-chapters', async (event, filePath) => {
     const { execSync } = require('child_process');
     
     if (!filePath || !fs.existsSync(filePath)) {
-      console.log('[Chapters] File not found:', filePath);
+      // console.log('[Chapters] File not found:', filePath);
       return [];
     }
 
@@ -2219,7 +2218,7 @@ ipcMain.handle('load-chapters', async (event, filePath) => {
       const data = JSON.parse(output);
 
       if (!data.chapters || data.chapters.length === 0) {
-        console.log('[Chapters] No chapters found in video');
+        // console.log('[Chapters] No chapters found in video');
         return [];
       }
 
@@ -2238,14 +2237,14 @@ ipcMain.handle('load-chapters', async (event, filePath) => {
         };
       });
 
-      console.log(`[Chapters] Extracted ${chapters.length} chapters from video`);
+      // console.log(`[Chapters] Extracted ${chapters.length} chapters from video`);
       return chapters;
     } catch (execError) {
       console.log('[Chapters] FFprobe error (ffprobe might not be installed):', execError.message);
       return [];
     }
   } catch (error) {
-    console.error('[Chapters] Error loading chapters:', error);
+    // console.error('[Chapters] Error loading chapters:', error);
     return [];
   }
 });

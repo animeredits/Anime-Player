@@ -2170,37 +2170,6 @@ forward.addEventListener("click", () => {
 	);
 });
 
-// Double click on video for rewind/forward (YouTube-like)
-// video.addEventListener('dblclick', (e) => {
-//     // Get click position relative to video element
-//     const rect = video.getBoundingClientRect();
-//     const clickX = e.clientX - rect.left;
-//     const videoWidth = rect.width;
-
-//     // Determine if click was on left or right side (45% threshold like YouTube)
-//     if (clickX < videoWidth * 0.5) {
-//         // Left side - rewind
-//         currentMedia.currentTime = Math.max(0, currentMedia.currentTime - 10); 
-//         showStatusMessage(
-// 			`${formatTime(currentMedia.currentTime)} / ${formatTime(currentMedia.duration)}`
-// 		);
-//         // Visual feedback (optional)
-//         video.classList.add('rewind-effect');
-//         setTimeout(() => video.classList.remove('rewind-effect'), 300);
-//     } 
-//     else if (clickX > videoWidth * 0.5) {
-//         // Right side - forward
-//         currentMedia.currentTime = Math.min(currentMedia.duration, currentMedia.currentTime + 10);
-// 		showStatusMessage(
-// 			`${formatTime(currentMedia.currentTime)} / ${formatTime(currentMedia.duration)}`
-// 		);
-//         // Visual feedback (optional)
-//         video.classList.add('forward-effect');
-//         setTimeout(() => video.classList.remove('forward-effect'), 300);
-//     }
-//     // Middle area (50-50%) does nothing on double click
-// });
-
 // Initial button visibility update
 updateNavigationButtons();
 
@@ -6650,7 +6619,7 @@ window.electron.onInitialPlayState((state) => {
 				(gpuInfo.gpus[0].description || gpuInfo.gpus[0].model || gpuInfo.vendor.toUpperCase()) :
 				gpuInfo.vendor.toUpperCase();
 			const hwLabel = gpuInfo.hwAccel !== 'none' ? ` · ${gpuInfo.hwAccel}` : '';
-			showStatusMessage(`GPU: ${gpuName}${hwLabel}`);
+			// showStatusMessage(`GPU: ${gpuName}${hwLabel}`);
 		}
 	} catch (e) {
 		/* silent */ }
@@ -7189,28 +7158,8 @@ if (document.readyState === 'loading') {
 } else {
 	refreshDynamicListVisibility();
 }
-// =============================================================================
-// SCROLL MANAGER — Wheel & Keyboard scroll isolation for Electron / Chromium
-// =============================================================================
-// WHY THIS IS NEEDED (3 categories of Electron-specific bugs):
-//
-//  1. SCROLL CHAINING: When a scrollable panel (chapters, playlist, gif grid,
-//     context menu) reaches its top/bottom boundary, Chromium's compositor
-//     propagates the wheel event up the DOM tree. Any ancestor with a wheel
-//     handler receives it — including renderer.js's document-level "wheel"
-//     handler that controls horizontal scrubbing, AND the seek bar wrapper.
-//
-//  2. PASSIVE WHEEL LISTENERS: Chromium registers ALL wheel events as
-//     {passive:true} by default. This means event.preventDefault() is SILENTLY
-//     IGNORED unless the listener is explicitly registered with {passive:false}.
-//     CSS overscroll-behavior:contain handles some cases but not all Electron
-//     compositor paths — JS is needed as a safety net.
-//
-//  3. DYNAMIC CONTENT: chapters, playlist, GIF results are injected at runtime.
-//     A one-shot DOMContentLoaded registration misses newly created elements.
-//     MutationObserver + re-registration solves this.
-// =============================================================================
-;(function initScrollManager() {
+
+(function initScrollManager() {
   'use strict';
 
   // ── Selectors: all containers that should scroll in isolation ──────────────
