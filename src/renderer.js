@@ -77,6 +77,17 @@ let timeDisplayInterval = null;
 let lastPlayedIndex = -1;
 let lastPlayedStack = [];
 let navigationHistory = [];
+
+// ── Browser-style shuffle history ──────────────────────────────────────────
+// shuffleBack  : videos we came FROM  (back-stack, oldest → newest)
+// shuffleFwd   : videos we can go FORWARD to (forward-stack, next → further)
+// When Next is pressed:
+//   - If shuffleFwd has entries → pop from front (re-use existing sequence)
+//   - Else → pick a new random video (and clear nothing in shuffleBack)
+// When Previous is pressed:
+//   - Push current onto shuffleFwd, pop from shuffleBack
+let shuffleBack = [];   // history of played indices (back stack)
+let shuffleFwd  = [];   // forward queue (filled by going back, then forward again)
 let autoSwitchDone = false;
 let isGifPlaying = false;
 let DEFAULT_SATURATION = 120;
@@ -98,6 +109,12 @@ let isVideoPaused = false;
 let totalTimeInSeconds = 0;
 let countdownInterval = null;
 let remainingTimeOnPause = 0;
+const VOLUME_CONFIG = {
+  maxVolume: 2.0,           // 200% - matches VLC
+  defaultVolume: 0.1,       // 10% startup
+  amplificationFactor: 1.2, // Extra gain for clarity
+  smoothingFactor: 0.05     // Smooth volume transitions
+};
 let isPaused = false;
 let isContextMenuVisible = false;
 let isSpeedAdjustmentHold = false;
@@ -130,6 +147,11 @@ let isShutdownAtPlaylistEndEnabled = false;
 // ✅ Function to show the temporary status message
 let _statusTimeout = null;
 function showStatusMessage(text) {
+	// Suppress during startup restore operations (e.g. audio effect reload)
+	if (window._suppressNextStatusMessage) {
+		window._suppressNextStatusMessage = false;
+		return;
+	}
 	if (!text) return;
 	statusMessage.innerText = text;
 	statusMessage.classList.add('visible');
@@ -1826,35 +1848,37 @@ function getNextIndex() {
 	if (mediaFiles.length === 0) return null;
 
 	if (isShuffle) {
-		// Get all unplayed videos
-		let remainingVideos = mediaFiles
-			.map((file, index) => ({
-				file,
-				index
-			}))
-			.filter(({
-				index
-			}) => !playedVideos.includes(index));
+		// ── Forward-history first: if we went back, replay the forward sequence ──
+		// This is the core fix: re-use existing sequence before picking a new random
+		if (shuffleFwd.length > 0) {
+			return shuffleFwd[0]; // peek only — consumed in playNext()
+		}
 
-		// If we have unplayed videos, pick one randomly
-		if (remainingVideos.length > 0) {
-			let randomVideo = remainingVideos[Math.floor(Math.random() * remainingVideos.length)];
-			return randomVideo.index;
+		// ── No forward history: pick a NEW random unplayed video ──
+		const remaining = mediaFiles
+			.map((_, i) => i)
+			.filter(i => !playedVideos.includes(i) && i !== currentVideoIndex);
+
+		if (remaining.length > 0) {
+			return remaining[Math.floor(Math.random() * remaining.length)];
 		}
-		// If all videos have been played and repeat mode is on (mode 2), reset and shuffle again
-		else if (isRepeatMode === 2) {
-			playedVideos = []; // Reset played videos
-			return Math.floor(Math.random() * mediaFiles.length); // Start new shuffle cycle
+
+		// All videos played — reset if repeat-all is on
+		if (isRepeatMode === 2) {
+			playedVideos = [];
+			shuffleBack  = [];
+			shuffleFwd   = [];
+			const idx = Math.floor(Math.random() * mediaFiles.length);
+			// Avoid immediately replaying the same video
+			return idx !== currentVideoIndex ? idx : (idx + 1) % mediaFiles.length;
 		}
-		// If no repeat mode, end playback
-		else {
-			return null;
-		}
+
+		return null; // All played, no repeat — stop
 	}
 
-	// Original non-shuffle logic
-	let nextIndex = currentVideoIndex + 1;
-	return nextIndex < mediaFiles.length ? nextIndex : (isRepeatMode === 2 ? 0 : null);
+	// Non-shuffle: sequential
+	const next = currentVideoIndex + 1;
+	return next < mediaFiles.length ? next : (isRepeatMode === 2 ? 0 : null);
 }
 
 
@@ -1862,12 +1886,15 @@ function getNextIndex() {
 function getPreviousIndex() {
 	if (mediaFiles.length === 0) return null;
 
-	if (isShuffle && lastPlayedStack.length > 0) {
-		return lastPlayedStack.pop(); // ✅ Use last played history
+	if (isShuffle) {
+		// Use new shuffleBack stack; fall back to legacy lastPlayedStack for compat
+		if (shuffleBack.length > 0) return shuffleBack[shuffleBack.length - 1]; // peek only
+		if (lastPlayedStack.length > 0) return lastPlayedStack[lastPlayedStack.length - 1];
+		return null;
 	}
 
-	let prevIndex = currentVideoIndex - 1;
-	return prevIndex >= 0 ? prevIndex : (isRepeatMode === 2 ? mediaFiles.length - 1 : null);
+	const prev = currentVideoIndex - 1;
+	return prev >= 0 ? prev : (isRepeatMode === 2 ? mediaFiles.length - 1 : null);
 }
 
 
@@ -1881,10 +1908,8 @@ function clearLoadingFlagAfterDelay(delayMs = 500) {
 
 // ✅ Play next video while tracking playback history
 function playNext() {
-	// ✅ Debounce rapid calls to prevent streaming errors
-	if (isLoadingFile) {
-		return;
-	}
+	// Debounce rapid clicks to prevent streaming errors
+	if (isLoadingFile) return;
 
 	if (video.duration >= 60 && video.currentTime < video.duration) {
 		savePlaybackTime(video.dataset.videoId, video.currentTime);
@@ -1893,90 +1918,110 @@ function playNext() {
 	const nextIndex = getNextIndex();
 	if (nextIndex === null) {
 		stopPlayback();
-
-		// Shutdown PC if the "Shutdown at end of playlist" checkbox is checked
-		if (isShutdownAtPlaylistEndEnabled) {
-			window.electron.sendShutdownRequest();
-		}
+		if (isShutdownAtPlaylistEndEnabled) window.electron.sendShutdownRequest();
 		return;
 	}
 
-	// Store navigation history
+	// General navigation history (used by non-shuffle Previous)
 	if (currentVideoIndex !== null && navigationHistory[navigationHistory.length - 1] !== currentVideoIndex) {
 		navigationHistory.push(currentVideoIndex);
 	}
 
-	// Mark current video as played and track history for shuffle mode
-	// lastPlayedStack drives playPrevious in shuffle, so push here (VLC-style)
 	if (isShuffle) {
-		if (!playedVideos.includes(currentVideoIndex)) {
-			playedVideos.push(currentVideoIndex);
+		if (shuffleFwd.length > 0) {
+			// We are replaying a forward-history entry — consume it from the queue
+			shuffleFwd.shift(); // nextIndex was shuffleFwd[0], now removed
 		}
-		// Only push if not already the last item (avoid duplicates on rapid clicks)
+		// In both cases (forward replay OR new random), push current to back-stack
+		if (shuffleBack[shuffleBack.length - 1] !== currentVideoIndex) {
+			shuffleBack.push(currentVideoIndex);
+		}
+		// Maintain legacy arrays for compatibility with other code paths
+		if (!playedVideos.includes(currentVideoIndex)) playedVideos.push(currentVideoIndex);
 		if (lastPlayedStack[lastPlayedStack.length - 1] !== currentVideoIndex) {
 			lastPlayedStack.push(currentVideoIndex);
 		}
 	}
 
-	isLoadingFile = true;  // Set debounce flag
+	isLoadingFile = true;
 	currentVideoIndex = nextIndex;
-	lastPlayedIndex = nextIndex;
+	lastPlayedIndex   = nextIndex;
 
-	playVideoByIndex(nextIndex, true); // Skip history update since playNext already manages it
+	playVideoByIndex(nextIndex, true);
 	highlightCurrentVideo(mediaFiles[nextIndex]);
 	updateNavigationButtons();
 	showStatusMessage("Next");
-	
-	// Clear debounce flag after file loading completes (with safety timeout)
 	clearLoadingFlagAfterDelay(500);
 }
 
 // ✅ Play previous video correctly
 function playPrevious() {
-	// ✅ Debounce rapid calls to prevent streaming errors
-	if (isLoadingFile) {
-		return;
-	}
+	// Debounce rapid clicks to prevent streaming errors
+	if (isLoadingFile) return;
 
 	if (video.duration >= 60 && video.currentTime < video.duration) {
 		savePlaybackTime(video.dataset.videoId, video.currentTime);
 	}
 
-	isLoadingFile = true;  // Set debounce flag
+	isLoadingFile = true;
 
-	if (navigationHistory.length > 0) {
-		let prevIndex = navigationHistory.pop(); // Retrieve the actual previous video
-		playedVideos.push(currentVideoIndex); // Store the current video as played
+	if (isShuffle) {
+		// Pop from back-stack; push current video onto FRONT of forward queue
+		let prevIndex = null;
+		if (shuffleBack.length > 0) {
+			prevIndex = shuffleBack.pop();
+		} else if (lastPlayedStack.length > 0) {
+			// Legacy compat fallback
+			prevIndex = lastPlayedStack.pop();
+		}
+
+		if (prevIndex === null) {
+			// Nothing to go back to
+			isLoadingFile = false;
+			return;
+		}
+
+		// Push current video to the front of the forward queue so
+		// pressing Next will replay it in order (not pick a new random one)
+		if (shuffleFwd[0] !== currentVideoIndex) {
+			shuffleFwd.unshift(currentVideoIndex);
+		}
+
 		currentVideoIndex = prevIndex;
-		lastPlayedIndex = prevIndex;
-
-		playVideoByIndex(prevIndex, true); // Skip history update since playPrevious already manages it
+		lastPlayedIndex   = prevIndex;
+		playVideoByIndex(prevIndex, true);
 		highlightCurrentVideo(mediaFiles[prevIndex]);
 		updateNavigationButtons();
 		showStatusMessage("Previous");
-		
-		// Clear debounce flag after file loading completes
 		clearLoadingFlagAfterDelay(500);
 		return;
 	}
 
-	// Fallback if navigation history is empty
-	const prevIndex = getPreviousIndex();
-	if (prevIndex === null) {
-		console.warn("No previous video available.");
-		isLoadingFile = false;  // Clear flag if no video to load
+	// Non-shuffle: use navigationHistory first, then sequential fallback
+	if (navigationHistory.length > 0) {
+		const prevIndex = navigationHistory.pop();
+		playedVideos.push(currentVideoIndex);
+		currentVideoIndex = prevIndex;
+		lastPlayedIndex   = prevIndex;
+		playVideoByIndex(prevIndex, true);
+		highlightCurrentVideo(mediaFiles[prevIndex]);
+		updateNavigationButtons();
+		showStatusMessage("Previous");
+		clearLoadingFlagAfterDelay(500);
 		return;
 	}
 
+	const prevIndex = getPreviousIndex();
+	if (prevIndex === null) {
+		isLoadingFile = false;
+		return;
+	}
 	currentVideoIndex = prevIndex;
-	lastPlayedIndex = prevIndex;
-
-	playVideoByIndex(prevIndex, true); // Skip history update since we manually set currentVideoIndex
+	lastPlayedIndex   = prevIndex;
+	playVideoByIndex(prevIndex, true);
 	highlightCurrentVideo(mediaFiles[prevIndex]);
 	updateNavigationButtons();
-	showStatusMessage("Previous Video");
-	
-	// Clear debounce flag after file loading completes
+	showStatusMessage("Previous");
 	clearLoadingFlagAfterDelay(500);
 }
 
@@ -3619,6 +3664,72 @@ function showTooltip(volume, event = null) {
 		tooltip.style.opacity = "0";
 	}, 1500);
 }
+//  VOLUME FUNCTIONS with 200% support
+// Initialize advanced audio context for compression and clarity
+function initializeAdvancedAudio() {
+	try {
+		audioContext = new (window.AudioContext || window.webkitAudioContext)();
+		compressor = audioContext.createDynamicsCompressor();
+		compressor.threshold.value = -24;
+		compressor.knee.value = 30;
+		compressor.ratio.value = 12;
+		compressor.attack.value = 0.003;
+		compressor.release.value = 0.25;
+		console.log('[Audio] Advanced audio processing initialized');
+	} catch (e) {
+		console.warn('[Audio] Could not initialize advanced audio:', e.message);
+	}
+}
+
+// Call this on app startup
+window.addEventListener('DOMContentLoaded', () => {
+	initializeAdvancedAudio();
+});
+
+// Enhanced volume update with 200% amplification
+function updateVolumeEnhanced(newVolume) {
+	// Clamp between 0 and 2 (200%)
+	newVolume = Math.max(0, Math.min(2, newVolume));
+	
+	// Apply to gainNode with amplification
+	if (gainNode) {
+		const amplifiedVolume = newVolume * VOLUME_CONFIG.amplificationFactor;
+		gainNode.gain.setValueAtTime(amplifiedVolume, audioContext?.currentTime || 0);
+		if (audioContext) {
+			gainNode.gain.linearRampToValueAtTime(amplifiedVolume, audioContext.currentTime + VOLUME_CONFIG.smoothingFactor);
+		}
+	}
+
+	// Limit audioTrackPlayer to max 1.0 (HTML5 limit)
+	if (audioTrackPlayer && audioTrackPlayer.volume !== undefined) {
+		audioTrackPlayer.volume = Math.min(1, newVolume);
+	}
+
+	// Update UI
+	volumeSlider.value = Math.round(newVolume * 100);
+	
+	// Save setting
+	saveVolumeSetting(newVolume);
+	
+	// Show tooltip
+	showTooltipEnhanced(newVolume);
+}
+
+// Enhanced tooltip for volume display with 200% indicator
+function showTooltipEnhanced(volume) {
+	const percentage = (volume * 100).toFixed(0);
+	const displayText = percentage > 100 ? `📢 Volume: ${percentage}%` : `Volume: ${percentage}%`;
+	
+	tooltip.textContent = displayText;
+	tooltip.style.opacity = '1';
+	tooltip.style.visibility = 'visible';
+
+	if (tooltipTimeout) clearTimeout(tooltipTimeout);
+	tooltipTimeout = setTimeout(() => {
+		tooltip.style.opacity = '0';
+		tooltip.style.visibility = 'hidden';
+	}, 1500);
+}
 
 // Volume slider input handler - use exact values
 volumeSlider.addEventListener("input", (event) => {
@@ -3908,10 +4019,13 @@ function toggleShuffleMode() {
 	updatePlaybackState();
 	window.electron.sendShuffleState(isShuffle ? "on" : "off");
 
-	// Clear history when turning off shuffle
+	// Clear all history when turning off shuffle
 	if (!isShuffle) {
-		playedVideos = [];
+		playedVideos    = [];
 		navigationHistory = [];
+		shuffleBack     = [];
+		shuffleFwd      = [];
+		lastPlayedStack = [];
 	}
 }
 
@@ -6564,14 +6678,14 @@ document.addEventListener('DOMContentLoaded', () => {
 		);
 	});
 
-	// Up-to-date — fired by main when checkForUpdates finds nothing new
+	// Up-to-date — only update the About modal status bar, no popup notification
 	if (window.electron.onUpdateNotAvailable) {
 		window.electron.onUpdateNotAvailable(() => {
 			_setUpdateStatus(
 				'about-update-status--ok',
 				'<img class="svg-icon" src="../assets/icons/fa/circle-check.svg" alt=""> You\'re up to date!'
 			);
-			showStatusMessage('Anime Player is up to date', 3000);
+			// No showStatusMessage here — user should not see a popup on every launch
 		});
 	}
 
@@ -6610,19 +6724,25 @@ window.electron.onInitialPlayState((state) => {
 	window.electron.sendPlayPauseStateForThumbar(state || "playing");
 });
 
-// GPU info: fetch at startup, show briefly as status message
+// GPU info: show status notification only on the very first launch after install.
+// Uses localStorage so it is truly shown once and never again.
 (async () => {
 	try {
+		const gpuShown = localStorage.getItem('gpuNotificationShown');
+		if (gpuShown) return; // Already shown before — skip every subsequent launch
+
 		const gpuInfo = await window.electron.invoke('get-gpu-info');
 		if (gpuInfo && gpuInfo.vendor !== 'unknown') {
 			const gpuName = (gpuInfo.gpus && gpuInfo.gpus[0]) ?
 				(gpuInfo.gpus[0].description || gpuInfo.gpus[0].model || gpuInfo.vendor.toUpperCase()) :
 				gpuInfo.vendor.toUpperCase();
 			const hwLabel = gpuInfo.hwAccel !== 'none' ? ` · ${gpuInfo.hwAccel}` : '';
-			// showStatusMessage(`GPU: ${gpuName}${hwLabel}`);
+			showStatusMessage(`GPU: ${gpuName}${hwLabel}`);
+			localStorage.setItem('gpuNotificationShown', '1'); // Never show again
 		}
 	} catch (e) {
-		/* silent */ }
+		/* silent */
+	}
 })();
 
 // Handle playNext action from tray
@@ -6898,6 +7018,7 @@ function applyAudioEffect(key) {
 
 	_activeEffectKey = key;
 	_updateEffectUI(key);
+	localStorage.setItem('activeAudioEffect', key); // Persist so we can restore silently on next launch
 	if (typeof showStatusMessage === 'function') showStatusMessage(`Audio Effect: ${preset.label}`);
 }
 
@@ -6930,8 +7051,16 @@ Object.entries(_effectIdMap).forEach(([id, key]) => {
 	el.addEventListener('click', () => applyAudioEffect(key));
 });
 
-// Apply default — call directly (script runs after DOM is parsed in <body> bottom)
-applyAudioEffect('auto');
+// Restore saved audio effect on startup — silently (no status message on every launch)
+// The effect is saved to localStorage whenever the user manually picks one.
+(function restoreAudioEffectOnStartup() {
+	const saved = localStorage.getItem('activeAudioEffect') || 'auto';
+	// Suppress the status message only for this one startup call
+	window._suppressNextStatusMessage = true;
+	applyAudioEffect(saved);
+	// Flag is cleared inside showStatusMessage; reset here too as safety net
+	window._suppressNextStatusMessage = false;
+})();
 
 
 

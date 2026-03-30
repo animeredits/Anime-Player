@@ -1967,7 +1967,7 @@ function handleAppClose(event, playbackTime, videoId) {
 }
 
 // Auto-updater
-const UPDATE_CHECK_INTERVAL = 4 * 60 * 60 * 1000; // re-check every 4 hours
+const UPDATE_CHECK_INTERVAL = 7 * 24 * 60 * 60 * 1000; // once per week
 let updateCheckTimer = null;
 
 function setupAutoUpdater() {
@@ -2025,12 +2025,41 @@ function setupAutoUpdater() {
     }
   });
 
-  // Check now (only in packaged build — skip in dev to avoid GitHub rate limits)
+  // Only check for updates if a full week has passed since the last check.
+  // The timestamp is stored in app-config.json in the app data folder so it
+  // persists across reboots — the user won't see a notification on every launch.
   if (app.isPackaged) {
-    doUpdateCheck();
-    // Schedule periodic re-checks
+    const configPath = path.join(animePlayerPath, 'app-config.json');
+
+    function readAppConfig() {
+      try { return JSON.parse(fs.readFileSync(configPath, 'utf8')); }
+      catch { return {}; }
+    }
+    function writeAppConfig(data) {
+      try { fs.writeFileSync(configPath, JSON.stringify(data, null, 2)); }
+      catch (e) { /* non-fatal — ignore write errors */ }
+    }
+
+    function doWeeklyUpdateCheck() {
+      if (!net.isOnline()) return; // skip if offline
+      const cfg = readAppConfig();
+      const now = Date.now();
+      const lastCheck = cfg.lastUpdateCheck || 0;
+      const ONE_WEEK  = 7 * 24 * 60 * 60 * 1000;
+
+      if (now - lastCheck >= ONE_WEEK) {
+        // console.log('[Updater] A week has passed — checking for updates...');
+        doUpdateCheck();
+        cfg.lastUpdateCheck = now;
+        writeAppConfig(cfg);
+      }
+      // else: checked recently — skip silently, no notification shown
+    }
+
+    doWeeklyUpdateCheck(); // Run once at startup
     if (updateCheckTimer) clearInterval(updateCheckTimer);
-    updateCheckTimer = setInterval(doUpdateCheck, UPDATE_CHECK_INTERVAL);
+    // Also re-check inside a long-running session (but still respects the weekly gate)
+    updateCheckTimer = setInterval(doWeeklyUpdateCheck, UPDATE_CHECK_INTERVAL);
   } else {
     // console.log('[Updater] Skipping update check in dev mode');
   }
