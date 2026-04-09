@@ -396,10 +396,19 @@
         <!-- ── Video Effects Modal ───────────────────────────────────────── -->
         <div id="videoEffectsModal" class="tool-modal" style="display:none;">
           <div class="tool-modal-inner vfx-modal-inner">
-            <div class="tool-modal-header">
+
+            <!-- Header with enable toggle -->
+            <div class="tool-modal-header vfx-header">
               <div class="tool-modal-title-wrap">
                 <img class="svg-icon tool-modal-icon" src="../assets/icons/fa/wand-magic-sparkles.svg" alt="">
                 <span class="tool-modal-title">Video Effects</span>
+              </div>
+              <div class="vfx-header-toggle-wrap">
+                <span class="vfx-header-toggle-label">Enable</span>
+                <label class="vfx-master-switch">
+                  <input type="checkbox" id="vfxMasterToggle" checked>
+                  <span class="vfx-master-track"><span class="vfx-master-thumb"></span></span>
+                </label>
               </div>
               <button class="tool-modal-close" id="videoEffectsClose"><img class="svg-icon" src="../assets/icons/fa/xmark.svg" alt=""></button>
             </div>
@@ -409,6 +418,7 @@
               <button class="vfx-tab active" data-vfx-tab="color"><img class="svg-icon" src="../assets/icons/fa/droplet.svg" alt=""> Color</button>
               <button class="vfx-tab" data-vfx-tab="enhance"><img class="svg-icon" src="../assets/icons/fa/sparkles.svg" alt=""> Enhance</button>
               <button class="vfx-tab" data-vfx-tab="temp"><img class="svg-icon" src="../assets/icons/fa/temperature-half.svg" alt=""> Temperature</button>
+              <button class="vfx-tab" data-vfx-tab="rotation"><img class="svg-icon" src="../assets/icons/fa/rotate.svg" alt=""> Rotation</button>
             </div>
 
             <div class="tool-modal-body vfx-body">
@@ -553,128 +563,194 @@
                     <span class="vfx-val" id="warmthValue">0</span>
                     <button class="vfx-reset" data-target="warmthSlider" data-default="0" title="Reset"><img class="svg-icon" src="../assets/icons/fa/rotate-left.svg" alt=""></button>
                   </div>
-                  <p class="vfx-hint">Drag left for a cooler blue tint, right for a warmer amber tone.</p>
+                  <p class="vfx-hint">Drag left for a cooler blue tint · right for a warmer amber tone</p>
                 </div>
+              </div>
+
+              <!-- ── Rotation pane ── -->
+              <div class="vfx-pane" id="vfxPane-rotation">
+
+                <!-- Rotate section -->
+                <div class="vfx-rotation-section">
+                  <div class="vfx-section-label">Rotate Video</div>
+                  <div class="vfx-rot-grid">
+                    <button class="vfx-rot-btn active" data-rotate="0" id="rot-0">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="4" y="4" width="16" height="16" rx="2"/></svg>
+                      <span>0° (Normal)</span>
+                    </button>
+                    <button class="vfx-rot-btn" data-rotate="90" id="rot-90">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="4" y="4" width="16" height="16" rx="2" transform="rotate(90 12 12)"/><path d="M16 8l2-2-2-2"/><path d="M20 12a8 8 0 0 0-6-7.7"/></svg>
+                      <span>90° CW</span>
+                    </button>
+                    <button class="vfx-rot-btn" data-rotate="180" id="rot-180">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="4" y="4" width="16" height="16" rx="2" transform="rotate(180 12 12)"/></svg>
+                      <span>180°</span>
+                    </button>
+                    <button class="vfx-rot-btn" data-rotate="-90" id="rot-ccw">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="4" y="4" width="16" height="16" rx="2" transform="rotate(-90 12 12)"/><path d="M8 8l-2-2 2-2"/><path d="M4 12a8 8 0 0 1 6-7.7"/></svg>
+                      <span>90° CCW</span>
+                    </button>
+                  </div>
+                </div>
+
+                <!-- Flip section -->
+                <div class="vfx-rotation-section">
+                  <div class="vfx-section-label">Flip Video</div>
+                  <div class="vfx-flip-grid">
+                    <button class="vfx-rot-btn" id="rot-flipH" data-flip="h">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M12 3v18M4.5 9l-2 3 2 3M19.5 9l2 3-2 3"/><rect x="3" y="7" width="8" height="10" rx="1.5"/><rect x="13" y="7" width="8" height="10" rx="1.5" opacity="0.35"/></svg>
+                      <span>Flip Horizontal</span>
+                    </button>
+                    <button class="vfx-rot-btn" id="rot-flipV" data-flip="v">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M3 12h18M9 4.5l3-2 3 2M9 19.5l3 2 3-2"/><rect x="7" y="3" width="10" height="8" rx="1.5"/><rect x="7" y="13" width="10" height="8" rx="1.5" opacity="0.35"/></svg>
+                      <span>Flip Vertical</span>
+                    </button>
+                  </div>
+                </div>
+
+                <!-- Aspect ratio section -->
+                <div class="vfx-rotation-section">
+                  <div class="vfx-section-label">Aspect Ratio Override</div>
+                  <div class="vfx-aspect-grid">
+                    <button class="vfx-rot-btn" data-aspect="16-9">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="2" y="5" width="20" height="14" rx="2"/></svg>
+                      <span>16:9</span>
+                    </button>
+                    <button class="vfx-rot-btn active" data-aspect="auto">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="2" y="5" width="20" height="14" rx="2"/><path d="M8 12h8M12 8v8" stroke-width="1.5"/></svg>
+                      <span>Auto</span>
+                    </button>
+                    <button class="vfx-rot-btn" data-aspect="4-3">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="3" y="4" width="18" height="16" rx="2"/></svg>
+                      <span>4:3</span>
+                    </button>
+                    <button class="vfx-rot-btn" data-aspect="21-9">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="1" y="7" width="22" height="10" rx="2"/></svg>
+                      <span>21:9</span>
+                    </button>
+                  </div>
+                </div>
+
               </div>
 
             </div><!-- /vfx-body -->
 
-            <div class="tool-modal-footer">
-              <button class="tool-modal-btn tool-modal-btn--ghost" id="videoEffectsResetAll"><img class="svg-icon" src="../assets/icons/fa/rotate-left.svg" alt=""> Reset All</button>
-              <button class="tool-modal-btn tool-modal-btn--primary" id="videoEffectsClose2">Done</button>
+            <!-- Presets + footer -->
+            <div class="vfx-footer">
+              <span class="vfx-preset-label">Presets:</span>
+              <div class="vfx-presets-wrap">
+                <button class="vfx-preset-btn active" data-preset="Default">Default</button>
+                <button class="vfx-preset-btn" data-preset="Vivid">Vivid</button>
+                <button class="vfx-preset-btn" data-preset="Night">Night</button>
+                <button class="vfx-preset-btn" data-preset="Warm">Warm</button>
+                <button class="vfx-preset-btn" data-preset="Retro">Retro</button>
+              </div>
+              <button class="tool-modal-btn tool-modal-btn--ghost vfx-footer-reset" id="videoEffectsResetAll">
+                <img class="svg-icon" src="../assets/icons/fa/rotate-left.svg" alt=""> Reset All
+              </button>
             </div>
+
           </div>
         </div>
 
         <!-- ── Track Sync Modal ──────────────────────────────────────────── -->
         <div id="syncToolModal" class="tool-modal" style="display:none;">
           <div class="tool-modal-inner tool-modal-inner--sync">
+
+            <!-- Header -->
             <div class="tool-modal-header">
               <div class="tool-modal-title-wrap">
                 <img class="svg-icon tool-modal-icon" src="../assets/icons/fa/sliders.svg" alt="">
-                <span class="tool-modal-title">Track Sync</span>
+                <span class="tool-modal-title">Track Sync Tool</span>
               </div>
               <button class="tool-modal-close" id="syncToolClose"><img class="svg-icon" src="../assets/icons/fa/xmark.svg" alt=""></button>
             </div>
-            <!-- Tabs -->
-            <div class="sync-tabs">
-              <button class="sync-tab active" data-tab="audio"><img class="svg-icon" src="../assets/icons/fa/volume-high.svg" alt=""> Audio</button>
-              <button class="sync-tab" data-tab="video"><img class="svg-icon" src="../assets/icons/fa/film.svg" alt=""> Video</button>
-              <button class="sync-tab" data-tab="subtitle"><img class="svg-icon" src="../assets/icons/fa/closed-captioning.svg" alt=""> Subtitle</button>
-            </div>
 
-            <!-- Tab: Audio -->
-            <div class="sync-pane active" id="syncPane-audio">
-              <div class="sync-card">
-                <div class="sync-card-label">Audio Delay</div>
-                <div class="sync-card-desc">Shift audio earlier (−) or later (+) relative to video</div>
-                <div class="sync-control-row">
-                  <button class="sync-ctrl-btn sync-ctrl-btn--minus" data-delta="-0.1" data-target="audioDelayVal">−</button>
-                  <div class="sync-display">
-                    <span class="sync-display-val" id="audioDelayVal">0.000</span>
-                    <span class="sync-display-unit">seconds</span>
-                  </div>
-                  <button class="sync-ctrl-btn sync-ctrl-btn--plus" data-delta="0.1" data-target="audioDelayVal">+</button>
-                </div>
-                <div class="sync-nudge-strip">
-                  <button class="sync-chip" data-target="audioDelayVal" data-delta="-1.0">−1s</button>
-                  <button class="sync-chip" data-target="audioDelayVal" data-delta="-0.5">−500ms</button>
-                  <button class="sync-chip" data-target="audioDelayVal" data-delta="-0.1">−100ms</button>
-                  <button class="sync-chip sync-chip--mid">0</button>
-                  <button class="sync-chip" data-target="audioDelayVal" data-delta="0.1">+100ms</button>
-                  <button class="sync-chip" data-target="audioDelayVal" data-delta="0.5">+500ms</button>
-                  <button class="sync-chip" data-target="audioDelayVal" data-delta="1.0">+1s</button>
-                </div>
-                <div class="sync-kb-hint"><span class="key-badge">G</span> −100ms &nbsp;&nbsp; <span class="key-badge">H</span> +100ms</div>
-              </div>
-            </div>
+            <!-- Cards body (both visible at once, like the reference) -->
+            <div class="sync-body">
 
-            <!-- Tab: Video -->
-            <div class="sync-pane" id="syncPane-video">
-              <div class="sync-card">
-                <div class="sync-card-label">Video Offset</div>
-                <div class="sync-card-desc">Shift video frames earlier (−) or later (+) relative to audio</div>
-                <div class="sync-control-row">
-                  <button class="sync-ctrl-btn sync-ctrl-btn--minus" data-delta="-0.05" data-target="videoOffsetVal">−</button>
-                  <div class="sync-display">
-                    <span class="sync-display-val" id="videoOffsetVal">0.000</span>
-                    <span class="sync-display-unit">seconds</span>
+              <!-- Audio Track Card -->
+              <div class="sync-track-card">
+                <div class="sync-track-header">
+                  <span class="sync-track-dot sync-track-dot--audio"></span>
+                  <div class="sync-track-chip sync-track-chip--audio">
+                    <img class="svg-icon" src="../assets/icons/fa/volume-high.svg" alt=""> Audio
                   </div>
-                  <button class="sync-ctrl-btn sync-ctrl-btn--plus" data-delta="0.05" data-target="videoOffsetVal">+</button>
+                  <div class="sync-track-info">
+                    <div class="sync-track-name">Audio Track</div>
+                    <div class="sync-track-meta" id="syncAudioMeta">JPN 5.1 · EAC3 · Track 1</div>
+                  </div>
+                  <button class="sync-reset-btn" data-reset="audioDelayVal" data-default="0.000">
+                    <img class="svg-icon" src="../assets/icons/fa/rotate-left.svg" alt=""> Reset
+                  </button>
                 </div>
-                <div class="sync-nudge-strip">
-                  <button class="sync-chip" data-target="videoOffsetVal" data-delta="-1.0">−1s</button>
-                  <button class="sync-chip" data-target="videoOffsetVal" data-delta="-0.5">−500ms</button>
-                  <button class="sync-chip" data-target="videoOffsetVal" data-delta="-0.05">−50ms</button>
-                  <button class="sync-chip sync-chip--mid">0</button>
-                  <button class="sync-chip" data-target="videoOffsetVal" data-delta="0.05">+50ms</button>
-                  <button class="sync-chip" data-target="videoOffsetVal" data-delta="0.5">+500ms</button>
-                  <button class="sync-chip" data-target="videoOffsetVal" data-delta="1.0">+1s</button>
+                <div class="sync-track-body">
+                  <div class="sync-control-row">
+                    <button class="sync-ctrl-btn sync-ctrl-btn--minus" data-delta="-0.1" data-target="audioDelayVal">−</button>
+                    <div class="sync-display">
+                      <span class="sync-display-val" id="audioDelayVal">0.000</span>
+                      <span class="sync-display-unit">milliseconds</span>
+                    </div>
+                    <button class="sync-ctrl-btn sync-ctrl-btn--plus" data-delta="0.1" data-target="audioDelayVal">+</button>
+                  </div>
+                  <div class="sync-nudge-strip">
+                    <button class="sync-chip sync-chip--neg" data-target="audioDelayVal" data-delta="-0.1">−100ms</button>
+                    <button class="sync-chip sync-chip--neg" data-target="audioDelayVal" data-delta="-0.05">−50ms</button>
+                    <button class="sync-chip sync-chip--neg" data-target="audioDelayVal" data-delta="-0.01">−10ms</button>
+                    <button class="sync-chip sync-chip--pos" data-target="audioDelayVal" data-delta="0.01">+10ms</button>
+                    <button class="sync-chip sync-chip--pos" data-target="audioDelayVal" data-delta="0.05">+50ms</button>
+                    <button class="sync-chip sync-chip--pos" data-target="audioDelayVal" data-delta="0.1">+100ms</button>
+                  </div>
                 </div>
               </div>
-            </div>
 
-            <!-- Tab: Subtitle -->
-            <div class="sync-pane" id="syncPane-subtitle">
-              <div class="sync-card">
-                <div class="sync-card-label">Subtitle Delay</div>
-                <div class="sync-card-desc">Shift subtitles earlier (−) or later (+)</div>
-                <div class="sync-control-row">
-                  <button class="sync-ctrl-btn sync-ctrl-btn--minus" data-delta="-0.5" data-target="subDelayVal">−</button>
-                  <div class="sync-display">
-                    <span class="sync-display-val" id="subDelayVal">0.000</span>
-                    <span class="sync-display-unit">seconds</span>
+              <!-- Subtitle Track Card -->
+              <div class="sync-track-card">
+                <div class="sync-track-header">
+                  <span class="sync-track-dot sync-track-dot--sub"></span>
+                  <div class="sync-track-chip sync-track-chip--sub">
+                    <img class="svg-icon" src="../assets/icons/fa/closed-captioning.svg" alt=""> Sub
                   </div>
-                  <button class="sync-ctrl-btn sync-ctrl-btn--plus" data-delta="0.5" data-target="subDelayVal">+</button>
-                </div>
-                <div class="sync-nudge-strip">
-                  <button class="sync-chip" data-target="subDelayVal" data-delta="-2.0">−2s</button>
-                  <button class="sync-chip" data-target="subDelayVal" data-delta="-1.0">−1s</button>
-                  <button class="sync-chip" data-target="subDelayVal" data-delta="-0.5">−500ms</button>
-                  <button class="sync-chip sync-chip--mid">0</button>
-                  <button class="sync-chip" data-target="subDelayVal" data-delta="0.5">+500ms</button>
-                  <button class="sync-chip" data-target="subDelayVal" data-delta="1.0">+1s</button>
-                  <button class="sync-chip" data-target="subDelayVal" data-delta="2.0">+2s</button>
-                </div>
-                <div class="sync-kb-hint"><span class="key-badge">D</span> −500ms &nbsp;&nbsp; <span class="key-badge">E</span> +500ms</div>
-              </div>
-              <div class="sync-card sync-card--compact">
-                <div class="sync-card-label">Subtitle Speed</div>
-                <div class="sync-control-row">
-                  <button class="sync-ctrl-btn sync-ctrl-btn--minus" data-delta="-0.1" data-target="subSpeedVal">−</button>
-                  <div class="sync-display">
-                    <span class="sync-display-val" id="subSpeedVal">1.000</span>
-                    <span class="sync-display-unit">× speed</span>
+                  <div class="sync-track-info">
+                    <div class="sync-track-name">Subtitle Track</div>
+                    <div class="sync-track-meta" id="syncSubMeta">ENG · ASS/SSA · Track 1</div>
                   </div>
-                  <button class="sync-ctrl-btn sync-ctrl-btn--plus" data-delta="0.1" data-target="subSpeedVal">+</button>
+                  <button class="sync-reset-btn" data-reset="subDelayVal" data-default="0.000">
+                    <img class="svg-icon" src="../assets/icons/fa/rotate-left.svg" alt=""> Reset
+                  </button>
+                </div>
+                <div class="sync-track-body">
+                  <div class="sync-control-row">
+                    <button class="sync-ctrl-btn sync-ctrl-btn--minus" data-delta="-0.5" data-target="subDelayVal">−</button>
+                    <div class="sync-display">
+                      <span class="sync-display-val" id="subDelayVal">0.000</span>
+                      <span class="sync-display-unit">milliseconds</span>
+                    </div>
+                    <button class="sync-ctrl-btn sync-ctrl-btn--plus" data-delta="0.5" data-target="subDelayVal">+</button>
+                  </div>
+                  <div class="sync-nudge-strip">
+                    <button class="sync-chip sync-chip--neg" data-target="subDelayVal" data-delta="-0.1">−100ms</button>
+                    <button class="sync-chip sync-chip--neg" data-target="subDelayVal" data-delta="-0.05">−50ms</button>
+                    <button class="sync-chip sync-chip--neg" data-target="subDelayVal" data-delta="-0.01">−10ms</button>
+                    <button class="sync-chip sync-chip--pos" data-target="subDelayVal" data-delta="0.01">+10ms</button>
+                    <button class="sync-chip sync-chip--pos" data-target="subDelayVal" data-delta="0.05">+50ms</button>
+                    <button class="sync-chip sync-chip--pos" data-target="subDelayVal" data-delta="0.1">+100ms</button>
+                  </div>
                 </div>
               </div>
+
+            </div><!-- /sync-body -->
+
+            <!-- Footer with shortcuts + apply -->
+            <div class="tool-modal-footer sync-footer">
+              <div class="sync-kb-hints">
+                <span class="sync-kb-hint"><span class="key-badge">G</span>/<span class="key-badge">H</span> Audio −/+</span>
+                <span class="sync-kb-sep">·</span>
+                <span class="sync-kb-hint"><span class="key-badge">D</span>/<span class="key-badge">E</span> Subtitle −/+</span>
+              </div>
+              <button class="tool-modal-btn tool-modal-btn--primary sync-apply-btn" id="syncApplyBtn">Apply Changes</button>
             </div>
 
-            <div class="tool-modal-footer">
-              <button class="tool-modal-btn tool-modal-btn--ghost" id="syncResetBtn"><img class="svg-icon" src="../assets/icons/fa/rotate-left.svg" alt=""> Reset All</button>
-              <button class="tool-modal-btn tool-modal-btn--primary" id="syncToolClose2">Done</button>
-            </div>
           </div>
         </div>
 

@@ -929,7 +929,7 @@ function setupIPCHandlers() {
   ipcMain.on("appClose", handleAppClose);
 
   ipcMain.handle('set-stream-file', (event, filePath) => {
-    console.log('📂 set-stream-file called with:', filePath); // ← debug line
+    // console.log('📂 set-stream-file called with:', filePath); 
     try {
       const normalized = path.normalize(filePath);
       // console.log('📂 normalized:', normalized);

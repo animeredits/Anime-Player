@@ -77,17 +77,18 @@ let timeDisplayInterval = null;
 let lastPlayedIndex = -1;
 let lastPlayedStack = [];
 let navigationHistory = [];
-
-// ── Browser-style shuffle history ──────────────────────────────────────────
-// shuffleBack  : videos we came FROM  (back-stack, oldest → newest)
-// shuffleFwd   : videos we can go FORWARD to (forward-stack, next → further)
-// When Next is pressed:
-//   - If shuffleFwd has entries → pop from front (re-use existing sequence)
-//   - Else → pick a new random video (and clear nothing in shuffleBack)
-// When Previous is pressed:
-//   - Push current onto shuffleFwd, pop from shuffleBack
-let shuffleBack = [];   // history of played indices (back stack)
-let shuffleFwd  = [];   // forward queue (filled by going back, then forward again)
+let shuffleBack = [];
+let shuffleFwd  = [];
+let currentWatchedFolder = null;                
+let watchedFolderFiles = [];                  
+let folderWatchInitialized = false;         
+let notificationHideTimeout = null;        
+let folderWatchState = {
+	isWatching: false,
+	errorCount: 0,
+	lastChangeTime: null,
+	changeHistory: []
+};
 let autoSwitchDone = false;
 let isGifPlaying = false;
 let DEFAULT_SATURATION = 120;
@@ -759,6 +760,7 @@ async function downloadAndSaveGif(gifUrl, gifName) {
 
 // ── Video Effects (combined CSS filter) ─────────────────────────────────────
 const _vfx = {
+	enabled:    true,  // master on/off
 	hue:        0,     // degrees
 	brightness: 100,   // %
 	contrast:   100,   // %
@@ -774,6 +776,14 @@ const _vfx = {
 };
 
 function _applyVideoFilter() {
+	// Master toggle — clear all filters when disabled
+	if (!_vfx.enabled) {
+		video.style.filter = '';
+		const wrapper = video.parentElement;
+		if (wrapper) wrapper.style.boxShadow = '';
+		localStorage.setItem('videoEffects', JSON.stringify(_vfx));
+		return;
+	}
 	let f = `hue-rotate(${_vfx.hue}deg) brightness(${_vfx.brightness}%) contrast(${_vfx.contrast}%) saturate(${_vfx.saturation}%)`;
 	if (_vfx.blur && _vfx.blurAmt > 0) f += ` blur(${_vfx.blurAmt}px)`;
 	// Warmth: positive = warm (sepia tint), negative = cool (hue shift toward blue)
@@ -808,10 +818,19 @@ function _loadVideoEffects() {
 	_syncVfxUI();
 }
 
+// Sync slider track fill gradient to thumb position
+function _syncSliderFill(input) {
+	if (!input) return;
+	const min = parseFloat(input.min);
+	const max = parseFloat(input.max);
+	const pct = ((parseFloat(input.value) - min) / (max - min)) * 100;
+	input.style.background = `linear-gradient(to right, var(--m-accent) 0%, var(--m-accent) ${pct}%, rgba(255,255,255,0.08) ${pct}%, rgba(255,255,255,0.08) 100%)`;
+}
+
 function _syncVfxUI() {
 	const set = (id, val, displayFn) => {
 		const el = document.getElementById(id);
-		if (el) el.value = val;
+		if (el) { el.value = val; _syncSliderFill(el); }
 		const vEl = document.getElementById(id.replace('Slider','Value'));
 		if (vEl) vEl.textContent = displayFn(val);
 	};
@@ -830,6 +849,9 @@ function _syncVfxUI() {
 	if (sharpenToggle)  sharpenToggle.checked  = _vfx.sharpen;
 	if (blurToggle)     blurToggle.checked     = _vfx.blur;
 	if (vignetteToggle) vignetteToggle.checked = _vfx.vignette;
+	// Sync master toggle
+	const mt = document.getElementById('vfxMasterToggle');
+	if (mt) mt.checked = _vfx.enabled !== false; // default true
 	_updateDepRows();
 }
 
@@ -913,6 +935,19 @@ document.addEventListener('DOMContentLoaded', () => {
 		Object.assign(_vfx, { hue:0, brightness:100, contrast:100, saturation:100, gamma:1.0, sharpen:false, sharpenAmt:0, blur:false, blurAmt:0, vignette:false, vignetteAmt:0, warmth:0 });
 		_applyVideoFilter();
 		_syncVfxUI();
+		// Reset rotation state
+		Object.assign(_rotState, { rotate: 0, flipH: false, flipV: false, aspect: 'auto' });
+		document.querySelectorAll('.vfx-rot-btn[data-rotate]').forEach(b => b.classList.toggle('active', b.dataset.rotate === '0'));
+		if (document.getElementById('rot-flipH')) document.getElementById('rot-flipH').classList.remove('active');
+		if (document.getElementById('rot-flipV')) document.getElementById('rot-flipV').classList.remove('active');
+		document.querySelectorAll('.vfx-rot-btn[data-aspect]').forEach(b => b.classList.toggle('active', b.dataset.aspect === 'auto'));
+		_applyRotation();
+		// Reset presets — mark Default as active
+		document.querySelectorAll('.vfx-preset-btn').forEach(b => b.classList.toggle('active', b.dataset.preset === 'Default'));
+		// Sync master toggle
+		const mt = document.getElementById('vfxMasterToggle');
+		if (mt && !mt.checked) { mt.checked = true; _vfx.enabled = true; }
+		showStatusMessage('Effects reset');
 	});
 
 	// Open Video Effects Modal
@@ -1119,6 +1154,197 @@ document.addEventListener('DOMContentLoaded', () => {
 			if (pane) pane.classList.add('active');
 		});
 	});
+
+	// ── VFX Master Toggle (enable / disable all effects) ──────────────────────
+	const vfxMasterToggle = document.getElementById('vfxMasterToggle');
+	if (vfxMasterToggle) {
+		vfxMasterToggle.addEventListener('change', () => {
+			_vfx.enabled = vfxMasterToggle.checked;
+			_applyVideoFilter();
+			console.log('[VFX] master enabled:', _vfx.enabled);
+		});
+	}
+
+	// ── VFX Presets ────────────────────────────────────────────────────────────
+	const VFX_PRESETS = {
+		Default: { hue: 0,  brightness: 100, contrast: 100, saturation: 100, gamma: 1.00, warmth: 0 },
+		Vivid:   { hue: 0,  brightness: 108, contrast: 115, saturation: 140, gamma: 1.00, warmth: 10 },
+		Night:   { hue: 0,  brightness: 75,  contrast: 90,  saturation: 80,  gamma: 0.85, warmth: -20 },
+		Warm:    { hue: 5,  brightness: 102, contrast: 100, saturation: 105, gamma: 1.00, warmth: 45 },
+		Retro:   { hue: 15, brightness: 95,  contrast: 110, saturation: 70,  gamma: 0.90, warmth: 20 },
+	};
+
+	function _applyVfxPreset(name) {
+		const p = VFX_PRESETS[name];
+		if (!p) return;
+		// Apply to state
+		_vfx.hue        = p.hue;
+		_vfx.brightness = p.brightness;
+		_vfx.contrast   = p.contrast;
+		_vfx.saturation = p.saturation;
+		_vfx.gamma      = p.gamma;
+		_vfx.warmth     = p.warmth;
+		// Sync sliders
+		function setSlider(id, val, fmtFn, valId) {
+			const el = document.getElementById(id);
+			if (el) { el.value = val; _syncSliderFill(el); }
+			const vEl = document.getElementById(valId);
+			if (vEl) vEl.textContent = fmtFn(val);
+		}
+		setSlider('hueSlider',        p.hue,                v => `${v}°`,            'hueValue');
+		setSlider('brightnessSlider', p.brightness,          v => `${v}%`,            'brightnessValue');
+		setSlider('contrastSlider',   p.contrast,            v => `${v}%`,            'contrastValue');
+		setSlider('saturationSlider', p.saturation,          v => `${v}%`,            'saturationValue');
+		setSlider('gammaSlider',      Math.round(p.gamma*100), v => (v/100).toFixed(2), 'gammaValue');
+		setSlider('warmthSlider',     p.warmth,              v => `${v}`,             'warmthValue');
+		_applyVideoFilter();
+		// Update active preset button
+		document.querySelectorAll('.vfx-preset-btn').forEach(b => {
+			b.classList.toggle('active', b.dataset.preset === name);
+		});
+		console.log('[VFX] preset applied:', name, p);
+	}
+
+	document.querySelectorAll('.vfx-preset-btn').forEach(btn => {
+		btn.addEventListener('click', () => _applyVfxPreset(btn.dataset.preset));
+	});
+
+	// Initialize fills for all vfx sliders on open
+	document.querySelectorAll('.vfx-slider').forEach(s => _syncSliderFill(s));
+	document.querySelectorAll('.vfx-slider').forEach(s => {
+		s.addEventListener('input', () => {
+			_syncSliderFill(s);
+			// Mark preset as custom
+			document.querySelectorAll('.vfx-preset-btn').forEach(b => b.classList.remove('active'));
+		});
+	});
+
+	// ── Rotation Pane ──────────────────────────────────────────────────────────
+	const _rotState = { rotate: 0, flipH: false, flipV: false, aspect: 'auto' };
+
+	function _applyRotation() {
+		const video = document.getElementById('video') || document.querySelector('video');
+		if (!video) return;
+		let transform = '';
+		if (_rotState.flipH) transform += 'scaleX(-1) ';
+		if (_rotState.flipV) transform += 'scaleY(-1) ';
+		transform += `rotate(${_rotState.rotate}deg)`;
+		// Merge with existing scale/pan if available
+		const existingTransform = video.style.transform || '';
+		const rotPattern = /rotate\([^)]*\)/g;
+		const scaleXPattern = /scaleX\([^)]*\)/g;
+		const scaleYPattern = /scaleY\([^)]*\)/g;
+		// Build clean transform string keeping zoom/pan but replacing rotation+flip
+		let cleanExisting = existingTransform
+			.replace(rotPattern, '')
+			.replace(scaleXPattern, '')
+			.replace(scaleYPattern, '')
+			.trim();
+		video.style.transform = (transform + ' ' + cleanExisting).trim();
+		console.log('[Rotation] rotate:', _rotState.rotate, 'flipH:', _rotState.flipH, 'flipV:', _rotState.flipV);
+	}
+
+	// Rotate buttons
+	document.querySelectorAll('.vfx-rot-btn[data-rotate]').forEach(btn => {
+		btn.addEventListener('click', () => {
+			document.querySelectorAll('.vfx-rot-btn[data-rotate]').forEach(b => b.classList.remove('active'));
+			btn.classList.add('active');
+			_rotState.rotate = parseInt(btn.dataset.rotate);
+			_applyRotation();
+		});
+	});
+
+	// Flip buttons
+	const flipHBtn = document.getElementById('rot-flipH');
+	const flipVBtn = document.getElementById('rot-flipV');
+	if (flipHBtn) {
+		flipHBtn.addEventListener('click', () => {
+			_rotState.flipH = !_rotState.flipH;
+			flipHBtn.classList.toggle('active', _rotState.flipH);
+			_applyRotation();
+		});
+	}
+	if (flipVBtn) {
+		flipVBtn.addEventListener('click', () => {
+			_rotState.flipV = !_rotState.flipV;
+			flipVBtn.classList.toggle('active', _rotState.flipV);
+			_applyRotation();
+		});
+	}
+
+	// Aspect ratio buttons
+	document.querySelectorAll('.vfx-rot-btn[data-aspect]').forEach(btn => {
+		btn.addEventListener('click', () => {
+			document.querySelectorAll('.vfx-rot-btn[data-aspect]').forEach(b => b.classList.remove('active'));
+			btn.classList.add('active');
+			_rotState.aspect = btn.dataset.aspect;
+			const video = document.getElementById('video') || document.querySelector('video');
+			if (video) {
+				const aspectMap = { '16-9': '16/9', '4-3': '4/3', '21-9': '21/9', 'auto': 'auto' };
+				video.style.aspectRatio = aspectMap[_rotState.aspect] || 'auto';
+			}
+			console.log('[Aspect]', _rotState.aspect);
+		});
+	});
+
+	// ── New Track Sync Card Logic ───────────────────────────────────────────────
+	// Display value with color coding
+	function _syncUpdateDisplay(id, val) {
+		const el = document.getElementById(id);
+		if (!el) return;
+		el.textContent = val.toFixed(3);
+		el.classList.remove('positive', 'negative');
+		if (val > 0)  el.classList.add('positive');
+		if (val < 0)  el.classList.add('negative');
+	}
+
+	const _syncVals = { audioDelayVal: 0, subDelayVal: 0 };
+
+	// Nudge chip + ± ctrl buttons (new card design)
+	document.querySelectorAll('.sync-track-card .sync-ctrl-btn, .sync-track-card .sync-chip[data-target]').forEach(btn => {
+		btn.addEventListener('click', () => {
+			const targetId = btn.dataset.target;
+			if (!targetId || !(targetId in _syncVals)) return;
+			const delta = parseFloat(btn.dataset.delta || 0);
+			_syncVals[targetId] = parseFloat((_syncVals[targetId] + delta).toFixed(3));
+			_syncUpdateDisplay(targetId, _syncVals[targetId]);
+			console.log('[Sync]', targetId, '=', _syncVals[targetId], 's');
+		});
+	});
+
+	// Reset individual track card
+	document.querySelectorAll('.sync-reset-btn[data-reset]').forEach(btn => {
+		btn.addEventListener('click', () => {
+			const targetId = btn.dataset.reset;
+			if (targetId in _syncVals) {
+				_syncVals[targetId] = 0;
+				_syncUpdateDisplay(targetId, 0);
+				console.log('[Sync] reset:', targetId);
+			}
+		});
+	});
+
+	// Apply Changes button
+	const syncApplyBtn = document.getElementById('syncApplyBtn');
+	if (syncApplyBtn) {
+		syncApplyBtn.addEventListener('click', () => {
+			console.log('[Sync] Apply — audio:', _syncVals.audioDelayVal, 's, sub:', _syncVals.subDelayVal, 's');
+			const orig = syncApplyBtn.textContent;
+			syncApplyBtn.textContent = '✓ Applied!';
+			syncApplyBtn.style.background = 'linear-gradient(135deg, #059669, #10b981)';
+			setTimeout(() => {
+				syncApplyBtn.textContent = orig;
+				syncApplyBtn.style.background = '';
+			}, 1400);
+			showStatusMessage('Sync applied');
+		});
+	}
+
+	// Close handler for new sync modal (backward compat with old syncToolClose2 id gone)
+	const syncClose = document.getElementById('syncToolClose');
+	if (syncClose) {
+		syncClose.addEventListener('click', () => { ModalAnimator.close(document.getElementById('syncToolModal')); });
+	}
 
 	// ── About modal ────────────────────────────────────────────────────────────
 	const aboutBtn = document.getElementById('showAboutBtn');
@@ -1371,7 +1597,7 @@ async function loadMediaFile(filePath, fileName) {
 		video.style.display = "none";
 		document.getElementById("noMediaLogo").style.display = "block";
 		audioImage.style.display = "none";
-		document.getElementById("audioLogo").style.display = "none";
+		document.getElemezntById("audioLogo").style.display = "none";
 		return false; // ✅ Return false on empty path
 	}
 
@@ -1550,7 +1776,7 @@ async function playMediaFile(filePath) {
 	if (!mediaFiles.includes(filePath)) {
 		mediaFiles.push(filePath);
 		updatePlaylistDropdown(mediaFiles);
-		// ✅ FIXED: Highlight after playlist update
+		//  Highlight after playlist update
 		highlightCurrentVideo(filePath);
 		updateVideoTitle(realFileName);
 	}
@@ -1708,7 +1934,7 @@ openFileButton.addEventListener("click", async () => {
 
 		playMediaFile(mediaFiles[currentVideoIndex]);
 		updatePlaylistDropdown(mediaFiles);
-		// ✅ FIXED: Highlight after playlist update
+		// ✅  Highlight after playlist update
 		highlightCurrentVideo(mediaFiles[currentVideoIndex]);
 		showStatusMessage(`Loaded ${mediaFiles.length} video(s)`);
 	} catch (error) {
@@ -1731,7 +1957,7 @@ openFolderButton.addEventListener("click", async () => {
 			currentVideoIndex = 0; // Always play first video in folder
 			playMediaFile(mediaFiles[currentVideoIndex]);
 			updatePlaylistDropdown(mediaFiles);
-			// ✅ FIXED: Highlight after playlist update
+			// ✅  Highlight after playlist update
 			highlightCurrentVideo(mediaFiles[currentVideoIndex]);
 			showStatusMessage(`Loaded ${resolvedFiles.length} video(s) from folder`);
 		}
@@ -3669,13 +3895,16 @@ function showTooltip(volume, event = null) {
 function initializeAdvancedAudio() {
 	try {
 		audioContext = new (window.AudioContext || window.webkitAudioContext)();
-		compressor = audioContext.createDynamicsCompressor();
-		compressor.threshold.value = -24;
-		compressor.knee.value = 30;
-		compressor.ratio.value = 12;
-		compressor.attack.value = 0.003;
-		compressor.release.value = 0.25;
-		console.log('[Audio] Advanced audio processing initialized');
+		// Remove 'const' here - use the existing variable or reassign properly
+		const dynCompressor = audioContext.createDynamicsCompressor();
+		dynCompressor.threshold.value = -24;
+		dynCompressor.knee.value = 30;
+		dynCompressor.ratio.value = 12;
+		dynCompressor.attack.value = 0.003;
+		dynCompressor.release.value = 0.25;
+		// If you need to assign to global compressor, do it here
+		window.compressor = dynCompressor;
+		// console.log('[Audio] Advanced audio processing initialized');
 	} catch (e) {
 		console.warn('[Audio] Could not initialize advanced audio:', e.message);
 	}
@@ -5505,32 +5734,61 @@ function startExternalAudio(index) {
 	audioTrackPlayer.addEventListener('error', onError);
 
 	// Wait for enough buffered data, then play
+	let _canPlayFired = false;
+	let _timeoutHandle = null;
+	
 	function onCanPlay() {
+		if (_canPlayFired) return; // Prevent duplicate execution
+		_canPlayFired = true;
 		audioTrackPlayer.removeEventListener('canplay', onCanPlay);
+		audioTrackPlayer.removeEventListener('canplaythrough', onCanPlayThrough);
+		clearTimeout(_timeoutHandle);
 		// console.log('[Audio] Stream ready, playing...');
 
-		// Always try to play, even if video is paused (video might play immediately after)
-		audioTrackPlayer.play().then(function() {
-			// console.log('[Audio] Playing successfully');
-			_startDriftTimer();
-			// If video is paused, pause audio too
-			if (video.paused) {
-				audioTrackPlayer.pause();
-			}
-		}).catch(function(e) {
-			if (e.name !== 'AbortError') {
-				console.error('[Audio] play() failed:', e.name, e.message);
-			}
-		});
-	}
-	audioTrackPlayer.addEventListener('canplay', onCanPlay);
+		// Guard: Check if stream is still active for this track
+		if (!audioTrackPlayer.src || audioTrackPlayer.src !== url) return;
 
-	// Timeout fallback - if canplay never fires
-	setTimeout(function() {
-		if (audioTrackPlayer.readyState < 2) {
-			console.warn('[Audio] Stream not ready after 5s, forcing play attempt...');
+		// Sync play state with video: if paused, keep audio paused
+		if (video.paused) {
+			audioTrackPlayer.pause();
+			_startDriftTimer();
+		} else {
+			audioTrackPlayer.play().then(function() {
+				// console.log('[Audio] Playing successfully');
+				_startDriftTimer();
+			}).catch(function(e) {
+				// AbortError means src was cleared — expected, don't log
+				if (e.name !== 'AbortError') {
+					// Only warn on unexpected errors
+					if (e.name !== 'NotAllowedError') {
+						console.warn('[Audio] canplay handler — play():', e.name);
+					}
+				}
+			});
+		}
+	}
+
+	function onCanPlayThrough() {
+		onCanPlay(); // Treat the same as canplay
+	}
+
+	audioTrackPlayer.addEventListener('canplay', onCanPlay);
+	audioTrackPlayer.addEventListener('canplaythrough', onCanPlayThrough);
+
+	// Timeout fallback - if canplay never fires (5 seconds)
+	// Only force play if: (1) stream is still active, (2) data is buffered, (3) video is playing
+	_timeoutHandle = setTimeout(function() {
+		audioTrackPlayer.removeEventListener('canplay', onCanPlay);
+		audioTrackPlayer.removeEventListener('canplaythrough', onCanPlayThrough);
+		
+		// Only attempt play if conditions are met and canplay hasn't already fired
+		if (!_canPlayFired && audioTrackPlayer && audioTrackPlayer.src === url && 
+		    audioTrackPlayer.readyState >= 2 && !video.paused) {
 			audioTrackPlayer.play().catch(function(e) {
-				console.error('[Audio] Force play failed:', e.message);
+				// Suppress expected errors (aborted, not allowed)
+				if (e.name !== 'AbortError' && e.name !== 'NotAllowedError') {
+					console.warn('[Audio] Timeout fallback — play():', e.name);
+				}
 			});
 		}
 	}, 5000);
@@ -5541,7 +5799,9 @@ function stopExternalAudio() {
 	_stopDriftTimer();
 	audioTrackPlayer = getAudioTrackPlayer();
 	if (audioTrackPlayer) {
+		// Pause first to cancel any pending play() promise
 		audioTrackPlayer.pause();
+		// Remove src to trigger cleanup
 		audioTrackPlayer.removeAttribute('src');
 		try {
 			audioTrackPlayer.load();
@@ -5617,7 +5877,12 @@ video.addEventListener('play', function() {
 
 video.addEventListener('pause', function() {
 	if (!audioTrackPlayer || !audioTrackPlayer.src) return;
-	audioTrackPlayer.pause();
+	// Use a small delay to avoid interrupting play() during setup
+	// (the browser may call pause synchronously after play() in rare cases)
+	Promise.resolve().then(() => {
+		if (audioTrackPlayer && !video.paused) return; // Video was unpaused quickly
+		if (audioTrackPlayer) audioTrackPlayer.pause();
+	});
 });
 
 video.addEventListener('seeked', function() {
@@ -6615,7 +6880,7 @@ window.electron.openFolderFromContext(async (folderPath) => {
 			isFirstFileOpened = true;
 			playMediaFile(mediaFiles[currentVideoIndex]);
 			updatePlaylistDropdown(mediaFiles);
-			// ✅ FIXED: Highlight after playlist update
+			// ✅  Highlight after playlist update
 			highlightCurrentVideo(mediaFiles[currentVideoIndex]);
 			showStatusMessage(`Loaded ${resolvedFiles.length} video(s) from folder`);
 		}
@@ -7462,7 +7727,6 @@ if (document.readyState === 'loading') {
   } else {
     _init();
   }
-
 
 // Initialize modal animations
 if (typeof initializeModalAnimations === 'function') {
