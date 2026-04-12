@@ -469,7 +469,7 @@ appState.win.webContents.on('before-input-event', (event, input) => {
       isFullscreen: appState.windowState.isFullscreen
       });
       appState.win.webContents.send('initial-play-state', appState.playback.status);
-      appState.win.webContents.openDevTools();
+      // appState.win.webContents.openDevTools();
       setTimeout(() => {
       createTray();
       updateThumbarButtons();
@@ -881,6 +881,7 @@ function setupIPCHandlers() {
   ipcMain.handle("open-file-dialog", handleOpenFileDialog);
   ipcMain.handle("open-folder-dialog", handleOpenFolderDialog);
   ipcMain.handle("delete-file", handleDeleteFile);
+  ipcMain.handle("rename-file", handleRenameFile);
   ipcMain.handle("get-folder-media-files", handleGetFolderMediaFiles);
 
   // Subtitle file dialog
@@ -1870,6 +1871,39 @@ async function handleDeleteFile(event, filePath) {
   } catch (error) {
     console.error("Error deleting file:", error);
     throw error;
+  }
+}
+
+// ── Rename File ────────────────────────────────────────────────────────────
+async function handleRenameFile(event, oldPath, newName) {
+  if (!oldPath || typeof oldPath !== 'string') throw new Error('Invalid old path');
+  if (!newName || typeof newName !== 'string') throw new Error('Invalid new name');
+
+  // Strip any path separators from newName (security: no path traversal)
+  const safeName = newName.replace(/[/\\]/g, '').trim();
+  if (!safeName) throw new Error('Empty file name');
+
+  const path = require('path');
+  const dir  = path.dirname(oldPath);
+  const ext  = path.extname(oldPath);          // keep original extension e.g. ".mp4"
+
+  // Determine if the user explicitly typed the correct extension at the end.
+  // We CANNOT use path.extname(safeName) here because anime/media filenames
+  // frequently contain mid-name dots (e.g. "Song .✨ - Love me not #2025"),
+  // which path.extname() would misread as an extension, causing the real
+  // extension (.mp4 / .mkv / etc.) to be silently dropped.
+  const hasExt = ext !== '' && safeName.toLowerCase().endsWith(ext.toLowerCase());
+  const finalName = hasExt ? safeName : safeName + ext;
+  const newPath = path.join(dir, finalName);
+
+  if (oldPath === newPath) return { success: true, newPath, newName: finalName };
+
+  try {
+    await fs.promises.rename(oldPath, newPath);
+    return { success: true, newPath, newName: finalName };
+  } catch (err) {
+    console.error('Error renaming file:', err);
+    throw err;
   }
 }
 

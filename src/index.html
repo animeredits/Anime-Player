@@ -338,6 +338,11 @@
                 <span class="nav-row-text">Track Sync</span>
                 <span class="nav-row-shortcut">Ctrl+Y</span>
               </a>
+              <a href="javascript:void(0)" id="navRenameFileBtn" class="nav-row">
+                <span class="nav-row-icon"><img class="svg-icon" src="../assets/icons/fa/pen-to-square.svg" alt=""></span>
+                <span class="nav-row-text">Rename File</span>
+                <span class="nav-row-shortcut">F2</span>
+              </a>
               <a href="javascript:void(0)" id="sleep-timer" class="nav-row">
                 <span class="nav-row-icon"><img class="svg-icon" src="../assets/icons/fa/clock.svg" alt=""></span>
                 <span class="nav-row-text">Sleep Timer</span>
@@ -390,6 +395,72 @@
                 <img class="svg-icon" src="../assets/icons/fa/check.svg" alt="">&nbsp;Save
               </button>
             </div>
+          </div>
+        </div>
+
+        <!-- ── Rename File Modal ──────────────────────────────────────────── -->
+        <div id="renameFileModal" class="tool-modal" style="display:none;">
+          <div class="tool-modal-inner rename-modal-inner">
+
+            <!-- Header -->
+            <div class="tool-modal-header">
+              <div class="tool-modal-title-wrap">
+                <img class="svg-icon tool-modal-icon" src="../assets/icons/fa/pen-to-square.svg" alt="">
+                <span class="tool-modal-title">Rename File</span>
+              </div>
+              <button class="tool-modal-close" id="renameModalClose">
+                <img class="svg-icon" src="../assets/icons/fa/xmark.svg" alt="">
+              </button>
+            </div>
+
+            <!-- Hero strip — current filename -->
+            <div class="rename-modal-hero">
+              <div class="rename-modal-hero-icon" id="renameHeroIcon">
+                <!-- Thumbnail shown when video/audio artwork is available -->
+                <img id="renameThumbnail" class="rename-modal-thumbnail" src="" alt="" style="display:none;">
+                <!-- Fallback icon shown when no thumbnail -->
+                <img class="svg-icon rename-modal-fallback-icon" src="../assets/icons/fa/file-video.svg" alt="">
+              </div>
+              <div class="rename-modal-hero-text">
+                <span class="rename-modal-hero-eyebrow">Renaming</span>
+                <span class="rename-modal-hero-sub" id="renameCurrentName">—</span>
+              </div>
+            </div>
+
+            <!-- Input body -->
+            <div class="rename-modal-body">
+              <label class="rename-modal-label" for="renameInput">New name</label>
+              <div class="rename-input-wrap">
+                <input
+                  type="text"
+                  id="renameInput"
+                  class="rename-input"
+                  placeholder="Enter new file name…"
+                  spellcheck="false"
+                  autocomplete="off"
+                  maxlength="200"
+                />
+                <!-- Clear button -->
+                <button class="rename-clear-btn" id="renameClearBtn" title="Clear" tabindex="-1">
+                  <img class="svg-icon" src="../assets/icons/fa/xmark.svg" alt="Clear">
+                </button>
+                <!-- Char counter -->
+                <span class="rename-char-count" id="renameCharCount"></span>
+              </div>
+              <div class="rename-modal-hint-row">
+                <img class="rename-modal-hint-icon" src="../assets/icons/fa/circle-info.svg" alt="">
+                <p class="rename-modal-hint">Extension is kept automatically if omitted. Press <kbd class="rename-kbd">Enter</kbd> to confirm.</p>
+              </div>
+            </div>
+
+            <!-- Footer -->
+            <div class="rename-modal-footer">
+              <button id="renameCancelBtn" class="gif-modal-btn gif-modal-btn--cancel">Cancel</button>
+              <button id="renameConfirmBtn" class="gif-modal-btn gif-modal-btn--confirm">
+                <img class="svg-icon" src="../assets/icons/fa/check.svg" alt="">&nbsp;Rename
+              </button>
+            </div>
+
           </div>
         </div>
 
@@ -1212,6 +1283,17 @@
 
             <li class="cm-divider"></li>
 
+            <!-- Rename -->
+            <li>
+              <a id="contextRenameFile">
+                <span class="cm-icon"><img class="svg-icon" src="../assets/icons/fa/pen-to-square.svg" alt=""></span>
+                <span class="cm-text">Rename File</span>
+                <span class="cm-shortcut">F2</span>
+              </a>
+            </li>
+
+            <li class="cm-divider"></li>
+
             <!-- Group 4: Quit -->
             <li>
               <a id="quit">
@@ -1290,9 +1372,11 @@
         </div>
         <!-- Status Message -->
         <div id="statusMessage" class="status-message"></div>
+        <!-- Video title — must live OUTSIDE .video-controls-container because
+             that element uses filter: which breaks position:fixed on children -->
+        <div id="video-title" style="display: none;"></div>
         <!-- media player controls -->
         <div class="video-controls-container">
-          <div id="video-title" style="display: none;"></div>
           <div id="seek-bar-container">
             <span id="current-time" class="tooltip-btn" data-tooltip="Current Time">0:00</span>
             <div id="seek-bar-wrapper" role="slider" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" aria-label="Seek bar">
@@ -1352,6 +1436,10 @@
             </div>
             <div class="modal-body">
               <div id="keyboardShortcuts" class="shortcut-list">
+                <div class="shortcut">
+                  <div class="description">Rename File</div>
+                  <div class="keys"><span class="key">F2</span></div>
+                </div>
                 <div class="shortcut">
                   <div class="description">Play/Pause</div>
                   <div class="keys">

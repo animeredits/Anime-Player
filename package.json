@@ -1,6 +1,6 @@
 {
     "name": "anime-player",
-    "version": "2.2.1",
+    "version": "2.3.2",
     "description": "Anime Player is an advanced player for anime enthusiasts. Enjoy your favorite anime with enhanced controls.",
     "main": "./src/main.js",
     "author": "Anime Player",

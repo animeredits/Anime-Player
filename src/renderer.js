@@ -1460,10 +1460,181 @@ document.addEventListener('DOMContentLoaded', () => {
 	});
 
 	// Stop keydown propagation inside tool modals
-	['videoEffectsModal','syncToolModal','aboutModal'].forEach(id => {
+	['videoEffectsModal','syncToolModal','aboutModal','renameFileModal'].forEach(id => {
 		const m = document.getElementById(id);
 		if (!m) return;
 		m.addEventListener('keydown', e => e.stopPropagation());
+	});
+
+	// ── Rename File Modal ────────────────────────────────────────────────────
+	const navRenameBtn     = document.getElementById('navRenameFileBtn');
+	const contextRenameBtn = document.getElementById('contextRenameFile');
+	const renameModalClose = document.getElementById('renameModalClose');
+	const renameCancelBtn  = document.getElementById('renameCancelBtn');
+	const renameConfirmBtn = document.getElementById('renameConfirmBtn');
+	const renameInput      = document.getElementById('renameInput');
+	const renameClearBtn   = document.getElementById('renameClearBtn');
+	const renameCharCount  = document.getElementById('renameCharCount');
+	const renameCurrentName= document.getElementById('renameCurrentName');
+
+	function _updateRenameInputState() {
+		if (!renameInput) return;
+		const len  = renameInput.value.length;
+		const wrap = renameInput.closest('.rename-input-wrap');
+		// Toggle has-value class to show/hide clear button
+		if (wrap) wrap.classList.toggle('has-value', len > 0);
+		// Character counter — only show when something typed
+		if (renameCharCount) {
+			renameCharCount.textContent = len > 0 ? len : '';
+			renameCharCount.className = 'rename-char-count' +
+				(len > 180 ? ' over' : len > 140 ? ' warn' : '');
+		}
+	}
+
+	if (renameInput) renameInput.addEventListener('input', _updateRenameInputState);
+
+	// Clear button wipes the input and re-focuses
+	if (renameClearBtn) {
+		renameClearBtn.addEventListener('click', () => {
+			if (!renameInput) return;
+			renameInput.value = '';
+			_updateRenameInputState();
+			renameInput.focus();
+		});
+	}
+
+	// ── Snapshot: path captured when modal opens — immune to track changes ─────
+	let _renameSnapshotPath  = null;
+	let _renameSnapshotIndex = -1;
+
+	function _loadRenameThumbnail() {
+		const thumbEl  = document.getElementById('renameThumbnail');
+		const heroIcon = document.getElementById('renameHeroIcon');
+		if (!thumbEl || !heroIcon) return;
+
+		// Helper: apply a src and switch to thumbnail mode
+		function _applyThumb(src) {
+			if (!src) { _clearThumb(); return; }
+			thumbEl.src = src;
+			thumbEl.style.display = 'block';
+			heroIcon.classList.add('has-thumbnail');
+		}
+		function _clearThumb() {
+			thumbEl.src = '';
+			thumbEl.style.display = 'none';
+			heroIcon.classList.remove('has-thumbnail');
+		}
+
+		// 1) Video element has a visible frame → grab it from canvas
+		if (video.readyState >= 2 && video.videoWidth > 0 && video.videoHeight > 0) {
+			try {
+				const W  = 112;
+				const H  = Math.round(video.videoHeight * (W / video.videoWidth)) || 112;
+				const cv = document.createElement('canvas');
+				cv.width = W; cv.height = H;
+				cv.getContext('2d').drawImage(video, 0, 0, W, H);
+				_applyThumb(cv.toDataURL('image/jpeg', 0.85));
+				return;
+			} catch (_) { /* fall through */ }
+		}
+
+		// 2) Audio-only file — use the audioImage logo/artwork if it has a real src
+		const aiSrc = audioImage && audioImage.src &&
+			!audioImage.src.endsWith('/') &&
+			audioImage.style.display !== 'none'
+				? audioImage.src : null;
+		if (aiSrc) { _applyThumb(aiSrc); return; }
+
+		// 3) No artwork available — show fallback icon
+		_clearThumb();
+	}
+
+	function openRenameModal() {
+		if (!mediaFiles[currentVideoIndex]) {
+			showStatusMessage('No file loaded to rename');
+			return;
+		}
+
+		// ── Snapshot the target file right now ──────────────────────────────
+		_renameSnapshotPath  = mediaFiles[currentVideoIndex];
+		_renameSnapshotIndex = currentVideoIndex;
+
+		const currentName = _renameSnapshotPath.split(/[/\\]/).pop();
+		const stem        = currentName.includes('.')
+			? currentName.slice(0, currentName.lastIndexOf('.'))
+			: currentName;
+
+		if (renameCurrentName) renameCurrentName.textContent = currentName;
+
+		if (renameInput) {
+			renameInput.value = stem;
+			_updateRenameInputState();
+		}
+
+		// Populate thumbnail from current playback frame / artwork
+		_loadRenameThumbnail();
+
+		toggleToolModal('renameFileModal');
+		setTimeout(() => { if (renameInput) { renameInput.focus(); renameInput.select(); } }, 90);
+	}
+
+	async function executeRename() {
+		if (!renameInput) return;
+		const newName = renameInput.value.trim();
+		if (!newName) { showStatusMessage('Name cannot be empty'); return; }
+
+		// ── Always operate on the snapshot path, not the live index ─────────
+		const oldPath      = _renameSnapshotPath;
+		const snapshotIdx  = _renameSnapshotIndex;
+		if (!oldPath) return;
+
+		try {
+			const result = await window.electron.renameFile(oldPath, newName);
+			if (result.success) {
+				const newPath   = result.newPath;
+				const finalName = result.newName;
+
+				// Update the playlist entry that was renamed (by snapshot index)
+				if (mediaFiles[snapshotIdx] === oldPath) {
+					mediaFiles[snapshotIdx] = newPath;
+				} else {
+					// File may have shifted in the array (e.g. auto-advance) — find it
+					const idx = mediaFiles.indexOf(oldPath);
+					if (idx !== -1) mediaFiles[idx] = newPath;
+				}
+
+				// Only update the title display if it's still the active video
+				if (currentVideoPath === oldPath || mediaFiles[currentVideoIndex] === newPath) {
+					video.dataset.videoId = finalName;
+					updateVideoTitle(finalName);
+				}
+
+				updatePlaylistDropdown(mediaFiles);
+				highlightCurrentVideo(mediaFiles[currentVideoIndex]);
+
+				ModalAnimator.close(document.getElementById('renameFileModal'));
+				showStatusMessage(`✓ Renamed → ${finalName}`);
+
+				// Clear snapshot
+				_renameSnapshotPath  = null;
+				_renameSnapshotIndex = -1;
+			}
+		} catch (err) {
+			showStatusMessage(`Rename failed: ${err.message || err}`);
+		}
+	}
+
+	if (navRenameBtn)     navRenameBtn.addEventListener('click', openRenameModal);
+	if (contextRenameBtn) contextRenameBtn.addEventListener('click', () => {
+		const cm = document.getElementById('contextMenu');
+		if (cm) cm.style.display = 'none';
+		openRenameModal();
+	});
+	if (renameModalClose) renameModalClose.addEventListener('click', () => ModalAnimator.close(document.getElementById('renameFileModal')));
+	if (renameCancelBtn)  renameCancelBtn.addEventListener('click',  () => ModalAnimator.close(document.getElementById('renameFileModal')));
+	if (renameConfirmBtn) renameConfirmBtn.addEventListener('click',  executeRename);
+	if (renameInput)      renameInput.addEventListener('keydown', e => {
+		if (e.key === 'Enter') { e.preventDefault(); executeRename(); }
 	});
 });
 
@@ -2428,14 +2599,14 @@ document.querySelectorAll(".nextbtn").forEach(button => {
 
 // Rewind and Forward video 10 sec
 rewind.addEventListener("click", () => {
-	currentMedia.currentTime = Math.max(0, currentMedia.currentTime - 10);
+	_seekMedia(currentMedia, currentMedia.currentTime - 10);
 	showStatusMessage(
 		`${formatTime(currentMedia.currentTime)} / ${formatTime(currentMedia.duration)}`
 	);
 });
 
 forward.addEventListener("click", () => {
-	currentMedia.currentTime = Math.min(currentMedia.duration, currentMedia.currentTime + 10);
+	_seekMedia(currentMedia, currentMedia.currentTime + 10);
 	showStatusMessage(
 		`${formatTime(currentMedia.currentTime)} / ${formatTime(currentMedia.duration)}`
 	);
@@ -2451,13 +2622,13 @@ document.addEventListener("wheel", (e) => {
 	if (Math.abs(e.deltaX) > Math.abs(e.deltaY)) {
 		if (e.deltaX > 0) {
 			// Two-finger swipe left (rewind)
-			currentMedia.currentTime = Math.max(0, currentMedia.currentTime - 10);
+			_seekMedia(currentMedia, currentMedia.currentTime - 10);
 			showStatusMessage(
 				`${formatTime(currentMedia.currentTime)} / ${formatTime(currentMedia.duration)}`
 			);
 		} else if (e.deltaX < 0) {
 			// Two-finger swipe right (fast forward)
-			currentMedia.currentTime = Math.min(currentMedia.duration, currentMedia.currentTime + 10);
+			_seekMedia(currentMedia, currentMedia.currentTime + 10);
 			showStatusMessage(
 				`${formatTime(currentMedia.currentTime)} / ${formatTime(currentMedia.duration)}`
 			);
@@ -3226,7 +3397,7 @@ function jumpToChapter(index) {
 	}
 
 	const chapter = currentChapters[index];
-	video.currentTime = chapter.start;
+	_seekMedia(video, chapter.start);
 
 	// Highlight the current chapter in nav/cm menus
 	highlightActiveChapterInMenus(index);
@@ -3724,87 +3895,64 @@ const videoElement = document.querySelector("video");
 const volumeSlider = document.getElementById("volume-slider");
 volumeSlider.max = 200; // Set the maximum slider value to 200% volume
 
+// ── AUDIO GRAPH ─────────────────────────────────────────────────────────────
+// Chain: source → [EQ filters] → compressor → stereoPanner → gainNode → masterLimiter → destination
+//                                                                  ↓
+//                                                            audioAnalyser (tap only, no feedback)
+//
+// KEY FIXES vs old code:
+//  • Removed monitorAudioLevels() — it was pulling gainNode DOWN, directly fighting 200% volume
+//  • Fixed double-analyser bug (old: analyser fed back into gainNode = audio summed twice = mud)
+//  • stereoPanner default set to 0.0 center (was 0.2 = permanently off-center)
+//  • masterLimiter added AFTER gainNode — catches only true clipping peaks at 200%,
+//    does NOT reduce overall loudness. This is how VLC achieves loud + clean audio.
+
 let audioContext = new AudioContext();
+
+// ── User volume control (0.0–2.0 = 0%–200%) ─────────────────────────────────
 const gainNode = audioContext.createGain();
+
+// ── Master limiter — brick-wall peak limiter AFTER the gain node ─────────────
+// Ratio 20:1 + knee 0 = true hard limiter. Threshold –1 dBFS = only catches real clips.
+// 1 ms attack stops peaks before they crack. 80 ms release = no pumping artifacts.
+// Result: 200% sounds genuinely louder AND stays clean — no harsh digital noise.
+const masterLimiter = audioContext.createDynamicsCompressor();
+masterLimiter.threshold.value = -1;    // –1 dBFS ceiling
+masterLimiter.knee.value      = 0;     // Hard knee = true brick-wall
+masterLimiter.ratio.value     = 20;    // 20:1 = limiter not compressor
+masterLimiter.attack.value    = 0.001; // 1 ms — kills peaks before distortion
+masterLimiter.release.value   = 0.08;  // 80 ms — fast enough to avoid pumping
+
+// ── Per-preset compressor (voice dynamics, updated by applyAudioEffect) ──────
 const compressor = audioContext.createDynamicsCompressor();
-const midBoostFilter = audioContext.createBiquadFilter();
-const stereoPanner = audioContext.createStereoPanner(); // Create a stereo panner node
+compressor.threshold.value = -24;
+compressor.knee.value      = 12;
+compressor.ratio.value     = 3;
+compressor.attack.value    = 0.015;
+compressor.release.value   = 0.2;
 
-// Set up a bandpass filter to enhance mid-range frequencies (where most vocals are)
-midBoostFilter.type = "peaking";
-midBoostFilter.frequency.setValueAtTime(3650, audioContext.currentTime); // Center frequency
-midBoostFilter.Q.setValueAtTime(2, audioContext.currentTime); // Bandwidth (resonance) of the filter
-midBoostFilter.gain.setValueAtTime(2, audioContext.currentTime); // Milder mid boost
+// ── Stereo panner (each preset can set this; default = dead center) ───────────
+const stereoPanner = audioContext.createStereoPanner();
+stereoPanner.pan.value = 0; // center (was 0.2 before — permanently off-balance)
 
-// Set compressor parameters for vocal clarity (updated for softer compression)
-compressor.threshold.setValueAtTime(-40, audioContext.currentTime); // Lower threshold for more subtle compression
-compressor.knee.setValueAtTime(28, audioContext.currentTime); // Moderate knee
-compressor.ratio.setValueAtTime(2, audioContext.currentTime); // Gentler compression
-compressor.attack.setValueAtTime(0.03, audioContext.currentTime); // Slightly slower attack
-compressor.release.setValueAtTime(0.3, audioContext.currentTime); // Smoother release
-stereoPanner.pan.setValueAtTime(0.2, audioContext.currentTime); // Slight stereo offset
-
-// Connect nodes
-const source = audioContext.createMediaElementSource(videoElement);
-source.connect(midBoostFilter);
-midBoostFilter.connect(compressor);
-compressor.connect(stereoPanner); // Connect compressor to stereo panner
-stereoPanner.connect(gainNode); // Connect stereo panner to gain node
-gainNode.connect(audioContext.destination);
-
-// Create an analyser node for real-time audio monitoring (new code)
+// ── Analyser tap (visualization only — NOT in the audio signal path) ──────────
 const audioAnalyser = audioContext.createAnalyser();
-audioAnalyser.fftSize = 256; // Size of the FFT for analysis
-const bufferLength = audioAnalyser.frequencyBinCount; // Length of data array for analyser
-const timeDomainData = new Uint8Array(bufferLength); // Array to hold the frequency data
+audioAnalyser.fftSize = 256;
+const bufferLength = audioAnalyser.frequencyBinCount;
+const timeDomainData = new Uint8Array(bufferLength);
 
-// Connect analyser node to monitor audio levels
-compressor.connect(audioAnalyser); // Place analyser after the compressor
-audioAnalyser.connect(gainNode); // Continue connecting analyser to the gain node
+// ── Wire the base chain ──────────────────────────────────────────────────────
+// applyAudioEffect() will splice EQ filter nodes between source and compressor.
+const source = audioContext.createMediaElementSource(videoElement);
+source.connect(compressor);
+compressor.connect(stereoPanner);
+stereoPanner.connect(gainNode);
+gainNode.connect(masterLimiter);
+masterLimiter.connect(audioContext.destination);
 
-// Function to monitor audio levels and normalize automatically
-let _monitorRafId = null;
-let _monitorRunning = false;
-
-function monitorAudioLevels() {
-	if (!_monitorRunning) return; // Stop if flagged
-
-	audioAnalyser.getByteTimeDomainData(timeDomainData);
-
-	let sum = 0;
-	for (let i = 0; i < bufferLength; i++) {
-		let sample = timeDomainData[i] / 128 - 1.0;
-		sum += sample * sample;
-	}
-	const rms = Math.sqrt(sum / bufferLength);
-
-	if (rms > 0.7) {
-		let newVolume = Math.max(0, gainNode.gain.value - 0.1);
-		gainNode.gain.linearRampToValueAtTime(newVolume, audioContext.currentTime + 0.1);
-	}
-
-	_monitorRafId = requestAnimationFrame(monitorAudioLevels);
-}
-
-function startMonitor() {
-	if (_monitorRunning) return; // Already running — do NOT start a second loop
-	_monitorRunning = true;
-	_monitorRafId = requestAnimationFrame(monitorAudioLevels);
-}
-
-function stopMonitor() {
-	_monitorRunning = false;
-	if (_monitorRafId !== null) {
-		cancelAnimationFrame(_monitorRafId);
-		_monitorRafId = null;
-	}
-}
-
-// Start monitoring audio levels when the video is played
-
-videoElement.addEventListener("play", startMonitor);
-videoElement.addEventListener("pause", stopMonitor);
-videoElement.addEventListener("ended", stopMonitor);
+// Analyser tap — parallel read-only branch. Reads the post-gain signal level
+// for visualization but does NOT connect back to destination (no feedback loop).
+gainNode.connect(audioAnalyser);
 
 // Function to save volume setting to localStorage
 function saveVolumeSetting(volume) {
@@ -3890,30 +4038,8 @@ function showTooltip(volume, event = null) {
 		tooltip.style.opacity = "0";
 	}, 1500);
 }
-//  VOLUME FUNCTIONS with 200% support
-// Initialize advanced audio context for compression and clarity
-function initializeAdvancedAudio() {
-	try {
-		audioContext = new (window.AudioContext || window.webkitAudioContext)();
-		// Remove 'const' here - use the existing variable or reassign properly
-		const dynCompressor = audioContext.createDynamicsCompressor();
-		dynCompressor.threshold.value = -24;
-		dynCompressor.knee.value = 30;
-		dynCompressor.ratio.value = 12;
-		dynCompressor.attack.value = 0.003;
-		dynCompressor.release.value = 0.25;
-		// If you need to assign to global compressor, do it here
-		window.compressor = dynCompressor;
-		// console.log('[Audio] Advanced audio processing initialized');
-	} catch (e) {
-		console.warn('[Audio] Could not initialize advanced audio:', e.message);
-	}
-}
-
-// Call this on app startup
-window.addEventListener('DOMContentLoaded', () => {
-	initializeAdvancedAudio();
-});
+// ── VOLUME FUNCTIONS with 200% support ──────────────────────────────────────
+// masterLimiter (above) provides clean 200% power — no initializeAdvancedAudio needed.
 
 // Enhanced volume update with 200% amplification
 function updateVolumeEnhanced(newVolume) {
@@ -5102,6 +5228,13 @@ document.addEventListener("keydown", (event) => {
 		return;
 	}
 
+	if (event.key === 'F2') {
+		event.preventDefault();
+		const btn = document.getElementById('navRenameFileBtn');
+		if (btn) btn.click();
+		return;
+	}
+
 	if (event.ctrlKey && event.key.toLowerCase() === 'y') {
 		event.preventDefault();
 		toggleToolModal('syncToolModal');
@@ -5140,7 +5273,7 @@ document.addEventListener("keydown", (event) => {
 
 	if (event.ctrlKey && event.key === "ArrowRight") {
 		event.preventDefault();
-		currentMedia.currentTime = Math.min(currentMedia.duration, currentMedia.currentTime + 60);
+		_seekMedia(currentMedia, currentMedia.currentTime + 60);
 		showStatusMessage(
 			`${formatTime(currentMedia.currentTime)} / ${formatTime(currentMedia.duration)}`
 		);
@@ -5149,7 +5282,7 @@ document.addEventListener("keydown", (event) => {
 
 	if (event.ctrlKey && event.key === "ArrowLeft") {
 		event.preventDefault();
-		currentMedia.currentTime = Math.max(0, currentMedia.currentTime - 60);
+		_seekMedia(currentMedia, currentMedia.currentTime - 60);
 		showStatusMessage(
 			`${formatTime(currentMedia.currentTime)} / ${formatTime(currentMedia.duration)}`
 		);
@@ -5158,7 +5291,7 @@ document.addEventListener("keydown", (event) => {
 
 	if (event.shiftKey && event.key === "ArrowRight") {
 		event.preventDefault();
-		currentMedia.currentTime = Math.min(currentMedia.duration, currentMedia.currentTime + 5);
+		_seekMedia(currentMedia, currentMedia.currentTime + 5);
 		showStatusMessage(
 			`${formatTime(currentMedia.currentTime)} / ${formatTime(currentMedia.duration)}`
 		);
@@ -5167,7 +5300,7 @@ document.addEventListener("keydown", (event) => {
 
 	if (event.shiftKey && event.key === "ArrowLeft") {
 		event.preventDefault();
-		currentMedia.currentTime = Math.min(currentMedia.duration, currentMedia.currentTime - 5);
+		_seekMedia(currentMedia, currentMedia.currentTime - 5);
 		showStatusMessage(
 			`${formatTime(currentMedia.currentTime)} / ${formatTime(currentMedia.duration)}`
 		);
@@ -5307,16 +5440,16 @@ if (event.key.toLowerCase() === 't' && !event.ctrlKey) {
 
 	const keyActions = {
 		ArrowLeft: () => {
-			currentMedia.currentTime = Math.max(0, currentMedia.currentTime - 10);
+			_seekMedia(currentMedia, currentMedia.currentTime - 10);
 			showStatusMessage(
 				`${formatTime(currentMedia.currentTime)} / ${formatTime(currentMedia.duration)}`
-			); // Show current time and total duration
+			);
 		},
 		ArrowRight: () => {
-			currentMedia.currentTime = Math.min(currentMedia.duration, currentMedia.currentTime + 10);
+			_seekMedia(currentMedia, currentMedia.currentTime + 10);
 			showStatusMessage(
 				`${formatTime(currentMedia.currentTime)} / ${formatTime(currentMedia.duration)}`
-			); // Show current time and total duration
+			);
 		},
 		f: () => toggleFullScreen(),
 		s: () => toggleShuffleMode(),
@@ -6103,15 +6236,48 @@ video.addEventListener('canplay', () => {
 	// Loader completely disabled
 });
 
-// Debounced seek helper
-// Throttle rapid currentTime changes (drag, wheel) to one Range request per 100 ms.
+// ── SEEK HELPERS ─────────────────────────────────────────────────────────────
+// ROOT CAUSE of slow seeking on large files (2h, 10h):
+//   video.currentTime = X  → "exact frame" seek
+//     Chromium must: read the full index, locate the keyframe, then decode every
+//     frame from that keyframe to your exact target. On a 10-hour file this can
+//     stall for 3–8 seconds even on a fast SSD.
+//
+//   video.fastSeek(X) → "nearest keyframe" seek  (Chromium / Electron native)
+//     Jumps straight to the nearest keyframe — essentially instant on any file.
+//     You may land ±1-2s off vs an exact seek, but 10h files seek instantly.
+//
+// _seekTo:   used by seek bar clicks, drag release, wheel — debounced 50 ms
+//            so rapid drags/clicks don't stack up seek requests.
+// _seekMedia: used by all keyboard shortcuts (+5, +10, +60 etc.) — no debounce
+//             needed because keyboard events are already discrete.
+
 let _seekDebounceTimer = null;
 
 function _seekTo(time) {
 	clearTimeout(_seekDebounceTimer);
 	_seekDebounceTimer = setTimeout(() => {
-		video.currentTime = time;
-	}, 80);
+		const t = Math.max(0, Math.min(time, isFinite(video.duration) ? video.duration : time));
+		// fastSeek() = nearest-keyframe seek → instant on large files.
+		// Falls back to currentTime= on browsers that don't support it.
+		if (typeof video.fastSeek === 'function') {
+			video.fastSeek(t);
+		} else {
+			video.currentTime = t;
+		}
+	}, 50); // 50 ms — UI updates instantly above, this just throttles actual seeks
+}
+
+// Direct (non-debounced) fastSeek for discrete actions (keyboard, buttons, chapters).
+// Works on any HTMLMediaElement (video or audioTrackPlayer).
+function _seekMedia(media, time) {
+	if (!media) return;
+	const t = Math.max(0, Math.min(time, isFinite(media.duration) ? media.duration : time));
+	if (typeof media.fastSeek === 'function') {
+		media.fastSeek(t);
+	} else {
+		media.currentTime = t;
+	}
 }
 
 let currentSubtitleIndex = -1;
@@ -7049,168 +7215,113 @@ window.electron.onRepeatState(() => {
 	toggleRepeat();
 });
 
-//  AUDIO EFFECTS  (Auto / Coding / Movie / Music / Comfort)
+//  AUDIO EFFECTS  (Auto / Voice / Movie / Music / Comfort)
+//
+// Design goals:
+//  • Each preset must be CLEARLY audible as different (Dolby-style noticeable difference)
+//  • Voice always intelligible — background voices, deep voices, whispers all hearable
+//  • 200% volume stays clean — masterLimiter handles peaks, presets don't fight gain
+//  • Compressor settings per preset restore dynamics that are appropriate for content
 
 const EQ_PRESETS = {
+	// ── AUTO — smart balanced mode, slightly vocal-forward ──────────────────
 	auto: {
 		label: 'Auto',
-		filters: [{
-				type: 'highpass',
-				frequency: 40,
-				Q: 0.7,
-				gain: 0
-			},
-			{
-				type: 'peaking',
-				frequency: 3000,
-				Q: 1.5,
-				gain: 2.5
-			},
-			{
-				type: 'peaking',
-				frequency: 8000,
-				Q: 1.5,
-				gain: 1.5
-			},
-			{
-				type: 'lowpass',
-				frequency: 18000,
-				Q: 0.7,
-				gain: 0
-			},
+		filters: [
+			// Remove sub-bass rumble (mic handling noise, AC hum)
+			{ type: 'highpass',  frequency: 40,   Q: 0.7, gain: 0 },
+			// Subtle warmth — makes audio feel "full" vs flat
+			{ type: 'lowshelf',  frequency: 120,  Q: 1.0, gain: 2 },
+			// Presence boost — the key freq for speech intelligibility
+			{ type: 'peaking',   frequency: 2800, Q: 1.2, gain: 4 },
+			// Air — opens up high end, reduces that "under a blanket" feel
+			{ type: 'highshelf', frequency: 9000, Q: 0.8, gain: 2 },
 		],
-		compThreshold: -40,
-		compRatio: 2,
+		compThreshold: -28, compRatio: 2.5, compKnee: 10,
+		compAttack: 0.015,  compRelease: 0.2,
 		panValue: 0,
 	},
+
+	// ── VOICE / DIALOG — Dolby Voice-style: crystal-clear speech ─────────────
+	// Deep voices, background dialogue, soft-spoken characters — all come forward.
+	// Inspired by Dolby Voice: removes mud, boosts presence, opens highs.
 	coding: {
-		label: 'Coding',
-		filters: [{
-				type: 'highpass',
-				frequency: 60,
-				Q: 0.7,
-				gain: 0
-			},
-			{
-				type: 'peaking',
-				frequency: 200,
-				Q: 1.0,
-				gain: -3
-			},
-			{
-				type: 'peaking',
-				frequency: 1000,
-				Q: 1.0,
-				gain: 0
-			},
-			{
-				type: 'peaking',
-				frequency: 6000,
-				Q: 1.0,
-				gain: 1
-			},
-			{
-				type: 'lowpass',
-				frequency: 16000,
-				Q: 0.7,
-				gain: 0
-			},
+		label: 'Voice',
+		filters: [
+			// Cut sub-bass hard — removes rumble that masks speech
+			{ type: 'highpass',  frequency: 80,   Q: 0.9, gain: 0 },
+			// Warmth for deep voices — Morgan Freeman / bass voices
+			{ type: 'peaking',   frequency: 180,  Q: 0.8, gain: 3 },
+			// Cut "boxy" mud — the 300–400 Hz range smears intelligibility
+			{ type: 'peaking',   frequency: 350,  Q: 1.2, gain: -3 },
+			// Core presence — this single band is where speech lives (Dolby secret)
+			{ type: 'peaking',   frequency: 2500, Q: 1.0, gain: 6 },
+			// Upper presence — consonants (s, t, f) — makes speech "crisp"
+			{ type: 'peaking',   frequency: 5000, Q: 1.0, gain: 4 },
+			// Air shelf — lifts the "veil", opens dialogue up
+			{ type: 'highshelf', frequency: 9000, Q: 0.8, gain: 3 },
 		],
-		compThreshold: -50,
-		compRatio: 1.5,
+		// Heavier compression: brings up background voices, quieter characters
+		compThreshold: -32, compRatio: 5, compKnee: 8,
+		compAttack: 0.008,  compRelease: 0.15,
 		panValue: 0,
 	},
+
+	// ── MOVIE — cinematic: deep impact bass + clear dialogue + sparkle ────────
 	movie: {
 		label: 'Movie',
-		filters: [{
-				type: 'lowshelf',
-				frequency: 80,
-				Q: 1.0,
-				gain: 5
-			},
-			{
-				type: 'peaking',
-				frequency: 300,
-				Q: 1.0,
-				gain: -2
-			},
-			{
-				type: 'peaking',
-				frequency: 3500,
-				Q: 1.5,
-				gain: 4
-			},
-			{
-				type: 'highshelf',
-				frequency: 10000,
-				Q: 1.0,
-				gain: 3
-			},
+		filters: [
+			// Deep cinematic bass — explosions, score, LFE feel
+			{ type: 'lowshelf',  frequency: 80,   Q: 0.8, gain: 6 },
+			// Cut muddy low-mid — keeps bass clean, separates from dialogue
+			{ type: 'peaking',   frequency: 280,  Q: 1.0, gain: -2 },
+			// Dialogue presence — actors always audible over music/effects
+			{ type: 'peaking',   frequency: 3000, Q: 1.3, gain: 5 },
+			// Cinematic sparkle — surround-like air
+			{ type: 'highshelf', frequency: 10000, Q: 0.8, gain: 4 },
 		],
-		compThreshold: -30,
-		compRatio: 4,
+		// Medium compression: evening out action scenes vs quiet dialogue
+		compThreshold: -26, compRatio: 4, compKnee: 10,
+		compAttack: 0.01,   compRelease: 0.25,
 		panValue: 0,
 	},
+
+	// ── MUSIC — V-curve: punchy bass + vocal clarity + airy highs ────────────
 	music: {
 		label: 'Music',
-		filters: [{
-				type: 'lowshelf',
-				frequency: 100,
-				Q: 1.0,
-				gain: 4
-			},
-			{
-				type: 'peaking',
-				frequency: 500,
-				Q: 0.8,
-				gain: -1
-			},
-			{
-				type: 'peaking',
-				frequency: 4000,
-				Q: 1.0,
-				gain: 3
-			},
-			{
-				type: 'highshelf',
-				frequency: 12000,
-				Q: 1.0,
-				gain: 4
-			},
+		filters: [
+			// Punchy sub-bass — kick drum, bass guitar feel
+			{ type: 'lowshelf',  frequency: 100,  Q: 0.8, gain: 5 },
+			// Cut muddiness in low-mids (common in compressed pop music)
+			{ type: 'peaking',   frequency: 400,  Q: 0.8, gain: -2 },
+			// Vocal clarity — brings singers forward in the mix
+			{ type: 'peaking',   frequency: 3500, Q: 1.0, gain: 3 },
+			// Brilliance / air — hi-hats, cymbals, acoustic shimmer
+			{ type: 'highshelf', frequency: 12000, Q: 0.8, gain: 5 },
 		],
-		compThreshold: -35,
-		compRatio: 3,
+		compThreshold: -30, compRatio: 3, compKnee: 12,
+		compAttack: 0.012,  compRelease: 0.2,
 		panValue: 0,
 	},
+
+	// ── COMFORT / NIGHT — gentle, warm, low-fatigue listening ────────────────
+	// Background playback, sleeping, late night — nothing harsh or spiky.
+	// Heavy compression brings up quiet parts so you don't miss dialogue.
 	comfort: {
 		label: 'Comfort',
-		filters: [{
-				type: 'lowshelf',
-				frequency: 100,
-				Q: 1.0,
-				gain: -2
-			},
-			{
-				type: 'peaking',
-				frequency: 800,
-				Q: 1.0,
-				gain: 2
-			},
-			{
-				type: 'peaking',
-				frequency: 3000,
-				Q: 1.2,
-				gain: 1
-			},
-			{
-				type: 'highshelf',
-				frequency: 9000,
-				Q: 1.0,
-				gain: -4
-			},
+		filters: [
+			// Remove harsh sub-bass (avoids waking others)
+			{ type: 'highpass',  frequency: 100,  Q: 0.7, gain: 0 },
+			// Gentle warmth
+			{ type: 'peaking',   frequency: 600,  Q: 0.9, gain: 2 },
+			// Mild presence — speech stays understandable at low volume
+			{ type: 'peaking',   frequency: 2200, Q: 1.0, gain: 3 },
+			// Tame harshness — high frequencies reduced (no ear fatigue)
+			{ type: 'highshelf', frequency: 7000, Q: 0.8, gain: -5 },
 		],
-		compThreshold: -50,
-		compRatio: 1.8,
+		// Heavy gentle comp: raises whispers, softens shouts — night-mode leveling
+		compThreshold: -40, compRatio: 6, compKnee: 15,
+		compAttack: 0.02,   compRelease: 0.3,
 		panValue: 0,
 	},
 };
@@ -7221,23 +7332,21 @@ let _activeEffectKey = null;
 function applyAudioEffect(key) {
 	const preset = EQ_PRESETS[key];
 	if (!preset) return;
-	// Guard: if AudioContext nodes not ready yet, skip silently
 	if (typeof audioContext === 'undefined' || typeof gainNode === 'undefined') return;
 
 	const now = audioContext.currentTime;
 
-	// 1. Disconnect old EQ nodes (no leaks)
-	_eqFilterNodes.forEach(f => {
-		try {
-			f.disconnect();
-		} catch (_) {}
-	});
+	// 1. Disconnect old EQ filter nodes cleanly
+	_eqFilterNodes.forEach(f => { try { f.disconnect(); } catch (_) {} });
 	_eqFilterNodes = [];
 
-	// 2. Resume if suspended 
+	// 2. Resume context if suspended (browser autoplay policy)
 	if (audioContext.state === 'suspended') audioContext.resume();
 
-	// 3. Build new filter chain 
+	// 3. Disconnect source from compressor so we can splice EQ in between
+	try { source.disconnect(); } catch (_) {}
+
+	// 4. Build new EQ filter chain for this preset
 	const filters = preset.filters.map(cfg => {
 		const f = audioContext.createBiquadFilter();
 		f.type = cfg.type;
@@ -7246,45 +7355,41 @@ function applyAudioEffect(key) {
 		if (cfg.gain !== undefined) f.gain.setValueAtTime(cfg.gain, now);
 		return f;
 	});
-	if (filters.length > 1) filters.reduce((p, c) => {
-		p.connect(c);
-		return c;
-	});
 
-	// 4. Re-wire: compressor → [EQ chain] → gainNode
-	// Safely disconnect existing connections without crashing
-	try {
-		audioAnalyser.disconnect();
-	} catch (_) {}
-	try {
-		compressor.disconnect();
-	} catch (_) {}
-
-	if (filters.length > 0) {
-		compressor.connect(filters[0]);
-		filters[filters.length - 1].connect(gainNode);
-	} else {
-		compressor.connect(gainNode);
+	// Chain filters together: f[0] → f[1] → … → f[n]
+	if (filters.length > 1) {
+		filters.reduce((prev, curr) => { prev.connect(curr); return curr; });
 	}
-	// Keep analyser alive in parallel
-	compressor.connect(audioAnalyser);
-	audioAnalyser.connect(gainNode);
+
+	// 5. Re-wire full chain: source → [EQ] → compressor → stereoPanner → gainNode → masterLimiter → destination
+	if (filters.length > 0) {
+		source.connect(filters[0]);
+		filters[filters.length - 1].connect(compressor);
+	} else {
+		source.connect(compressor);
+	}
+	// Downstream chain is always connected (compressor → stereoPanner → gainNode → masterLimiter → destination)
+	// Those connections were made at init and are never broken.
 
 	_eqFilterNodes = filters;
 
-	// 5. Compressor & panner tweaks 
-	if (typeof compressor !== 'undefined') {
-		compressor.threshold.linearRampToValueAtTime(preset.compThreshold, now + 0.15);
-		compressor.ratio.linearRampToValueAtTime(preset.compRatio, now + 0.15);
-	}
+	// 6. Update compressor parameters for this preset
+	const ramp = now + 0.15;
+	compressor.threshold.linearRampToValueAtTime(preset.compThreshold, ramp);
+	compressor.ratio.linearRampToValueAtTime(preset.compRatio, ramp);
+	if (preset.compKnee   !== undefined) compressor.knee.linearRampToValueAtTime(preset.compKnee,    ramp);
+	if (preset.compAttack  !== undefined) compressor.attack.linearRampToValueAtTime(preset.compAttack,  ramp);
+	if (preset.compRelease !== undefined) compressor.release.linearRampToValueAtTime(preset.compRelease, ramp);
+
+	// 7. Pan (center by default in all presets)
 	if (typeof stereoPanner !== 'undefined') {
-		stereoPanner.pan.linearRampToValueAtTime(preset.panValue, now + 0.15);
+		stereoPanner.pan.linearRampToValueAtTime(preset.panValue ?? 0, ramp);
 	}
 
 	_activeEffectKey = key;
 	_updateEffectUI(key);
-	localStorage.setItem('activeAudioEffect', key); // Persist so we can restore silently on next launch
-	if (typeof showStatusMessage === 'function') showStatusMessage(`Audio Effect: ${preset.label}`);
+	localStorage.setItem('activeAudioEffect', key);
+	if (typeof showStatusMessage === 'function') showStatusMessage(`Audio: ${preset.label}`);
 }
 
 function _updateEffectUI(activeKey) {

@@ -43,7 +43,8 @@ const VALID_INVOKE_CHANNELS = [
 	"get-dev-mode",
 	"reload-renderer",
 	"cleanup-subtitles",
-	"get-folder-media-files"
+	"get-folder-media-files",
+	"rename-file"
 ];
 
 contextBridge.exposeInMainWorld('electron', {
@@ -141,4 +142,7 @@ contextBridge.exposeInMainWorld('electron', {
 	// Hot-reload (development only)
 	reloadRenderer: () => ipcRenderer.invoke('reload-renderer'),
 	getDevMode: () => ipcRenderer.invoke('get-dev-mode'),
+
+	// File rename
+	renameFile: (oldPath, newName) => ipcRenderer.invoke('rename-file', oldPath, newName),
 });

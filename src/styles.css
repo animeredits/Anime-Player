@@ -95,6 +95,7 @@ body {
       .vfx-temp-cool .svg-icon,
       .vfx-temp-warm .svg-icon       { width: 13px; height: 13px; vertical-align: middle; }
       .about-update-status .svg-icon { width: 14px; height: 14px; vertical-align: middle; margin-right: 4px; }
+
 /* Navigation Bar */
 nav {
   display: block;
@@ -668,15 +669,17 @@ nav > * {
 .sub-dropdown-content.audio-track-list a,
 .sub-dropdown-content.subtitle-track-list a,
 .sub-dropdown-content.audio-device-list a {
-  display: block !important;
-  grid-template-columns: unset !important;
-  padding: 5px 12px !important;
-  font-size: 11px !important;
+  display: block;
+  grid-template-columns: unset;
+  padding: 5px 12px;
+  font-size: 11px;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
   max-width: 240px;
 }
+
+
 
 /* Container for each logo item */
 .logo-item {
@@ -2641,20 +2644,24 @@ font-size: 11px;
 }
 
 #video-title {
-  display: none; /* Update to block or inline-block to show the element as needed */
-  position: absolute;
-  text-align: start; /* Align text to start (left) */
-  font-weight: 300;
-  left: 15px;
-  bottom: 100%;
+  display: none; /* Shown via JS when media is playing */
+  position: fixed;
+  text-align: center;
+  font-weight: 400;
+  top: 9px;
+  left: 53%;
+  transform: translateX(-50%);
   color: white;
-  font-size: 24px;
-  padding: 10px;
-  z-index: 10; /* Set a higher value for the text to appear on top */
-  max-width: 99.9vw; /* Ensure it doesn't exceed the viewport width */
-  white-space: nowrap; /* Ensure the title doesn't wrap to a new line */
-  overflow: hidden; /* Ensures the text is hidden if it exceeds width */
-  text-overflow: ellipsis; /* Adds "..." if the text overflows */
+  font-size: 15px;
+  padding: 5px 20px;
+  z-index: 100;
+  max-width: 55vw;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  text-shadow: 0 1px 8px rgba(0, 0, 0, 0.9);
+  letter-spacing: 0.02em;
+  pointer-events: none;
 }
 
 #video-title::before {
@@ -3704,7 +3711,7 @@ video:-ms-fullscreen {
   padding: 5px 10px;
   display: block;
   cursor: pointer;
-  border: 1px solid rgba(255, 255, 255, 0.125);
+  /* border: 1px solid rgba(255, 255, 255, 0.125); */
   margin: 5px 0;
   color: white;
   text-decoration: none;
@@ -4030,6 +4037,282 @@ video:-ms-fullscreen {
 .tool-modal-inner--sync  { width: 460px; }
 .tool-modal-inner--about { width: 440px; }
 .vfx-modal-inner         { width: 500px; }
+.rename-modal-inner      { width: 480px; }
+
+/* ══════════════════════════════════════════════════════════════════════
+   RENAME FILE MODAL
+   ══════════════════════════════════════════════════════════════════════ */
+
+/* Hero strip */
+.rename-modal-hero {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 20px 28px;
+  background: linear-gradient(135deg, rgba(130,100,255,0.1) 0%, rgba(80,180,255,0.04) 100%);
+  border-bottom: 1px solid rgba(255,255,255,0.06);
+}
+
+.rename-modal-hero-icon {
+  width: 56px;
+  height: 56px;
+  border-radius: 13px;
+  background: rgba(130,100,255,0.18);
+  border: 1px solid rgba(130,100,255,0.3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  overflow: hidden;
+  position: relative;
+  transition: background 0.2s, border-color 0.2s;
+}
+
+/* When thumbnail is active, remove the purple bg and border */
+.rename-modal-hero-icon.has-thumbnail {
+  background: transparent;
+  border-color: rgba(255,255,255,0.12);
+}
+
+.rename-modal-hero-icon .svg-icon {
+  width: 22px;
+  height: 22px;
+  filter: brightness(0) invert(1);
+  opacity: 0.85;
+}
+
+/* Fallback icon hidden when thumbnail is shown */
+.rename-modal-hero-icon.has-thumbnail .rename-modal-fallback-icon {
+  display: none !important;
+}
+
+.rename-modal-thumbnail {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 12px;
+  display: block;
+}
+
+.rename-modal-hero-text {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.rename-modal-hero-eyebrow {
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: rgba(130,100,255,0.8);
+}
+
+.rename-modal-hero-sub {
+  font-size: 12.5px;
+  color: rgba(255,255,255,0.55);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 350px;
+}
+
+/* Body */
+.rename-modal-body {
+  padding: 28px 28px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.rename-modal-label {
+  font-size: 10.5px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: rgba(255,255,255,0.35);
+  user-select: none;
+}
+
+/* Input wrapper */
+.rename-input-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+/* Animated left accent */
+.rename-input-wrap::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 50%;
+  transform: translateY(-50%) scaleY(0);
+  width: 3px;
+  height: 52%;
+  border-radius: 0 3px 3px 0;
+  background: rgba(130,100,255,1);
+  transition: transform 0.22s cubic-bezier(0.34,1.56,0.64,1);
+  pointer-events: none;
+  z-index: 1;
+}
+
+.rename-input-wrap:focus-within::before {
+  transform: translateY(-50%) scaleY(1);
+}
+
+.rename-input {
+  width: 100%;
+  box-sizing: border-box;
+  background: rgba(255,255,255,0.05);
+  border: 1px solid rgba(255,255,255,0.09);
+  border-radius: 11px;
+  color: #fff;
+  font-size: 15px;
+  font-weight: 400;
+  /* right padding: 32px clear btn + 44px char counter */
+  padding: 14px 80px 14px 18px;
+  outline: none;
+  transition: border-color 0.2s ease, background 0.2s ease, box-shadow 0.25s ease;
+  font-family: inherit;
+  letter-spacing: 0.01em;
+  caret-color: rgba(140,110,255,1);
+}
+
+.rename-input::placeholder {
+  color: rgba(255,255,255,0.18);
+}
+
+.rename-input:focus {
+  border-color: rgba(130,100,255,0.55);
+  background: rgba(130,100,255,0.06);
+  box-shadow: 0 0 0 3px rgba(130,100,255,0.13), 0 2px 16px rgba(0,0,0,0.3);
+}
+
+/* Clear (×) button inside input */
+.rename-clear-btn {
+  position: absolute;
+  right: 44px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.1);
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.15s, background 0.15s, transform 0.15s;
+  padding: 0;
+}
+
+.rename-clear-btn .svg-icon {
+  width: 10px;
+  height: 10px;
+  filter: brightness(0) invert(1);
+  opacity: 0.7;
+}
+
+.rename-clear-btn:hover {
+  background: rgba(255,255,255,0.18);
+  transform: translateY(-50%) scale(1.1);
+}
+
+.rename-clear-btn:active {
+  transform: translateY(-50%) scale(0.92);
+}
+
+/* Show clear btn when input has content */
+.rename-input-wrap.has-value .rename-clear-btn {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+/* Character counter */
+.rename-char-count {
+  position: absolute;
+  right: 14px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 10px;
+  color: rgba(255,255,255,0.18);
+  pointer-events: none;
+  font-variant-numeric: tabular-nums;
+  transition: color 0.2s;
+  min-width: 26px;
+  text-align: right;
+}
+
+.rename-char-count.warn { color: rgba(255,165,60,0.75); }
+.rename-char-count.over { color: rgba(255,70,70,0.9);   }
+
+/* Hint row */
+.rename-modal-hint-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 7px;
+  padding: 10px 14px;
+  background: rgba(255,255,255,0.03);
+  border: 1px solid rgba(255,255,255,0.06);
+  border-radius: 9px;
+}
+
+.rename-modal-hint-icon {
+  width: 12px;
+  height: 12px;
+  flex-shrink: 0;
+  margin-top: 1px;
+  filter: brightness(0) invert(1);
+  opacity: 0.25;
+}
+
+.rename-modal-hint {
+  font-size: 11.5px;
+  color: rgba(255,255,255,0.3);
+  margin: 0;
+  line-height: 1.5;
+}
+
+/* Inline keyboard badge inside hint */
+.rename-kbd {
+  display: inline-block;
+  padding: 1px 6px;
+  background: rgba(255,255,255,0.08);
+  border: 1px solid rgba(255,255,255,0.14);
+  border-radius: 4px;
+  font-size: 10px;
+  font-family: inherit;
+  color: rgba(255,255,255,0.55);
+  letter-spacing: 0.03em;
+  vertical-align: middle;
+}
+
+/* Footer */
+.rename-modal-footer {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 10px;
+  padding: 16px 28px 22px;
+  border-top: 1px solid rgba(255,255,255,0.06);
+}
+
+.rename-modal-footer .gif-modal-btn--cancel {
+  padding: 9px 22px;
+  font-size: 13px;
+}
+
+.rename-modal-footer .gif-modal-btn--confirm {
+  min-width: 110px;
+  padding: 10px 24px;
+  font-size: 13.5px;
+  letter-spacing: 0.02em;
+}
 
 /* ── Header ─────────────────────────────────────────────────────────── */
 .tool-modal-header {
