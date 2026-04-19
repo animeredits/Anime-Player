@@ -34,6 +34,30 @@
     
   </head>
   <body>
+
+    <!-- ── FIX 1: SVG filter bank — hidden, referenced by CSS filter url() ── -->
+    <!-- feConvolveMatrix is updated dynamically by _updateSharpenKernel() in renderer.js -->
+    <svg id="vfx-svg-filters"
+         xmlns="http://www.w3.org/2000/svg"
+         style="position:absolute;width:0;height:0;overflow:hidden;pointer-events:none"
+         aria-hidden="true">
+      <defs>
+        <filter id="vfx-sharpen"
+                color-interpolation-filters="linearRGB"
+                x="0%" y="0%" width="100%" height="100%">
+          <!-- Unsharp-mask style convolution kernel.
+               kernelMatrix and divisor are updated live by JS.
+               preserveAlpha prevents edge darkening on transparent regions. -->
+          <feConvolveMatrix id="vfx-sharpen-kernel"
+            order="3"
+            kernelMatrix="0 -1 0  -1 5 -1  0 -1 0"
+            divisor="1"
+            bias="0"
+            preserveAlpha="true"/>
+        </filter>
+      </defs>
+    </svg>
+
     <!-- Media Player -->
     <div id="mediaPlayer">
       <!-- Navigation Bar -->
@@ -55,6 +79,16 @@
                 <span class="nav-row-text">Open Folder...</span>
                 <span class="nav-row-shortcut">Ctrl+F</span>
               </a>
+              <div class="sort-divider"></div>
+              <a id="exportM3UBtn" class="nav-row" href="javascript:void(0)">
+                <span class="nav-row-icon"><img class="svg-icon" src="../assets/icons/fa/file-export.svg" alt=""></span>
+                <span class="nav-row-text">Export Playlist (.m3u)</span>
+              </a>
+              <a id="importM3UBtn" class="nav-row" href="javascript:void(0)">
+                <span class="nav-row-icon"><img class="svg-icon" src="../assets/icons/fa/file-import.svg" alt=""></span>
+                <span class="nav-row-text">Import Playlist (.m3u)</span>
+              </a>
+              <div class="sort-divider"></div>
               <a class="quit nav-row">
                 <span class="nav-row-icon"><img class="svg-icon" src="../assets/icons/fa/right-from-bracket.svg" alt=""></span>
                 <span class="nav-row-text">Quit...</span>
@@ -358,6 +392,11 @@
                 <span class="nav-row-text">Shortcuts</span>
                 <span class="nav-row-shortcut">Shift+/</span>
               </a>
+              <a id="showShortcutEditorBtn" class="nav-row" href="javascript:void(0)">
+                <span class="nav-row-icon"><img class="svg-icon" src="../assets/icons/fa/pen-to-square.svg" alt=""></span>
+                <span class="nav-row-text">Shortcut Editor</span>
+                <span class="nav-row-shortcut">F6</span>
+              </a>
               <div class="sort-divider"></div>
               <a href="javascript:void(0)" id="checkUpdateBtn" class="nav-row">
                 <span class="nav-row-icon"><img class="svg-icon" src="../assets/icons/fa/rotate.svg" alt=""></span>
@@ -569,49 +608,7 @@
                     <button class="vfx-reset" data-target="sharpenSlider" data-default="0" title="Reset"><img class="svg-icon" src="../assets/icons/fa/rotate-left.svg" alt=""></button>
                   </div>
 
-                  <div class="vfx-divider"></div>
 
-                  <div class="vfx-toggle-row">
-                    <div class="vfx-toggle-left">
-                      <span class="vfx-icon"><img class="svg-icon" src="../assets/icons/fa/droplet-slash.svg" alt=""></span>
-                      <label class="vfx-label" for="blurToggle">Blur</label>
-                    </div>
-                    <label class="vfx-switch">
-                      <input type="checkbox" id="blurToggle">
-                      <span class="vfx-switch-track"></span>
-                    </label>
-                  </div>
-                  <div class="vfx-row vfx-dep-row" id="blurRow">
-                    <div class="vfx-row-left">
-                      <span class="vfx-icon vfx-icon--indent"></span>
-                      <label class="vfx-label">Radius</label>
-                    </div>
-                    <input type="range" class="vfx-slider" id="blurSlider" min="0" max="20" value="0">
-                    <span class="vfx-val" id="blurValue">0px</span>
-                    <button class="vfx-reset" data-target="blurSlider" data-default="0" title="Reset"><img class="svg-icon" src="../assets/icons/fa/rotate-left.svg" alt=""></button>
-                  </div>
-
-                  <div class="vfx-divider"></div>
-
-                  <div class="vfx-toggle-row">
-                    <div class="vfx-toggle-left">
-                      <span class="vfx-icon"><img class="svg-icon" src="../assets/icons/fa/circle-dot.svg" alt=""></span>
-                      <label class="vfx-label" for="vignetteToggle">Vignette</label>
-                    </div>
-                    <label class="vfx-switch">
-                      <input type="checkbox" id="vignetteToggle">
-                      <span class="vfx-switch-track"></span>
-                    </label>
-                  </div>
-                  <div class="vfx-row vfx-dep-row" id="vignetteRow">
-                    <div class="vfx-row-left">
-                      <span class="vfx-icon vfx-icon--indent"></span>
-                      <label class="vfx-label">Strength</label>
-                    </div>
-                    <input type="range" class="vfx-slider" id="vignetteSlider" min="0" max="100" value="0">
-                    <span class="vfx-val" id="vignetteValue">0%</span>
-                    <button class="vfx-reset" data-target="vignetteSlider" data-default="0" title="Reset"><img class="svg-icon" src="../assets/icons/fa/rotate-left.svg" alt=""></button>
-                  </div>
 
                 </div>
               </div>
@@ -1053,11 +1050,11 @@
                       <div class="viz-section-label">Built-in</div>
                       <div class="viz-presets viz-presets--sm" id="vizPresetsCM">
                         <div class="viz-preset-item"><div class="viz-thumb-wrap"></div><span>None</span></div>
+                        <div class="viz-preset-item" data-src="../assets/icons/icon.ico"><div class="viz-thumb-wrap"><img src="../assets/icons/icon.ico" loading="lazy"/></div><span>Default</span></div>
                         <div class="viz-preset-item" data-src="../assets/gif/download.gif"><div class="viz-thumb-wrap"><img src="../assets/gif/download.gif" loading="lazy"/></div><span>Yamate</span></div>
                         <div class="viz-preset-item" data-src="../assets/gif/Ghost in Shell.gif"><div class="viz-thumb-wrap"><img src="../assets/gif/Ghost in Shell.gif" loading="lazy"/></div><span>GitS</span></div>
                         <div class="viz-preset-item" data-src="../assets/gif/9497885369133574502.gif"><div class="viz-thumb-wrap"><img src="../assets/gif/9497885369133574502.gif" loading="lazy"/></div><span>Chika</span></div>
                         <div class="viz-preset-item" data-src="../assets/gif/7464694309340495606.gif"><div class="viz-thumb-wrap"><img src="../assets/gif/7464694309340495606.gif" loading="lazy"/></div><span>Obito</span></div>
-                        <div class="viz-preset-item" data-src="../assets/gif/8752356467101843848.gif"><div class="viz-thumb-wrap"><img src="../assets/gif/8752356467101843848.gif" loading="lazy"/></div><span>Oshi No Ko</span></div>
                       </div>
                       <a href="javascript:void(0)" class="viz-upload-btn" id="customLogoLinkCM">
                         <img class="svg-icon" src="../assets/icons/fa/upload.svg" alt=""> Upload
@@ -1372,11 +1369,10 @@
         </div>
         <!-- Status Message -->
         <div id="statusMessage" class="status-message"></div>
-        <!-- Video title — must live OUTSIDE .video-controls-container because
-             that element uses filter: which breaks position:fixed on children -->
-        <div id="video-title" style="display: none;"></div>
         <!-- media player controls -->
         <div class="video-controls-container">
+          <!-- Video title display (shown when hovering over the seek bar) -->
+          <div id="video-title" style="display: none;"></div>
           <div id="seek-bar-container">
             <span id="current-time" class="tooltip-btn" data-tooltip="Current Time">0:00</span>
             <div id="seek-bar-wrapper" role="slider" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" aria-label="Seek bar">
@@ -1757,6 +1753,41 @@
           </div>
         </div>
       </main>
+
+        <!-- ── Shortcut Editor Modal (F6) ──────────────────────────────────── -->
+        <div id="shortcutEditorModal" class="tool-modal" style="display:none;">
+          <div class="tool-modal-inner sc-ed-modal-inner">
+            <div class="tool-modal-header">
+              <div class="tool-modal-title-wrap">
+                <img class="svg-icon tool-modal-icon" src="../assets/icons/fa/keyboard.svg" alt="">
+                <span class="tool-modal-title">Shortcut Editor</span>
+              </div>
+              <button class="tool-modal-close" id="shortcutEditorClose">
+                <img class="svg-icon" src="../assets/icons/fa/xmark.svg" alt="">
+              </button>
+            </div>
+            <p class="sc-ed-hint">Click <img class="svg-icon sc-ed-hint-icon" src="../assets/icons/fa/pen-to-square.svg" alt="edit"> on any row then press your desired key combination. Press <kbd class="rename-kbd">Esc</kbd> to cancel capture.</p>
+            <div class="tool-modal-body sc-ed-body">
+              <table class="sc-ed-table">
+                <thead>
+                  <tr>
+                    <th>Action</th>
+                    <th>Binding</th>
+                    <th></th>
+                  </tr>
+                </thead>
+                <tbody id="shortcutEditorBody">
+                  <!-- rows injected by JS -->
+                </tbody>
+              </table>
+            </div>
+            <div class="sc-ed-footer">
+              <button id="shortcutEditorResetAll" class="gif-modal-btn gif-modal-btn--cancel"><img class="svg-icon" src="../assets/icons/fa/rotate-left.svg" alt="">&nbsp;Reset All</button>
+              <button id="shortcutEditorClose2" class="gif-modal-btn gif-modal-btn--confirm" onclick="ModalAnimator.close(document.getElementById('shortcutEditorModal'))">Done</button>
+            </div>
+          </div>
+        </div>
+
     </div>
     <script src="config.js"></script>
     <script src="renderer.js"></script>

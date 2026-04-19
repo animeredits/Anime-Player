@@ -469,7 +469,7 @@ appState.win.webContents.on('before-input-event', (event, input) => {
       isFullscreen: appState.windowState.isFullscreen
       });
       appState.win.webContents.send('initial-play-state', appState.playback.status);
-      // appState.win.webContents.openDevTools();
+      appState.win.webContents.openDevTools();
       setTimeout(() => {
       createTray();
       updateThumbarButtons();
@@ -881,6 +881,24 @@ function setupIPCHandlers() {
   ipcMain.handle("open-file-dialog", handleOpenFileDialog);
   ipcMain.handle("open-folder-dialog", handleOpenFolderDialog);
   ipcMain.handle("delete-file", handleDeleteFile);
+
+  // ── Shortcut bindings — persist custom key bindings to file ─────────────────
+  const shortcutsPath = path.join(animePlayerPath, 'shortcuts.json');
+  ipcMain.handle('save-shortcut-bindings', (event, bindings) => {
+    try {
+      fs.writeFileSync(shortcutsPath, JSON.stringify(bindings, null, 2), 'utf8');
+      return { success: true };
+    } catch (e) {
+      return { success: false, error: e.message };
+    }
+  });
+  ipcMain.handle('load-shortcut-bindings', () => {
+    try {
+      if (fs.existsSync(shortcutsPath)) return JSON.parse(fs.readFileSync(shortcutsPath, 'utf8'));
+    } catch (_) {}
+    return null;
+  });
+
   ipcMain.handle("rename-file", handleRenameFile);
   ipcMain.handle("get-folder-media-files", handleGetFolderMediaFiles);
 
@@ -1631,6 +1649,25 @@ function setupIPCHandlers() {
   }
 });
 
+// ── Screenshot: show OS save dialog, write PNG to user-chosen path ────────────
+ipcMain.handle('save-screenshot', async (event, pngBuffer) => {
+  try {
+    const { dialog } = require('electron');
+    const ts = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
+    const defaultName = `screenshot-${ts}.png`;
+    const result = await dialog.showSaveDialog({
+      title: 'Save Screenshot',
+      defaultPath: path.join(require('os').homedir(), 'Pictures', defaultName),
+      filters: [{ name: 'PNG Image', extensions: ['png'] }],
+    });
+    if (result.canceled || !result.filePath) return { success: false, canceled: true };
+    fs.writeFileSync(result.filePath, Buffer.from(pngBuffer));
+    return { success: true, path: result.filePath };
+  } catch (err) {
+    return { success: false, error: err.message };
+  }
+});
+
 // Save custom logo to a user directory "Visualization" in this folder
 ipcMain.handle('saveCustomLogo', async (event, fileBuffer, fileName) => {
   try {
@@ -2240,10 +2277,24 @@ function shutdownPC() {
 
 ipcMain.on('shutdown-pc', shutdownPC);
 
+let _shutdownTimerHandle = null;
+
 ipcMain.on('shutdown-after-time', (event, timeInMinutes) => {
   const timeInMillis = timeInMinutes * 60 * 1000;
-  setTimeout(shutdownPC, timeInMillis);
+  if (_shutdownTimerHandle) clearTimeout(_shutdownTimerHandle);
+  _shutdownTimerHandle = setTimeout(() => {
+    _shutdownTimerHandle = null;
+    shutdownPC();
+  }, timeInMillis);
+});
 
+// Cancel a pending scheduled shutdown
+ipcMain.on('cancel-shutdown-timer', () => {
+  if (_shutdownTimerHandle) {
+    clearTimeout(_shutdownTimerHandle);
+    _shutdownTimerHandle = null;
+    console.log('[Shutdown] Timer cancelled');
+  }
 });
 
 // File date fetcher for sort-by-date

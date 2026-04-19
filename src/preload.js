@@ -16,10 +16,12 @@ const VALID_SEND_CHANNELS = [
 	"shuffle-state",
 	"repeat-state",
 	"shutdown-pc",
-	"shutdown-after-time"
+	"shutdown-after-time",
+	"cancel-shutdown-timer"
 ];
 
 const VALID_INVOKE_CHANNELS = [
+	"save-screenshot",
 	"load-playback-time",
 	"get-audio-thumbnail",
 	"get-fullscreen-state",
@@ -44,7 +46,9 @@ const VALID_INVOKE_CHANNELS = [
 	"reload-renderer",
 	"cleanup-subtitles",
 	"get-folder-media-files",
-	"rename-file"
+	"rename-file",
+	"save-shortcut-bindings",
+	"load-shortcut-bindings"
 ];
 
 contextBridge.exposeInMainWorld('electron', {
@@ -138,6 +142,7 @@ contextBridge.exposeInMainWorld('electron', {
 	// Shutdown Controls
 	sendShutdownRequest: () => ipcRenderer.send('shutdown-pc'),
 	setShutdownTimer: (minutes) => ipcRenderer.send('shutdown-after-time', minutes),
+	cancelShutdownTimer: () => ipcRenderer.send('cancel-shutdown-timer'),
 
 	// Hot-reload (development only)
 	reloadRenderer: () => ipcRenderer.invoke('reload-renderer'),

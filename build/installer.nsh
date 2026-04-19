@@ -45,6 +45,8 @@
   WriteRegStr HKCR ".flac\OpenWithProgids" "AnimePlayer" ""
   WriteRegStr HKCR ".aac\OpenWithProgids" "AnimePlayer" ""
   WriteRegStr HKCR ".ogg\OpenWithProgids" "AnimePlayer" ""
+  WriteRegStr HKCR ".m3u\OpenWithProgids" "AnimePlayer" ""
+  WriteRegStr HKCR ".m3u8\OpenWithProgids" "AnimePlayer" ""
   
   ; ============================================================
   ; Create ProgID for better integration
@@ -85,6 +87,8 @@
   DeleteRegValue HKCR ".flac\OpenWithProgids" "AnimePlayer"
   DeleteRegValue HKCR ".aac\OpenWithProgids" "AnimePlayer"
   DeleteRegValue HKCR ".ogg\OpenWithProgids" "AnimePlayer"
+  DeleteRegValue HKCR ".m3u\OpenWithProgids" "AnimePlayer"
+  DeleteRegValue HKCR ".m3u8\OpenWithProgids" "AnimePlayer"
     
   ; Remove ProgID
   DeleteRegKey HKCR "AnimePlayer"

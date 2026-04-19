@@ -31,3 +31,16 @@ logs/
 # Temporary files
 *.tmp
 *.temp
+
+# Added by code-review-graph
+.code-review-graph/
+.claude
+.kiro
+.cursorrules
+.mcp.json
+.opencode.json
+.windsurfrules
+agents.md
+claude.md
+gemini.md
+

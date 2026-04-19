@@ -242,9 +242,38 @@ nav > * {
   padding: 7px 10px 7px 8px;
   text-decoration: none;
   font-size: 12px;
-  transition: background 0.12s, opacity 0.22s ease, transform 0.22s ease;
+  transition: background 0.12s, opacity 0.22s ease, transform 0.22s ease, color 0.15s ease;
   opacity: 0;
   transform: translateX(-8px);
+  position: relative;
+  overflow: hidden;
+}
+
+/* Sweep wipe ::before for dropdown items */
+.dropdown-content a::before,
+.sub-dropdown-content a::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: rgba(100, 130, 220, 0.25);
+  transform: scaleX(0);
+  transform-origin: right;
+  transition: transform 0.28s ease;
+  pointer-events: none;
+  border-radius: inherit;
+  z-index: 0;
+}
+.dropdown-content a:hover::before,
+.sub-dropdown-content a:hover::before {
+  transform: scaleX(1);
+  transform-origin: left;
+}
+
+/* Keep grid children above ::before */
+.dropdown-content a > *,
+.sub-dropdown-content a > * {
+  position: relative;
+  z-index: 1;
 }
 
 /* Animate items when dropdown is visible */
@@ -260,10 +289,7 @@ nav > * {
 .dropdown-content a:nth-child(5) { animation: dropdown-item-in 0.3s cubic-bezier(0.34, 1.56, 0.64, 1) 0.20s forwards; }
 .dropdown-content a:nth-child(n+6) { animation: dropdown-item-in 0.3s cubic-bezier(0.34, 1.56, 0.64, 1) 0.24s forwards; }
 
-.dropdown-content a:hover,
-.sub-dropdown-content a:hover {
-  background-color: rgba(100, 130, 220, 0.25);
-}
+/* hover handled by ::before wipe — no extra background needed */
 
 /* Icon column */
 .nav-row-icon {
@@ -306,11 +332,30 @@ nav > * {
   background: none;
   border: none;
   text-align: left;
-  transition: background 0.12s;
+  transition: color 0.15s ease;
+  position: relative;
+  overflow: hidden;
 }
 
-.sub-dropbtn:hover {
-  background-color: rgba(100, 130, 220, 0.25);
+.sub-dropbtn::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: rgba(100, 130, 220, 0.25);
+  transform: scaleX(0);
+  transform-origin: right;
+  transition: transform 0.28s ease;
+  pointer-events: none;
+  border-radius: inherit;
+  z-index: 0;
+}
+.sub-dropbtn:hover::before {
+  transform: scaleX(1);
+  transform-origin: left;
+}
+.sub-dropbtn > * {
+  position: relative;
+  z-index: 1;
 }
 
 /* Arrow indicator — replaces old unicode ▶ */
@@ -404,11 +449,10 @@ nav > * {
   pointer-events: auto;
 }
 
-/* Animate sub-dropdown items */
+/* Sub-dropdown item entry state (animated in by nth-child rules below) */
 .sub-dropdown-content a {
   opacity: 0;
   transform: translateX(-8px);
-  transition: background 0.12s, opacity 0.22s ease, transform 0.22s ease;
 }
 
 .sub-dropdown:hover .sub-dropdown-content a:nth-child(1) { animation: dropdown-item-in 0.3s cubic-bezier(0.34, 1.56, 0.64, 1) 0.06s forwards; }
@@ -436,7 +480,7 @@ nav > * {
 .cm-dynamic-list.play-list .playlist-item,
 .play-list a,
 .play-list .playlist-item {
-  display: block; /* no !important — JS search needs to set display:none */
+  display: block;
   padding: 4px 10px;
   margin: 0;
   font-size: 11px;
@@ -449,22 +493,41 @@ nav > * {
   color: rgba(255,255,255,0.82);
   border-radius: 4px;
   cursor: pointer;
-  transition: background-color 0.15s ease, 
-              color 0.15s ease,
-              transform 0.15s ease,
-              box-shadow 0.15s ease;
+  transition: color 0.15s ease;
   position: relative;
+}
+
+/* Sweep wipe for playlist items */
+.sub-dropdown-content.play-list a::before,
+.sub-dropdown-content.play-list .playlist-item::before,
+.cm-dynamic-list.play-list a::before,
+.cm-dynamic-list.play-list .playlist-item::before,
+.play-list a::before,
+.play-list .playlist-item::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: rgba(100, 130, 220, 0.28);
+  transform: scaleX(0);
+  transform-origin: right;
+  transition: transform 0.28s ease;
+  pointer-events: none;
+  border-radius: inherit;
+  z-index: 0;
+}
+.sub-dropdown-content.play-list a:hover::before,
+.sub-dropdown-content.play-list .playlist-item:hover::before,
+.cm-dynamic-list.play-list a:hover::before,
+.play-list .playlist-item:hover::before {
+  transform: scaleX(1);
+  transform-origin: left;
 }
 
 .sub-dropdown-content.play-list a:hover,
 .sub-dropdown-content.play-list .playlist-item:hover,
 .cm-dynamic-list.play-list a:hover,
 .play-list .playlist-item:hover {
-  background-color: rgba(100, 130, 220, 0.3) !important;
   color: #fff !important;
-  transform: translateX(4px);
-  box-shadow: inset 0 0 8px rgba(87, 111, 230, 0.2);
-  animation: playlist-item-hover 0.25s ease;
 }
 
 .play-list .playlist-item.highlight,
@@ -478,20 +541,7 @@ nav > * {
   animation: playlist-highlight-glow 0.4s ease;
 }
 
-@keyframes playlist-item-hover {
-  0% {
-    transform: translateX(0);
-    box-shadow: inset 0 0 0 rgba(87, 111, 230, 0.2);
-  }
-  50% {
-    transform: translateX(6px);
-    box-shadow: inset 0 0 12px rgba(87, 111, 230, 0.3);
-  }
-  100% {
-    transform: translateX(4px);
-    box-shadow: inset 0 0 8px rgba(87, 111, 230, 0.2);
-  }
-}
+/* playlist-item-hover keyframe removed — sweep animation replaces it */
 
 @keyframes playlist-highlight-glow {
   0% {
@@ -641,15 +691,6 @@ nav > * {
   box-shadow: 0 0 8px rgba(87, 111, 230, 0.4);
 }
 
-.context-menu .subtitle-track-list.cm-dynamic-list,
-.context-menu .audio-track-list.cm-dynamic-list,
-.context-menu .audio-device-list.cm-dynamic-list {
-  margin-top: 2px;
-  padding-top: 4px;
-}
-.context-menu .play-list.cm-dynamic-list {
-  margin-top: 2px;
-}
 .context-menu .cm-dynamic-list a,
 .context-menu .cm-dynamic-list .track-item,
 .context-menu .cm-dynamic-list .subtitle-item,
@@ -671,15 +712,14 @@ nav > * {
 .sub-dropdown-content.audio-device-list a {
   display: block;
   grid-template-columns: unset;
-  padding: 5px 12px;
   font-size: 11px;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
   max-width: 240px;
+  border-bottom: 1px solid rgba(255,255,255,0.07) !important;
+
 }
-
-
 
 /* Container for each logo item */
 .logo-item {
@@ -1371,24 +1411,25 @@ nav > * {
 .chapters-list-cm a::before {
   content: '';
   position: absolute;
-  left: -100%;
-  top: 0;
-  width: 100%;
-  height: 100%;
-  background: linear-gradient(90deg, transparent, rgba(130, 100, 255, 0.3), transparent);
-  transition: left 0.6s ease;
+  inset: 0;
+  background: rgba(100, 130, 220, 0.26);
+  transform: scaleX(0);
+  transform-origin: right;
+  transition: transform 0.28s ease;
+  pointer-events: none;
+  border-radius: inherit;
+  z-index: 0;
 }
 
 .chapters-list-nav a:hover, 
 .chapters-list-cm a:hover { 
-  background: rgba(87, 111, 230, 0.15);
-  transform: translateX(4px);
-  box-shadow: inset 0 0 8px rgba(87, 111, 230, 0.1);
+  color: #fff !important;
 }
 
 .chapters-list-nav a:hover::before, 
 .chapters-list-cm a:hover::before {
-  left: 100%;
+  transform: scaleX(1);
+  transform-origin: left;
 }
 
 .chapters-list-nav a.active-chapter, 
@@ -1413,6 +1454,13 @@ nav > * {
   }
 }
 /* The text span inside chapter-item should truncate gracefully */
+.chapters-list-nav a span,
+.chapters-list-cm  a span,
+.chapters-list-nav a .chapter-time-badge,
+.chapters-list-cm  a .chapter-time-badge {
+  position: relative;
+  z-index: 1;
+}
 .chapters-list-nav a span:first-child,
 .chapters-list-cm  a span:first-child {
   overflow: hidden;
@@ -1980,6 +2028,11 @@ will-change: transform;
   z-index: 1000;
 }
 
+.context-menu .cm-submenu.open-left::before {
+  left: auto;
+  right: -20px;
+}
+
 /* Show sub-menu on hover - KEEP SUBMENU VISIBLE */
 .context-menu ul li.cm-sub-item:hover > .cm-submenu,
 .context-menu .cm-submenu:hover {
@@ -2038,10 +2091,6 @@ will-change: transform;
 }
 
 /*  Playlist panel (wider + scrollable)  */
-/* Safe to use overflow-y:auto here because .play-list is a LEAF scroll
-   container — no position:absolute children need to escape it to the right.
-   Use overscroll-behavior-y (Y axis only, not the shorthand) so overflow-x
-   stays at its default (visible) and nothing is unexpectedly clipped. */
 .context-menu .play-list {
   min-width: 300px;
   max-height: 380px;
@@ -2051,11 +2100,6 @@ will-change: transform;
   scroll-behavior: smooth;
   scrollbar-width: thin;
   scrollbar-color: rgba(255,255,255,0.2) transparent;
-}
-
-/*  Dynamic lists inside context menu sub-panels  */
-.context-menu .cm-dynamic-list {
-  padding: 4px 0;
 }
 
 .context-menu .cm-dynamic-list a,
@@ -2646,16 +2690,15 @@ font-size: 11px;
 #video-title {
   display: none; /* Shown via JS when media is playing */
   position: fixed;
-  text-align: center;
+  text-align: start;
   font-weight: 400;
-  top: 9px;
-  left: 53%;
-  transform: translateX(-50%);
+  left: 8px;
+  bottom: 100%;
   color: white;
-  font-size: 15px;
+  font-size: 20px;
   padding: 5px 20px;
   z-index: 100;
-  max-width: 55vw;
+  max-width: 99.6vw;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -5589,6 +5632,7 @@ video:-ms-fullscreen {
   scroll-behavior: smooth;
   scrollbar-width: thin;
   scrollbar-color: rgba(255,255,255,0.22) transparent;
+  padding: 0;
 }
 .sub-dropdown-content.audio-track-list::-webkit-scrollbar,
 .sub-dropdown-content.subtitle-track-list::-webkit-scrollbar,
@@ -6042,3 +6086,584 @@ video:-ms-fullscreen {
   transition: left 0.4s ease;
 }
 .sync-apply-btn:hover::before { left: 100%; }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   NEW FEATURE STYLES  (appended by patch — do not duplicate above)
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* ── Shortcut Editor Modal ─────────────────────────────────────────────────── */
+.sc-ed-modal-inner {
+  width: min(680px, 95vw);
+  max-height: 80vh;
+  display: flex;
+  flex-direction: column;
+}
+.sc-ed-hint {
+  font-size: 11.5px;
+  color: rgba(255,255,255,0.45);
+  padding: 6px 16px 2px;
+  line-height: 1.5;
+}
+.sc-ed-body {
+  overflow-y: auto;
+  flex: 1;
+  padding: 8px 16px 12px;
+}
+.sc-ed-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12.5px;
+}
+.sc-ed-table thead th {
+  text-align: left;
+  padding: 6px 8px;
+  color: rgba(255,255,255,0.45);
+  font-weight: 500;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  border-bottom: 1px solid rgba(255,255,255,0.08);
+}
+.sc-ed-table tbody tr:hover { background: rgba(255,255,255,0.04); }
+.sc-ed-label {
+  padding: 6px 8px;
+  color: rgba(255,255,255,0.82);
+  white-space: nowrap;
+}
+.sc-ed-key {
+  padding: 6px 8px;
+}
+.sc-ed-combo {
+  display: inline-block;
+  background: rgba(255,255,255,0.08);
+  border: 1px solid rgba(255,255,255,0.15);
+  border-radius: 4px;
+  padding: 2px 8px;
+  font-family: monospace;
+  font-size: 12px;
+  color: rgba(255,255,255,0.85);
+  min-width: 80px;
+  text-align: center;
+  cursor: default;
+  transition: color 0.2s, background 0.2s;
+}
+.sc-ed-actions {
+  padding: 4px 8px;
+  white-space: nowrap;
+}
+.sc-ed-edit-btn, .sc-ed-reset-btn {
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  padding: 3px 5px;
+  border-radius: 4px;
+  font-size: 13px;
+  opacity: 0.6;
+  transition: opacity 0.15s, background 0.15s;
+}
+.sc-ed-edit-btn:hover  { opacity: 1; background: rgba(255,255,255,0.1); }
+.sc-ed-reset-btn:hover { opacity: 1; background: rgba(255,200,100,0.1); }
+.sc-ed-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  padding: 10px 16px 12px;
+  border-top: 1px solid rgba(255,255,255,0.08);
+}
+
+/* ── Shortcut editor: colored action-button icons ──────────────────────────── */
+/* Edit button → blue pen */
+.sc-ed-btn-icon {
+  width: 13px;
+  height: 13px;
+  vertical-align: middle;
+  pointer-events: none;
+  transition: filter 0.15s ease;
+}
+.sc-ed-edit-btn .sc-ed-btn-icon {
+  filter: invert(0.45) sepia(1) saturate(7) hue-rotate(195deg) brightness(1.1) opacity(0.80);
+}
+.sc-ed-edit-btn:hover .sc-ed-btn-icon {
+  filter: invert(0.45) sepia(1) saturate(7) hue-rotate(195deg) brightness(1.45) opacity(1);
+}
+/* Reset button → amber rotate-left */
+.sc-ed-reset-btn .sc-ed-btn-icon {
+  filter: invert(0.65) sepia(1) saturate(4) hue-rotate(10deg) brightness(1.2) opacity(0.80);
+}
+.sc-ed-reset-btn:hover .sc-ed-btn-icon {
+  filter: invert(0.65) sepia(1) saturate(4) hue-rotate(10deg) brightness(1.55) opacity(1);
+}
+/* Hint-text inline icon matches edit-button colour */
+.sc-ed-hint-icon {
+  width: 11px;
+  height: 11px;
+  vertical-align: -0.1em;
+  flex-shrink: 0;
+  filter: invert(0.45) sepia(1) saturate(7) hue-rotate(195deg) brightness(1.2) opacity(0.85);
+}
+
+/* ── Seek Bar Thumbnail Preview ─────────────────────────────────────────────── */
+#seekPreview {
+  transition: opacity 0.12s ease;
+  pointer-events: none;
+}
+#seekPreview canvas {
+  border-radius: 3px;
+}
+
+/* ── M3U menu items use standard nav-row styles — no extra CSS needed ───────── */
+
+/* ── Pinch-zoom visual feedback: smooth transform during pinch ───────────────── */
+#media {
+  touch-action: none;   /* prevent browser native pinch-zoom; we handle it ourselves */
+}
+
+/* ── Shortcut editor: highlight capturing row ───────────────────────────────── */
+.sc-ed-combo[style*="color: rgb(244"] {
+  background: rgba(244, 162, 97, 0.15);
+  border-color: rgba(244, 162, 97, 0.5);
+  animation: sc-pulse 0.8s ease-in-out infinite alternate;
+}
+@keyframes sc-pulse {
+  from { border-color: rgba(244,162,97,0.3); }
+  to   { border-color: rgba(244,162,97,0.9); }
+}
+/* ══════════════════════════════════════════════════════════════════════
+   FIX 4 ─ Canonical modal animations (uniform open/close for ALL modals)
+   Replaces scattered per-modal keyframes with a single consistent set.
+   Timing matches ModalAnimator.config: openDuration=280, closeDuration=220
+   ══════════════════════════════════════════════════════════════════════ */
+
+@keyframes modalContentIn {
+  0%   { opacity: 0; transform: scale(0.93) translateY(-10px); }
+  60%  { opacity: 1; transform: scale(1.015) translateY(2px);  }
+  100% { opacity: 1; transform: scale(1)     translateY(0);    }
+}
+
+@keyframes modalContentOut {
+  0%   { opacity: 1; transform: scale(1)    translateY(0);     }
+  100% { opacity: 0; transform: scale(0.93) translateY(-10px); }
+}
+
+/* Apply canonical enter animation to ALL modal content wrappers */
+.tool-modal.show     .tool-modal-inner,
+.modal.show          .modal-content,
+.gif-modal.show      .gif-modal-content {
+  animation: modalContentIn 280ms cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+
+/* Apply canonical exit animation via .closing class (set by ModalAnimator.close) */
+.tool-modal-inner.closing,
+.modal-content.closing,
+.gif-modal-content.closing {
+  animation: modalContentOut 220ms cubic-bezier(0.4, 0, 1, 1) both;
+}
+
+/* Overlay fade: tool-modal and modal overlays fade in/out */
+.tool-modal,
+.modal,
+.gif-modal {
+  opacity: 0;
+  transition: opacity 200ms ease;
+  pointer-events: none;
+}
+
+.tool-modal.show,
+.modal.show,
+.gif-modal.show {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.tool-modal.closing,
+.modal.closing,
+.gif-modal.closing {
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* Modal switch cross-fade (used by toggleToolModal) — keep compatible */
+@keyframes modalSwitchIn {
+  from { opacity: 0; transform: scale(0.97) translateX(8px); }
+  to   { opacity: 1; transform: scale(1)    translateX(0);   }
+}
+@keyframes modalSwitchOut {
+  from { opacity: 1; transform: scale(1)    translateX(0);    }
+  to   { opacity: 0; transform: scale(0.97) translateX(-8px); }
+}
+.modal-switch-in  { animation: modalSwitchIn  160ms cubic-bezier(0.4, 0, 0.2, 1) both; }
+.modal-switch-out { animation: modalSwitchOut 160ms cubic-bezier(0.4, 0, 0.2, 1) both; }
+
+
+/* ══════════════════════════════════════════════════════════════════════
+   FIX 5 ─ Context menu submenus: JS-controlled visibility
+   Removes CSS :hover dependency that caused gap-close bug.
+   Submenus are now shown/hidden via .cm-submenu-visible class (JS).
+   ══════════════════════════════════════════════════════════════════════ */
+
+/* Default: hidden, no pointer events */
+.cm-submenu {
+  display: none;
+  pointer-events: none;
+  /* Keep existing positioning/styling — only visibility is overridden */
+}
+
+/* JS adds this class on mouseenter; removes it after 80ms grace timer */
+.cm-submenu.cm-submenu-visible {
+  display: block;
+  pointer-events: auto;
+}
+
+/* ── Invisible hitbox bridge between parent item and submenu ──────────
+   Extends the parent item's pointer-event area rightward (or leftward
+   for flipped menus) so diagonal cursor movement doesn't fire mouseleave
+   before the cursor reaches the submenu. Width matches margin-left gap. */
+.cm-sub-item {
+  position: relative;
+}
+
+.cm-sub-item::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  right: -14px;   /* covers the 12px margin + 2px buffer */
+  width: 14px;
+  height: 100%;
+  /* Transparent — only extends the hit area */
+}
+
+.cm-sub-item.open-left::after {
+  right: auto;
+  left: -14px;
+}
+
+/* ── Remove any legacy CSS :hover rules for submenus ─────────────────
+   These conflict with the JS-based approach and must be neutralised.    */
+.cm-sub-item:hover > .cm-submenu {
+  display: none;   /* JS takes over; CSS hover is disabled */
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   NEW FEATURE STYLES  (added batch)
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* ── Volume OSD colour coding ──────────────────────────────────────────────── */
+#statusMessage.vol-normal {
+  color: #4cff91;           /* green — within unity gain */
+}
+#statusMessage.vol-high {
+  color: #ffd166;           /* amber — above 100%, amplified */
+}
+
+/* ── Auto-watched playlist item badge ─────────────────────────────────────── */
+.playlist-item.watched {
+  opacity: .7;
+}
+.playlist-item.watched::after {
+  content: ' ✓';
+  font-size: 11px;
+  opacity: .55;
+  color: #4cff91;
+}
+
+/* ── Playlist search match count (data-count attr on clear button) ─────────── */
+.playlist-search + .search-clear-btn[data-count]::after {
+  content: ' ' attr(data-count);
+  font-size: 10px;
+  opacity: .65;
+  margin-left: 2px;
+}
+
+/* ── Skip Intro button ─────────────────────────────────────────────────────── */
+#skipIntroBtn:hover {
+  background: rgba(40,40,40,0.95) !important;
+  border-color: rgba(255,255,255,0.45) !important;
+}
+
+/* ── Chapter tooltip with thumbnail ───────────────────────────────────────── */
+#chapterTooltip .chapter-thumb-canvas {
+  border-radius: 3px;
+  display: block;
+}
+#chapterTooltip .chapter-thumb-text {
+  text-align: center;
+  padding: 4px 0 2px;
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+/* ── Stats dashboard modal body table ─────────────────────────────────────── */
+#statsDashboardModal .modal-box {
+  min-width: 300px;
+}
+#statsDashboardModal td {
+  padding: 5px 0;
+  border-bottom: 1px solid rgba(255,255,255,0.05);
+}
+#statsDashboardModal tr:last-child td {
+  border-bottom: none;
+}
+
+/* ── Hold-? help overlay ───────────────────────────────────────────────────── */
+#shortcutHelpOverlay {
+  font-family: inherit;
+  user-select: none;
+}
+#shortcutHelpOverlay > div {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255,255,255,0.2) transparent;
+}
+
+/* ── Audio-only mode: dim the entire player area ──────────────────────────── */
+#mediaPlayer:has(video[style*="visibility: hidden"]) {
+  background: #0a0a0a;
+}
+#mediaPlayer:has(video[style*="visibility: hidden"]) #audioImage {
+  opacity: 1 !important;   /* keep artwork visible in audio-only mode */
+}
+
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   UNIFIED DROPDOWN HOVER ANIMATIONS
+   Covers: navbar sub-dropdowns · context menu · cm-submenus · playlist panels
+   All share the same easing + slide-in so every interactive list feels
+   consistent across the whole UI.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* ── Shared keyframe: used for everything now ─────────────────────────────── */
+@keyframes item-slide-in {
+  0%   { opacity: 0; transform: translateX(-10px) scaleX(0.94); }
+  65%  { opacity: 1; transform: translateX(2px)   scaleX(1.01); }
+  100% { opacity: 1; transform: translateX(0)      scaleX(1);    }
+}
+
+/* ── 1. NAVBAR sub-dropdown items — transition for color/opacity, sweep via ::before ── */
+.sub-dropdown-content a,
+.sub-dropdown-content .playlist-item,
+.sub-dropdown-content .track-item,
+.sub-dropdown-content .subtitle-item {
+  transition:
+    color        0.15s ease,
+    opacity      0.22s ease;
+}
+
+/* Sweep wipe for .track-item / .subtitle-item / .playlist-item inside sub-dropdowns */
+.sub-dropdown-content .playlist-item,
+.sub-dropdown-content .track-item,
+.sub-dropdown-content .subtitle-item {
+  position: relative;
+  overflow: hidden;
+}
+.sub-dropdown-content .playlist-item::before,
+.sub-dropdown-content .track-item::before,
+.sub-dropdown-content .subtitle-item::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: rgba(100, 130, 220, 0.26);
+  transform: scaleX(0);
+  transform-origin: right;
+  transition: transform 0.28s ease;
+  pointer-events: none;
+  border-radius: inherit;
+  z-index: 0;
+}
+.sub-dropdown-content .playlist-item:hover::before,
+.sub-dropdown-content .track-item:hover::before,
+.sub-dropdown-content .subtitle-item:hover::before {
+  transform: scaleX(1);
+  transform-origin: left;
+}
+.sub-dropdown-content .playlist-item:hover,
+.sub-dropdown-content .track-item:hover,
+.sub-dropdown-content .subtitle-item:hover {
+  color: #fff;
+}
+
+/* ── 2. NAVBAR: stagger entry animation for ALL sub-dropdown items ─────────── */
+.sub-dropdown:hover .sub-dropdown-content .track-item:nth-child(1),
+.sub-dropdown:hover .sub-dropdown-content .subtitle-item:nth-child(1),
+.sub-dropdown:hover .sub-dropdown-content .playlist-item:nth-child(1) {
+  animation: item-slide-in 0.28s cubic-bezier(0.34, 1.56, 0.64, 1) 0.06s both;
+}
+.sub-dropdown:hover .sub-dropdown-content .track-item:nth-child(2),
+.sub-dropdown:hover .sub-dropdown-content .subtitle-item:nth-child(2),
+.sub-dropdown:hover .sub-dropdown-content .playlist-item:nth-child(2) {
+  animation: item-slide-in 0.28s cubic-bezier(0.34, 1.56, 0.64, 1) 0.11s both;
+}
+.sub-dropdown:hover .sub-dropdown-content .track-item:nth-child(3),
+.sub-dropdown:hover .sub-dropdown-content .subtitle-item:nth-child(3),
+.sub-dropdown:hover .sub-dropdown-content .playlist-item:nth-child(3) {
+  animation: item-slide-in 0.28s cubic-bezier(0.34, 1.56, 0.64, 1) 0.16s both;
+}
+.sub-dropdown:hover .sub-dropdown-content .track-item:nth-child(n+4),
+.sub-dropdown:hover .sub-dropdown-content .subtitle-item:nth-child(n+4),
+.sub-dropdown:hover .sub-dropdown-content .playlist-item:nth-child(n+4) {
+  animation: item-slide-in 0.28s cubic-bezier(0.34, 1.56, 0.64, 1) 0.20s both;
+}
+
+/* ── 3. CONTEXT MENU `li > a` — sweep wipe hover ───────────────────────────── */
+.context-menu ul li > a {
+  transition: color 0.15s ease;
+  position: relative;
+  overflow: hidden;
+}
+.context-menu ul li > a::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: rgba(100, 130, 220, 0.30);
+  transform: scaleX(0);
+  transform-origin: right;
+  transition: transform 0.28s ease;
+  pointer-events: none;
+  border-radius: inherit;
+  z-index: 0;
+}
+.context-menu ul li > a:hover::before,
+.context-menu ul li.cm-sub-item:hover > a::before {
+  transform: scaleX(1);
+  transform-origin: left;
+}
+.context-menu ul li > a:hover,
+.context-menu ul li.cm-sub-item:hover > a {
+  color: #fff !important;
+}
+.context-menu ul li > a > * {
+  position: relative;
+  z-index: 1;
+}
+
+/* ── 4. CONTEXT MENU sub-menu entry animation ─────────────────────────────── */
+.context-menu .cm-submenu:not(.cm-viz-panel) > ul > li:nth-child(1) > a { animation: item-slide-in 0.22s cubic-bezier(0.34,1.56,0.64,1) 0.04s both; }
+.context-menu .cm-submenu:not(.cm-viz-panel) > ul > li:nth-child(2) > a { animation: item-slide-in 0.22s cubic-bezier(0.34,1.56,0.64,1) 0.08s both; }
+.context-menu .cm-submenu:not(.cm-viz-panel) > ul > li:nth-child(3) > a { animation: item-slide-in 0.22s cubic-bezier(0.34,1.56,0.64,1) 0.12s both; }
+.context-menu .cm-submenu:not(.cm-viz-panel) > ul > li:nth-child(4) > a { animation: item-slide-in 0.22s cubic-bezier(0.34,1.56,0.64,1) 0.15s both; }
+.context-menu .cm-submenu:not(.cm-viz-panel) > ul > li:nth-child(n+5) > a { animation: item-slide-in 0.22s cubic-bezier(0.34,1.56,0.64,1) 0.18s both; }
+
+/* ── 5. CONTEXT MENU dynamic list items — sweep wipe ───────────────────────── */
+.context-menu .cm-dynamic-list a,
+.context-menu .cm-dynamic-list .track-item,
+.context-menu .cm-dynamic-list .subtitle-item,
+.context-menu .cm-dynamic-list .playlist-item {
+  transition: color 0.15s ease;
+  position: relative;
+  overflow: hidden;
+}
+.context-menu .cm-dynamic-list a::before,
+.context-menu .cm-dynamic-list .track-item::before,
+.context-menu .cm-dynamic-list .subtitle-item::before,
+.context-menu .cm-dynamic-list .playlist-item::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: rgba(100, 130, 220, 0.30);
+  transform: scaleX(0);
+  transform-origin: right;
+  transition: transform 0.28s ease;
+  pointer-events: none;
+  border-radius: inherit;
+  z-index: 0;
+}
+.context-menu .cm-dynamic-list a:hover::before,
+.context-menu .cm-dynamic-list .track-item:hover::before,
+.context-menu .cm-dynamic-list .subtitle-item:hover::before,
+.context-menu .cm-dynamic-list .playlist-item:hover::before {
+  transform: scaleX(1);
+  transform-origin: left;
+}
+.context-menu .cm-dynamic-list a:hover,
+.context-menu .cm-dynamic-list .track-item:hover,
+.context-menu .cm-dynamic-list .subtitle-item:hover,
+.context-menu .cm-dynamic-list .playlist-item:hover {
+  color: #fff !important;
+}
+
+/* ── 6. Standalone PLAYLIST CONTAINER items (panel mode) — sweep wipe ──────── */
+.playlist-container .playlist-item {
+  transition: color 0.15s ease;
+  position: relative;
+  overflow: hidden;
+}
+.playlist-container .playlist-item::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: rgba(100, 130, 220, 0.26);
+  transform: scaleX(0);
+  transform-origin: right;
+  transition: transform 0.28s ease;
+  pointer-events: none;
+  border-radius: inherit;
+  z-index: 0;
+}
+.playlist-container .playlist-item:hover::before {
+  transform: scaleX(1);
+  transform-origin: left;
+}
+.playlist-container .playlist-item:hover {
+  color: #fff !important;
+}
+
+/* ── 7. Track/subtitle items — replace shimmer with scaleX wipe ──────────────── */
+.track-item,
+.subtitle-item {
+  overflow: hidden;
+  position: relative;
+}
+
+.track-item::before,
+.subtitle-item::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: rgba(100, 130, 220, 0.26);
+  transform: scaleX(0);
+  transform-origin: right;
+  transition: transform 0.28s ease;
+  pointer-events: none;
+  border-radius: inherit;
+  z-index: 0;
+}
+.track-item:hover::before,
+.subtitle-item:hover::before {
+  transform: scaleX(1);
+  transform-origin: left;
+}
+.track-item > *,
+.subtitle-item > * {
+  position: relative;
+  z-index: 1;
+}
+
+/* ── 8. Active / highlighted item accent ──────────────────────────────────── */
+.sub-dropdown-content a.active,
+.sub-dropdown-content .track-item.active,
+.sub-dropdown-content .subtitle-item.active,
+.context-menu .cm-dynamic-list .selected-track,
+.context-menu .cm-dynamic-list .highlight,
+.playlist-item.highlight {
+  border-left: 2px solid rgba(100, 130, 220, 0.9) !important;
+}
+
+
+/* ── 10. CHAPTER items — entry stagger ───────────────────────────────────── */
+.sub-dropdown:hover .sub-dropdown-content.chapters-list-nav a:nth-child(1)  { animation: item-slide-in 0.28s cubic-bezier(0.34,1.56,0.64,1) 0.05s both; }
+.sub-dropdown:hover .sub-dropdown-content.chapters-list-nav a:nth-child(2)  { animation: item-slide-in 0.28s cubic-bezier(0.34,1.56,0.64,1) 0.09s both; }
+.sub-dropdown:hover .sub-dropdown-content.chapters-list-nav a:nth-child(3)  { animation: item-slide-in 0.28s cubic-bezier(0.34,1.56,0.64,1) 0.13s both; }
+.sub-dropdown:hover .sub-dropdown-content.chapters-list-nav a:nth-child(4)  { animation: item-slide-in 0.28s cubic-bezier(0.34,1.56,0.64,1) 0.17s both; }
+.sub-dropdown:hover .sub-dropdown-content.chapters-list-nav a:nth-child(n+5){ animation: item-slide-in 0.28s cubic-bezier(0.34,1.56,0.64,1) 0.20s both; }
+
+.context-menu .chapters-list-cm a:nth-child(1)  { animation: item-slide-in 0.22s cubic-bezier(0.34,1.56,0.64,1) 0.04s both; }
+.context-menu .chapters-list-cm a:nth-child(2)  { animation: item-slide-in 0.22s cubic-bezier(0.34,1.56,0.64,1) 0.08s both; }
+.context-menu .chapters-list-cm a:nth-child(3)  { animation: item-slide-in 0.22s cubic-bezier(0.34,1.56,0.64,1) 0.12s both; }
+.context-menu .chapters-list-cm a:nth-child(4)  { animation: item-slide-in 0.22s cubic-bezier(0.34,1.56,0.64,1) 0.15s both; }
+.context-menu .chapters-list-cm a:nth-child(n+5){ animation: item-slide-in 0.22s cubic-bezier(0.34,1.56,0.64,1) 0.18s both; }
+
+/* ── 11. CHAPTER items — ::after removed (wipe is handled by ::before above) ── */
+
+/* ── 12. active-chapter accent — same colour as track active items ─────────── */
+.chapters-list-nav a.active-chapter,
+.chapters-list-cm a.active-chapter {
+  border-left: 2px solid rgba(130,100,255,0.9) !important;
+}
