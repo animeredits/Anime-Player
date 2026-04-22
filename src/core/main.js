@@ -191,22 +191,34 @@ const streamServer = http.createServer((req, res) => {
   // Blob URLs directly in the renderer, no disk files or HTTP needed.
 
   // ── Serve app icon for mediaSession artwork (Windows SMTC overlay icon) ──
+// ── Serve app icon for mediaSession artwork (Windows SMTC overlay icon) ──
   if (req.url === '/icon') {
+    // main.js is at <project>/src/main/main.js — assets are two levels up
     const iconPath = app.isPackaged
       ? path.join(process.resourcesPath, 'assets', 'icons', 'icon.png')
-      : path.join(__dirname, '..', 'assets', 'icons', 'icon.png');
-    if (fs.existsSync(iconPath)) {
-      const iconData = fs.readFileSync(iconPath);
-      res.writeHead(200, {
-        'Content-Type': 'image/png',
-        'Access-Control-Allow-Origin': '*',
-        'Cache-Control': 'public, max-age=86400'
+      : path.join(__dirname, '..', '..', 'assets', 'icons', 'icon.png');
+
+    fs.access(iconPath, fs.constants.R_OK, (accessErr) => {
+      if (accessErr) {
+        console.warn('[Stream /icon] Icon not found at:', iconPath);
+        res.writeHead(404);
+        res.end('Icon not found');
+        return;
+      }
+      fs.readFile(iconPath, (readErr, data) => {
+        if (readErr) {
+          res.writeHead(500);
+          res.end('Icon read error');
+          return;
+        }
+        res.writeHead(200, {
+          'Content-Type':  'image/png',
+          'Cache-Control': 'public, max-age=86400',
+          'Access-Control-Allow-Origin': '*',
+        });
+        res.end(data);
       });
-      res.end(iconData);
-    } else {
-      res.writeHead(404);
-      res.end('Icon not found');
-    }
+    });
     return;
   }
 
@@ -315,6 +327,7 @@ const streamServer = http.createServer((req, res) => {
   }
 
   // Handle video stream requests
+// Handle video stream requests
   if (req.url.split('?')[0] !== '/stream' || !streamState.filePath) {
     res.writeHead(404);
     res.end('Not found');
@@ -323,40 +336,76 @@ const streamServer = http.createServer((req, res) => {
 
   const filePath = streamState.filePath;
 
-  let stat;
-  try {
-    stat = fs.statSync(filePath);
-  } catch (e) {
-    res.writeHead(404);
-    res.end('File not found');
+  // Use stat cached at set-stream-file time — avoids statSync on every range request
+  const fileSize  = streamState.fileSize;
+  const fileMtime = streamState.fileMtime;
+  if (!fileSize) {
+    res.writeHead(503);
+    res.end('Stream not ready');
     return;
   }
 
-  const fileSize = stat.size;
+  // ── ETag based on path + mtime — lets Chromium validate its range cache ──────
+  // Without ETag, Chromium re-validates every range request from scratch.
+  // With ETag + Cache-Control:no-cache, Chromium serves buffered ranges from
+  // its internal media cache and only re-fetches new byte ranges on seek.
   const rangeHeader = req.headers['range'];
+  const etag = `"${fileMtime.toString(16)}-${fileSize.toString(16)}"`;
+  const ifNoneMatch = req.headers['if-none-match'];
+  if (ifNoneMatch === etag) {
+    res.writeHead(304);
+    res.end();
+    return;
+  }
+
+  // ── Read buffer: 4MB for large files, 512KB for small files ─────────────────
+  // Larger highWaterMark = fewer I/O round-trips = smoother playback on large files.
+  // 4MB is safe even for 200GB files — Node streams this memory, doesn't allocate all at once.
+  const READ_OPTS = { highWaterMark: fileSize > 1024 * 1024 * 1024 ? 4 * 1024 * 1024 : 512 * 1024 };
 
   if (rangeHeader) {
-    // Parse Range: bytes=start-end
-    const parts = rangeHeader.replace(/bytes=/, '').split('-');
-    const start = parseInt(parts[0], 10);
-    const end = parts[1] ? parseInt(parts[1], 10) : fileSize - 1;
-    const chunkSize = end - start + 1;
+    const parts   = rangeHeader.replace(/bytes=/, '').split('-');
+    const start   = parseInt(parts[0], 10);
+    const end     = parts[1] ? parseInt(parts[1], 10) : fileSize - 1;
+    const chunkSz = end - start + 1;
 
     res.writeHead(206, {
-      'Content-Range': `bytes ${start}-${end}/${fileSize}`,
-      'Accept-Ranges': 'bytes',
-      'Content-Length': chunkSize,
-      'Content-Type': streamState.mimeType,
+      'Content-Range':  `bytes ${start}-${end}/${fileSize}`,
+      'Accept-Ranges':  'bytes',
+      'Content-Length': chunkSz,
+      'Content-Type':   streamState.mimeType,
+      // no-cache (not no-store): Chromium validates with ETag before reusing
+      // buffered ranges. This is what enables instant seek on already-buffered areas.
+      'Cache-Control':  'no-cache',
+      'ETag':           etag,
+      'X-Content-Type-Options': 'nosniff',
     });
 
-    fs.createReadStream(filePath, { start, end }).pipe(res);
+    const stream = fs.createReadStream(filePath, { ...READ_OPTS, start, end });
+    stream.on('error', (err) => {
+      console.error('[Stream] Read error:', err.message);
+      if (!res.headersSent) res.writeHead(500);
+      res.end();
+    });
+    req.on('close', () => stream.destroy());
+    stream.pipe(res);
   } else {
     res.writeHead(200, {
       'Content-Length': fileSize,
-      'Content-Type': streamState.mimeType,
-      'Accept-Ranges': 'bytes',
+      'Content-Type':   streamState.mimeType,
+      'Accept-Ranges':  'bytes',
+      'Cache-Control':  'no-cache',
+      'ETag':           etag,
     });
-    fs.createReadStream(filePath).pipe(res);
+
+    const stream = fs.createReadStream(filePath, READ_OPTS);
+    stream.on('error', (err) => {
+      console.error('[Stream] Read error:', err.message);
+      if (!res.headersSent) res.writeHead(500);
+      res.end();
+    });
+    req.on('close', () => stream.destroy());
+    stream.pipe(res);
   }
 });
 
@@ -416,7 +465,7 @@ function createWindow() {
     frame: false,
     fullscreen: true,
     resizable: true,
-    icon: path.join(__dirname, '../assets/icons/icon.ico'),
+    icon: path.join(__dirname, '../../assets/icons/icon.ico'),
     backgroundColor: '#000000',
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
@@ -442,7 +491,20 @@ function createWindow() {
     });
   });
 
-  appState.win.loadFile(path.join(__dirname, 'index.html'));
+    if (process.platform === 'win32') {
+    try {
+      const { execSync } = require('child_process');
+      // wmic uses the Electron renderer process PID, not main PID
+      execSync(`wmic process where ProcessId="${process.pid}" CALL setpriority "above normal"`, {
+        windowsHide: true, stdio: 'ignore'
+      });
+    } catch { /* non-fatal */ }
+  } else {
+    try {
+      process.setpriority && process.setpriority(process.pid, -5);
+    } catch { /* non-fatal — needs privileges on some systems */ }
+  }
+  appState.win.loadFile(path.join(__dirname, '../ui/index.html'));
 
 // Disable default keyboard shortcuts
 appState.win.webContents.on('before-input-event', (event, input) => {
@@ -604,7 +666,7 @@ function updateWindowState(isFullscreen) {
 function createTray() {
   // Create tray if it doesn't exist or was destroyed
   if (!appState.tray || appState.tray.isDestroyed()) {
-    appState.tray = new Tray(path.join(__dirname, "../assets/icons/icon.ico"));
+    appState.tray = new Tray(path.join(__dirname, "../../assets/icons/icon.ico"));
     appState.tray.setToolTip('Anime Player');
     appState.tray.on("click", toggleWindowVisibility);
   }
@@ -615,7 +677,7 @@ function updateTrayMenu() {
   if (!appState.tray || appState.tray.isDestroyed()) return;
 
   const iconPath = (name) => {
-    const p = path.join(__dirname, `../assets/icons/${name}.png`);
+    const p = path.join(__dirname, `../../assets/icons/${name}.png`);
     return fs.existsSync(p) ? p : undefined;
   };
 
@@ -692,20 +754,20 @@ function updateThumbarButtons() {
   appState.win.setThumbarButtons([
       {
           tooltip: 'Previous',
-          icon: path.join(__dirname, '../assets/icons/back.png'),
+          icon: path.join(__dirname, '../../assets/icons/back.png'),
           click: () => sendPlaybackCommand('previous'),
       },
       {
           tooltip: appState.playback.status === 'playing' ? 'Pause' : 'Play',
           icon: path.join(__dirname, 
               appState.playback.status === 'playing' 
-                  ? '../assets/icons/pause.png' 
-                  : '../assets/icons/play.png'),
+                  ? '../../assets/icons/pause.png' 
+                  : '../../assets/icons/play.png'),
           click: () => sendPlaybackCommand('play-pause'),
       },
       {
           tooltip: 'Next',
-          icon: path.join(__dirname, '../assets/icons/next.png'),
+          icon: path.join(__dirname, '../../assets/icons/next.png'),
           click: () => sendPlaybackCommand('next'),
       },
   ]);
@@ -902,6 +964,30 @@ function setupIPCHandlers() {
   ipcMain.handle("rename-file", handleRenameFile);
   ipcMain.handle("get-folder-media-files", handleGetFolderMediaFiles);
 
+  // ── Manual file validation (single or batch) ────────────────────────────
+  ipcMain.handle('validate-media-file', async (event, filePath) => {
+    try {
+      const normalized = path.normalize(filePath);
+      if (!fs.existsSync(normalized)) return { valid: false, reason: 'file not found' };
+      return await validateSingleFile(normalized);
+    } catch (e) {
+      return { valid: false, reason: e.message };
+    }
+  });
+
+  ipcMain.handle('validate-media-files-batch', async (event, filePaths) => {
+    try {
+      let done = 0;
+      const { valid, skipped } = await validateMediaFiles(filePaths, (d, total) => {
+        done = d;
+        appState.win?.webContents.send('batch-validation-progress', { done, total });
+      });
+      return { valid, skipped };
+    } catch (e) {
+      return { valid: filePaths, skipped: [] }; // fail open
+    }
+  });
+
   // Subtitle file dialog
   ipcMain.handle("open-subtitle-dialog", async () => {
     const { dialog } = require('electron');
@@ -948,21 +1034,20 @@ function setupIPCHandlers() {
   ipcMain.on("appClose", handleAppClose);
 
   ipcMain.handle('set-stream-file', (event, filePath) => {
-    // console.log('📂 set-stream-file called with:', filePath); 
     try {
       const normalized = path.normalize(filePath);
-      // console.log('📂 normalized:', normalized);
-      // console.log('📂 exists:', fs.existsSync(normalized));
-
       if (!fs.existsSync(normalized)) {
         return { success: false, error: 'File not found: ' + normalized };
       }
-      streamState.filePath = normalized;
-      streamState.mimeType = getMimeType(normalized);
-      // console.log('✅ Stream file set:', streamState.filePath);
+      // Cache stat here once — the HTTP handler is called on EVERY seek/range request.
+      // fs.statSync on the hot path blocks Node's event loop and adds latency to each seek.
+      const stat = fs.statSync(normalized);
+      streamState.filePath  = normalized;
+      streamState.mimeType  = getMimeType(normalized);
+      streamState.fileSize  = stat.size;
+      streamState.fileMtime = stat.mtimeMs;
       return { success: true, port: STREAM_PORT };
     } catch (err) {
-      // console.error('❌ set-stream-file error:', err);
       return { success: false, error: err.message };
     }
   });
@@ -1794,6 +1879,88 @@ async function getRealLongFilename(filePath) {
   }
 }
 
+// ── File validation (ffprobe-based) ──────────────────────────────────────────
+// Reads ONLY the container format header — no stream decoding, no frame reads.
+// Fast: ~80-150ms per file. Works for video AND audio-only files.
+//
+// Previous bug: used -select_streams v:0,a:0 which requires BOTH video AND audio
+// streams simultaneously — audio-only files (mp3/flac/aac) have no video stream
+// so they returned 0 streams and were falsely marked corrupt.
+async function validateSingleFile(filePath) {
+  return new Promise((resolve) => {
+    const args = [
+      '-v', 'error',          // suppress info noise, show only real errors
+      '-show_entries', 'format=duration,size,nb_streams',
+      '-of', 'json',
+      filePath,
+    ];
+    const proc = spawn(ffprobeExecutable, args, {
+      windowsHide: true,
+      stdio: ['ignore', 'pipe', 'pipe'],
+    });
+    const out = [], err = [];
+    proc.stdout.on('data', d => out.push(d));
+    proc.stderr.on('data', d => err.push(d));
+    // 3s timeout — header-only read should never take this long
+    const timer = setTimeout(() => { try { proc.kill(); } catch {} resolve({ valid: false, reason: 'timeout' }); }, 3000);
+    proc.on('close', (code) => {
+      clearTimeout(timer);
+      // Non-zero exit = ffprobe couldn't open/parse the file at all
+      if (code !== 0) {
+        const msg = Buffer.concat(err).toString('utf8').split('\n')
+          .map(l => l.trim()).filter(Boolean).pop() || 'unreadable';
+        return resolve({ valid: false, reason: msg });
+      }
+      try {
+        const parsed = JSON.parse(Buffer.concat(out).toString('utf8'));
+        const fmt = parsed.format || {};
+        // nb_streams=0 means container opened but has no usable streams
+        if (!fmt.nb_streams || parseInt(fmt.nb_streams) === 0)
+          return resolve({ valid: false, reason: 'no streams in container' });
+        // duration=N/A can happen on corrupt/truncated files even when container opens
+        if (fmt.duration === 'N/A' || fmt.duration === undefined)
+          return resolve({ valid: false, reason: 'no duration (truncated?)' });
+        resolve({ valid: true });
+      } catch {
+        resolve({ valid: false, reason: 'parse error' });
+      }
+    });
+    proc.on('error', (e) => { clearTimeout(timer); resolve({ valid: false, reason: e.message }); });
+  });
+}
+
+// Batch validator — 8 concurrent probes (header-only = low CPU, fast I/O).
+// progressCb(done, total) fires after each file so renderer can update UI.
+async function validateMediaFiles(filePaths, progressCb) {
+  const valid = [], skipped = [];
+  const CONCURRENCY = 8;
+  let done = 0;
+  const total = filePaths.length;
+
+  async function probe(fp) {
+    try {
+      const norm = path.normalize(fp);
+      if (!fs.existsSync(norm)) {
+        skipped.push({ path: fp, reason: 'file not found' });
+      } else {
+        const r = await validateSingleFile(norm);
+        if (r.valid) valid.push(fp);
+        else skipped.push({ path: fp, reason: r.reason });
+      }
+    } catch {
+      valid.push(fp); // fail-open on unexpected errors
+    } finally {
+      done++;
+      if (progressCb) progressCb(done, total);
+    }
+  }
+
+  for (let i = 0; i < filePaths.length; i += CONCURRENCY) {
+    await Promise.all(filePaths.slice(i, i + CONCURRENCY).map(probe));
+  }
+  return { valid, skipped };
+}
+
 // Open file dialog to select media files or folders
 async function handleOpenFileDialog() {
   try {
@@ -1842,20 +2009,35 @@ async function handleOpenFileDialog() {
 
 async function handleOpenFolderDialog() {
   try {
-    const result = await dialog.showOpenDialog({ properties: ["openDirectory"] });
+    const result = await dialog.showOpenDialog({ properties: ['openDirectory'] });
     if (result.canceled) return null;
-    
-    const folderPath = path.normalize(result.filePaths[0]); 
+
+    const folderPath = path.normalize(result.filePaths[0]);
     const files = await fs.promises.readdir(folderPath, { withFileTypes: true });
- 
-    const mediaFiles = files
-      .filter(file => file.isFile() && MEDIA_EXTENSIONS.includes(path.extname(file.name).toLowerCase()))
-      .map(file => path.join(folderPath, file.name))  // file.name is already the long filename
-      .sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
- 
-    return mediaFiles.length > 0 ? mediaFiles : null;
+
+    const candidates = files
+      .filter(f => f.isFile() && MEDIA_EXTENSIONS.includes(path.extname(f.name).toLowerCase()))
+      .map(f => path.join(folderPath, f.name))
+      .sort((a, b) => a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' }));
+
+    if (candidates.length === 0) return null;
+
+    // Notify renderer that validation is starting
+    appState.win?.webContents.send('folder-validation-start', { total: candidates.length });
+
+    const { valid, skipped } = await validateMediaFiles(candidates, (done, total) => {
+      appState.win?.webContents.send('folder-validation-progress', { done, total });
+    });
+
+    appState.win?.webContents.send('folder-validation-done', {
+      validCount:   valid.length,
+      skippedCount: skipped.length,
+      skipped:      skipped.map(s => ({ name: path.basename(s.path), reason: s.reason }))
+    });
+
+    return valid.length > 0 ? valid : null;
   } catch (error) {
-    console.error("Error reading folder:", error);
+    console.error('Error reading folder:', error);
     return null;
   }
 }
@@ -1868,35 +2050,46 @@ async function handleGetFolderMediaFiles(event, filePath) {
       return { files: [], currentFile: null };
     }
 
-    // Get the directory containing the file
     const folderPath = path.normalize(path.dirname(filePath));
-    
-    // Check if folder exists
     if (!fs.existsSync(folderPath)) {
-      // console.warn(`Folder does not exist: ${folderPath}`);
-      return { files: [filePath], currentFile: filePath }; // Fall back to single file
+      return { files: [filePath], currentFile: filePath };
     }
 
-    // Read all files in the folder
-    const files = await fs.promises.readdir(folderPath, { withFileTypes: true });
- 
-    // Filter media files and sort them numerically
-    const mediaFiles = files
-      .filter(file => file.isFile() && MEDIA_EXTENSIONS.includes(path.extname(file.name).toLowerCase()))
-      .map(file => path.join(folderPath, file.name))
-      .sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
- 
-    return {
-      files: mediaFiles.length > 0 ? mediaFiles : [filePath],
-      currentFile: filePath
-    };
+    const entries = await fs.promises.readdir(folderPath, { withFileTypes: true });
+    const candidates = entries
+      .filter(f => f.isFile() && MEDIA_EXTENSIONS.includes(path.extname(f.name).toLowerCase()))
+      .map(f => path.join(folderPath, f.name))
+      .sort((a, b) => a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' }));
+
+    if (candidates.length === 0) {
+      return { files: [filePath], currentFile: filePath };
+    }
+
+    // For context-menu / drag-drop opens: validate only if batch is small enough
+    // to complete quickly. Large folders validate asynchronously in background.
+    let validFiles;
+    if (candidates.length <= 20) {
+      const { valid } = await validateMediaFiles(candidates);
+      validFiles = valid.length > 0 ? valid : candidates; // fallback: don't block play
+    } else {
+      // Large folder: trust extension for now, validate in background
+      validFiles = candidates;
+      // Fire-and-forget background validation
+      validateMediaFiles(candidates).then(({ skipped }) => {
+        if (skipped.length > 0 && appState.win) {
+          appState.win.webContents.send('background-validation-done', {
+            skipped: skipped.map(s => ({ name: path.basename(s.path), reason: s.reason }))
+          });
+        }
+      });
+    }
+
+    return { files: validFiles, currentFile: filePath };
   } catch (error) {
-    // console.error("Error reading folder media files:", error);
-    // Fallback: return just the single file
+    console.error('Error reading folder media files:', error);
     return { files: [filePath], currentFile: filePath };
   }
 }
-
 async function handleDeleteFile(event, filePath) {
   if (!filePath || typeof filePath !== 'string') {
     throw new Error('Invalid file path');

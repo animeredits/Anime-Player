@@ -48,7 +48,9 @@ const VALID_INVOKE_CHANNELS = [
 	"get-folder-media-files",
 	"rename-file",
 	"save-shortcut-bindings",
-	"load-shortcut-bindings"
+	"load-shortcut-bindings",
+	"validate-media-file",
+    "validate-media-files-batch",
 ];
 
 contextBridge.exposeInMainWorld('electron', {
@@ -135,6 +137,16 @@ contextBridge.exposeInMainWorld('electron', {
 	onFileOpen: (callback) => ipcRenderer.on("open-file", (event, filePath) => callback(filePath)),
 	openFolderFromContext: (callback) => ipcRenderer.on("open-folder-from-context", (_, folderPath) => callback(folderPath)),
 	openFolder: (folderPath) => ipcRenderer.invoke("open-folder", folderPath),
+
+	// File validation
+    validateMediaFile:       (filePath)   => ipcRenderer.invoke('validate-media-file', filePath),
+    validateMediaFilesBatch: (filePaths)  => ipcRenderer.invoke('validate-media-files-batch', filePaths),
+    
+    // Validation progress events
+    onFolderValidationStart:    (cb) => ipcRenderer.on('folder-validation-start',    (_, d) => cb(d)),
+    onFolderValidationProgress: (cb) => ipcRenderer.on('folder-validation-progress', (_, d) => cb(d)),
+    onFolderValidationDone:     (cb) => ipcRenderer.on('folder-validation-done',     (_, d) => cb(d)),
+    onBackgroundValidationDone: (cb) => ipcRenderer.on('background-validation-done', (_, d) => cb(d)),
 
 	// Filename Resolution (Windows 8.3 short name fix)
 	getRealFilename: (filePath) => ipcRenderer.invoke('get-real-filename', filePath),

@@ -2,7 +2,7 @@
     "name": "anime-player",
     "version": "2.3.3",
     "description": "Anime Player is an advanced player for anime enthusiasts. Enjoy your favorite anime with enhanced controls.",
-    "main": "./src/main.js",
+    "main": "./src/core/main.js",
     "author": "Anime Player",
     "license": "MIT",
     "keywords": [
@@ -168,7 +168,7 @@
             ],
             "artifactName": "Anime Player-${version}-${arch}.${ext}"
         },
-            "linux": {
+        "linux": {
             "icon": "assets/icons/icon.png",
             "target": [
                 {

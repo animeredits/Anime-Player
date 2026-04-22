@@ -111,7 +111,7 @@ let totalTimeInSeconds = 0;
 let countdownInterval = null;
 let remainingTimeOnPause = 0;
 const VOLUME_CONFIG = {
-  maxVolume: 2.0,           // 200% - matches VLC
+  maxVolume: 3.5,           // 350% - exceeds VLC's 200% for true loudness parity
   defaultVolume: 0.1,       // 10% startup
   amplificationFactor: 1.2, // Extra gain for clarity
   smoothingFactor: 0.05     // Smooth volume transitions
@@ -335,7 +335,7 @@ function saveCustomLogo(filePath, fileName) {
 
         const delIcon = document.createElement("img");
         delIcon.className = "svg-icon";
-        delIcon.src = "../assets/icons/fa/trash-can.svg";
+        delIcon.src = "../../assets/icons/fa/trash-can.svg";
         delIcon.alt = "";
         delIcon.style.cssText = "font-size:9px;color:rgba(255,80,80,0.7);cursor:pointer;margin-left:auto;";
         delIcon.addEventListener("click", (e) => {
@@ -567,7 +567,7 @@ function setSelectedLogo(logoSrc) {
     const navbarLogoLinks = document.querySelectorAll("#logoOptions .viz-preset-item[data-src]");
     navbarLogoLinks.forEach((link) => {
         const linkSrc = link.getAttribute("data-src");
-        if (linkSrc === logoSrc && linkSrc === "../assets/icons/icon.ico") {
+        if (linkSrc === logoSrc && linkSrc === "../../assets/icons/icon.ico") {
             shouldAnimate = true;
         }
     });
@@ -576,7 +576,7 @@ function setSelectedLogo(logoSrc) {
     const cmLogoLinks = document.querySelectorAll("#vizPresetsCM .viz-preset-item[data-src]");
     cmLogoLinks.forEach((link) => {
         const linkSrc = link.getAttribute("data-src");
-        if (linkSrc === logoSrc && linkSrc === "../assets/icons/icon.ico") {
+        if (linkSrc === logoSrc && linkSrc === "../../assets/icons/icon.ico") {
             shouldAnimate = true;
         }
     });
@@ -1542,7 +1542,7 @@ document.addEventListener('DOMContentLoaded', () => {
 			const iconEl   = document.getElementById('aboutUpdateIcon');
 			if (statusEl) {
 				statusEl.className = 'about-update-status about-update-status--checking';
-				statusEl.innerHTML = '<img class="svg-icon fa-spin" src="../assets/icons/fa/circle-notch.svg" alt=""> Checking for updates…';
+				statusEl.innerHTML = '<img class="svg-icon fa-spin" src="../../assets/icons/fa/circle-notch.svg" alt=""> Checking for updates…';
 			}
 			if (iconEl) iconEl.classList.add('fa-spin');
 			showStatusMessage('Checking for updates…');
@@ -1558,7 +1558,7 @@ document.addEventListener('DOMContentLoaded', () => {
 				if (el && el.classList.contains('about-update-status--checking')) {
 					_setUpdateStatus(
 						'about-update-status--ok',
-						'<img class="svg-icon" src="../assets/icons/fa/circle-check.svg" alt=""> You\'re up to date!'
+						'<img class="svg-icon" src="../../assets/icons/fa/circle-check.svg" alt=""> You\'re up to date!'
 					);
 					showStatusMessage('Anime Player is up to date');
 				}
@@ -1896,14 +1896,10 @@ async function loadMediaFile(filePath, fileName) {
 	}
 
 	try {
-		// ✅ CRITICAL: Cleanup old stream before loading new file (prevents streaming errors)
-		// Stop current playback to close any open stream
+		// Stop current playback and clear the old source atomically
 		video.pause();
 		video.currentTime = 0;
-		// Clear the old source to release the stream
 		video.src = '';
-		// Give browser time to close the stream before requesting new file
-		await new Promise(resolve => setTimeout(resolve, 50));
 
 		document.getElementById("noMediaLogo").style.display = "none";
 		video.style.display = "block";
@@ -2021,44 +2017,198 @@ currentMedia.addEventListener("loadedmetadata", async () => {
 	updateDurationDisplay();
 	resetZoom(showStatusMessage(''));
 	updateVideoTitle(video.dataset.videoId);
-	// ✅ Use full filePath for highlighting (not just videoId)
 	const filePathToHighlight = mediaFiles[currentVideoIndex] || video.dataset.videoId;
 	highlightCurrentVideo(filePathToHighlight);
 	video.currentTime = 0;
 
-	// Load chapters from video file
-	if (mediaFiles[currentVideoIndex]) {
-		loadChaptersFromFile(mediaFiles[currentVideoIndex]);
-	}
-
-	// Await track detection BEFORE play() to prevent AbortError race
-	await Promise.all([
-		populateAudioTracks(),
-		populateSubtitleTracks()
-	]);
-
-	// Guard: if another load started while awaiting, skip play()
-	if (!video.paused) return;
+	// ── Play IMMEDIATELY — do NOT wait for track detection ────────────────────
+	// Root cause of slow load: populateAudioTracks() + populateSubtitleTracks()
+	// each spawn ffprobe processes. On large files (200GB MKV) this blocked
+	// video.play() for 3-8 seconds even though the video was ready to render.
+	// Fix: start playback first, detect tracks in the background in parallel.
 	video.play().catch(function(err) {
 		if (err.name !== 'AbortError') console.error('play() error:', err);
 	});
 
-	// ── Skip-intro: black-frame detection ────────────────────────────────────
-	// Sample frames at 5 s intervals (5, 10, 15, 20 s) using the hidden
-	// previewVideo so main playback is never interrupted. If a sampled frame
-	// has mean luma < 5/255 (essentially black) we show a "Skip Intro" button.
+	// Run all background work in parallel AFTER play() is started
+	// Chapters and track detection do NOT need to block the first frame
+	Promise.all([
+		populateAudioTracks(),
+		populateSubtitleTracks(),
+		mediaFiles[currentVideoIndex]
+			? loadChaptersFromFile(mediaFiles[currentVideoIndex])
+			: Promise.resolve(),
+	]).catch(() => {});
+
+	// Skip-intro detection — uses hidden previewVideo, never interrupts playback
 	_detectBlackFrames();
 });
 
-// ✅ Handle playback ending
-currentMedia.addEventListener("ended", () => {
-	resetZoom();
-	stopPlayback();
-	updateNavigationButtons();
-	updateSeekBar();
-	updateDurationDisplay();
+video.addEventListener("ended", async () => {
+  // ── Reset freeze-frame overlay if still visible ──────────────────────────
+  if (typeof _releaseFreezeFrame === 'function') _releaseFreezeFrame();
+  resetZoom();
+
+  // ── Determine what to play next ──────────────────────────────────────────
+  // NOTE: when video.loop = true (isRepeatMode === 1), browsers do NOT fire
+  // 'ended' — the loop is transparent. This handler only fires for:
+  //   • isRepeatMode 0 (no repeat) — stop or advance
+  //   • isRepeatMode 2 (repeat all) — advance with wrap
+  //   • Edge case: some Chromium builds DO fire ended on loop start
+
+  const nextIndex = getNextIndex();
+
+  if (nextIndex !== null) {
+    // ── Hide UI during transition for seamless feel ──────────────────────
+    const _mc  = document.querySelector('.video-controls-container');
+    const _nav = document.querySelector('nav');
+    const _na  = document.querySelector('.nav-arrows');
+    const _wb  = document.querySelector('.win-buttons');
+    video.style.cursor = 'none';
+    [_nav, _mc].forEach(el => { if (el) { el.classList.add('hidden'); el.classList.remove('visible'); } });
+    [_na, _wb].forEach(el => { if (el)   el.classList.add('hidden'); });
+
+    // Stop external audio cleanly BEFORE loading the new file
+    // (avoids the old stream and new stream overlapping)
+    stopExternalAudio();
+
+    await playVideoByIndex(nextIndex);
+  } else {
+    // No next video — stop cleanly
+    stopExternalAudio();
+    stopPlayback();
+    updateNavigationButtons();
+    updateSeekBar();
+    updateDurationDisplay();
+
+    if (isShutdownAtPlaylistEndEnabled) {
+      window.electron.sendShutdownRequest();
+    }
+  }
+
+  if (isShutdownAtVideoEndEnabled) {
+    window.electron.sendShutdownRequest();
+  }
 });
 
+// ── REPLACE the existing startExternalAudio() function ──────────────────────
+function startExternalAudio(index) {
+  audioTrackPlayer = getAudioTrackPlayer();
+  if (!audioTrackPlayer) {
+    console.error('[Audio] Failed to get audioTrackPlayer element');
+    return;
+  }
+  if (index < 0 || !ffprobeAudioTracks[index]) {
+    console.warn('[Audio] startExternalAudio called with invalid index:', index);
+    return;
+  }
+
+  _stopDriftTimer();
+
+  // Cancel any in-progress canplay promise chain from the previous call
+  if (audioTrackPlayer._abortController) {
+    audioTrackPlayer._abortController.abort();
+  }
+  const controller = new AbortController();
+  audioTrackPlayer._abortController = controller;
+
+  // Pause + clear current source atomically
+  audioTrackPlayer.pause();
+  audioTrackPlayer.removeAttribute('src');
+  try { audioTrackPlayer.load(); } catch {}
+
+  _activeAudioIndex = index;
+  _streamStartedAt  = isFinite(video.currentTime) ? video.currentTime : 0;
+
+  const ss  = _streamStartedAt.toFixed(3);
+  const url = `http://127.0.0.1:54321/audio/${index}?ss=${ss}&t=${Date.now()}`;
+
+  audioTrackPlayer.src            = url;
+  audioTrackPlayer.muted          = false;
+  // Volume is controlled by gainNode via Web Audio API (supports 0–200%+).
+  // Fall back to clamped HTML volume only if the Web Audio connection failed.
+  audioTrackPlayer.volume         = audioTrackPlayer._webAudioConnected ? 1.0 : Math.min(1, gainNode ? gainNode.gain.value : 1);
+  audioTrackPlayer.playbackRate   = isFinite(video.playbackRate) ? video.playbackRate : 1;
+  audioTrackPlayer.load();
+
+  // Ensure AudioContext is running (browser suspends it after tab switch)
+  if (audioContext && audioContext.state === 'suspended') {
+    audioContext.resume().catch(() => {});
+  }
+
+  let _played = false;
+
+  function _attemptPlay() {
+    if (controller.signal.aborted) return;
+    if (_played) return;
+    _played = true;
+
+    // ── Sync check: only play if main video is also playing ─────────────────
+    if (video.paused) {
+      // Video is paused — keep audio paused too, drift timer will handle sync
+      _startDriftTimer();
+      return;
+    }
+
+    audioTrackPlayer.play().then(() => {
+      _startDriftTimer();
+    }).catch((err) => {
+      if (err.name === 'AbortError') return; // expected — src was changed
+      if (err.name === 'NotAllowedError') {
+        // Browser blocked autoplay — retry once on next user interaction
+        const _retry = () => {
+          document.removeEventListener('click', _retry);
+          if (!controller.signal.aborted) {
+            audioTrackPlayer.play().catch(() => {});
+          }
+        };
+        document.addEventListener('click', _retry, { once: true });
+        return;
+      }
+      console.warn('[Audio] play() failed:', err.name, err.message);
+    });
+  }
+
+  // Prefer canplaythrough for full buffer; fall back to canplay after 2s
+  let _fallbackTimer = null;
+
+  function _onCanPlay() {
+    if (controller.signal.aborted) return;
+    clearTimeout(_fallbackTimer);
+    audioTrackPlayer.removeEventListener('canplay',        _onCanPlay);
+    audioTrackPlayer.removeEventListener('canplaythrough', _onCanPlay);
+    _attemptPlay();
+  }
+
+  audioTrackPlayer.addEventListener('canplay',        _onCanPlay);
+  audioTrackPlayer.addEventListener('canplaythrough', _onCanPlay);
+
+  // Fallback: if canplay never fires (some codecs don't fire it), try anyway
+  _fallbackTimer = setTimeout(() => {
+    if (controller.signal.aborted || _played) return;
+    audioTrackPlayer.removeEventListener('canplay',        _onCanPlay);
+    audioTrackPlayer.removeEventListener('canplaythrough', _onCanPlay);
+    if (audioTrackPlayer.readyState >= 2) {
+      _attemptPlay();
+    }
+  }, 3000);
+
+  // Stream error handler
+  const _onError = () => {
+    if (controller.signal.aborted) return;
+    clearTimeout(_fallbackTimer);
+    const code = audioTrackPlayer.error ? audioTrackPlayer.error.code : 0;
+    if (code === MediaError.MEDIA_ERR_ABORTED || code === MediaError.MEDIA_ERR_SRC_NOT_FOUND) return;
+    console.error('[Audio] Stream error code:', code);
+    // Retry once after 500ms — transient network error on local stream server
+    setTimeout(() => {
+      if (!controller.signal.aborted && _activeAudioIndex === index) {
+        startExternalAudio(index);
+      }
+    }, 500);
+  };
+  audioTrackPlayer.addEventListener('error', _onError, { once: true });
+}
 // ✅ Get unique video ID
 function getVideoId() {
 	return video?.dataset?.videoId || null;
@@ -2312,7 +2462,7 @@ document.querySelectorAll('.add-subtitle-btn').forEach(btn => {
 
 // Functions to toggle play/pause icon
 function updatePlayPauseIcon(isPlaying) {
-	const iconSrc = isPlaying ? "../assets/icons/pause-.png" : "../assets/icons/play-.png";
+	const iconSrc = isPlaying ? "../../assets/icons/pause-.png" : "../../assets/icons/play-.png";
 	const label = isPlaying ? "Pause" : "Play";
 
 	playPauseBtn.src = iconSrc;
@@ -2911,7 +3061,7 @@ function updatePlaylistDropdown(mediaFiles) {
 
 		const searchIcon = document.createElement("img");
 		searchIcon.className = "svg-icon playlist-search-icon";
-		searchIcon.src = "../assets/icons/fa/magnifying-glass.svg";
+		searchIcon.src = "../../assets/icons/fa/magnifying-glass.svg";
 		searchIcon.alt = "";
 		searchWrap.appendChild(searchIcon);
 
@@ -2923,7 +3073,7 @@ function updatePlaylistDropdown(mediaFiles) {
 
 		const clearBtn = document.createElement("button");
 		clearBtn.classList.add("playlist-search-clear");
-		clearBtn.innerHTML = '<img class="svg-icon" src="../assets/icons/fa/xmark.svg" alt="">';
+		clearBtn.innerHTML = '<img class="svg-icon" src="../../assets/icons/fa/xmark.svg" alt="">';
 		clearBtn.style.display = "none";
 		clearBtn.addEventListener("click", (e) => {
 			e.stopPropagation();
@@ -3077,9 +3227,90 @@ function updatePlaylistDropdown(mediaFiles) {
 	// Dynamic content added to .play-list containers must be registered with
 	// ScrollManager so wheel isolation is applied to the newly visible containers.
 	if (window.ScrollManager) window.ScrollManager.registerAll();
+
+	// ── One-time corruption scan ──────────────────────────────────────────────
+	_scheduleCorruptionScan(mediaFiles);
 }
 
-// ✅ Check if a container is actually visible in the DOM
+// ── Corruption scan + X badge system ─────────────────────────────────────────
+// Runs ONCE per unique playlist. Results cached in localStorage — no re-scan
+// on restart for the same folder. Corrupt items get a red ✕ badge.
+let _corruptScanInProgress = false;
+
+function _playlistFingerprint(files) {
+	const sorted = [...files].sort().join('|');
+	return sorted.length + '_' + sorted.slice(0, 60) + '_' + sorted.slice(-40);
+}
+
+function _markCorruptItem(filePath, reason) {
+	document.querySelectorAll('.playlist-item').forEach(item => {
+		if (item.dataset.filePath !== filePath) return;
+		if (item.querySelector('.corrupt-badge')) return;
+		item.style.opacity = '0.5';
+		const badge = document.createElement('span');
+		badge.className = 'corrupt-badge';
+		badge.title = `Corrupt: ${reason}`;
+		badge.style.cssText = [
+			'display:inline-flex','align-items:center','justify-content:center',
+			'margin-left:6px','color:#ff4444','font-size:10px','font-weight:800',
+			'background:rgba(255,68,68,0.15)','border:1px solid rgba(255,68,68,0.4)',
+			'border-radius:3px','padding:0 5px','line-height:16px','flex-shrink:0',
+			'cursor:help','pointer-events:all',
+		].join(';');
+		badge.textContent = '✕';
+		// Show reason tooltip on click
+		badge.addEventListener('click', (e) => {
+			e.stopImmediatePropagation();
+			showStatusMessage(`Corrupt: ${reason}`);
+		}, { capture: true });
+		item.appendChild(badge);
+	});
+}
+
+async function _scheduleCorruptionScan(files) {
+	if (!files || files.length === 0 || _corruptScanInProgress) return;
+
+	const CACHE_KEY = 'corruptScan:' + _playlistFingerprint(files);
+	let cached = null;
+	try { cached = JSON.parse(localStorage.getItem(CACHE_KEY)); } catch {}
+
+	if (cached) {
+		// Re-apply badges from cache (DOM may have been rebuilt)
+		cached.forEach(({ path: fp, reason }) => _markCorruptItem(fp, reason));
+		if (cached.length > 0) {
+			showStatusMessage(`⚠ ${cached.length} corrupt file${cached.length > 1 ? 's' : ''} in playlist (cached)`);
+		}
+		return;
+	}
+
+	_corruptScanInProgress = true;
+	const total = files.length;
+
+	// Batch with slight delay so playlist renders first
+	await new Promise(r => setTimeout(r, 300));
+	showStatusMessage(`Scanning ${total} file${total !== 1 ? 's' : ''}…`);
+
+	let corrupt = [];
+	try {
+		// Single batch IPC call — main process runs 8 concurrent ffprobe probes
+		// and returns only the corrupt ones. Much faster than one-by-one IPC.
+		const result = await window.electron.invoke('validate-media-files-batch', files);
+		if (result && result.skipped) {
+			corrupt = result.skipped; // [{ path, reason }]
+			corrupt.forEach(({ path: fp, reason }) => _markCorruptItem(fp, reason));
+		}
+	} catch (e) {
+		console.warn('[CorruptScan] batch validation error:', e);
+	}
+
+	_corruptScanInProgress = false;
+	try { localStorage.setItem(CACHE_KEY, JSON.stringify(corrupt)); } catch {}
+
+	if (corrupt.length > 0) {
+		showStatusMessage(`⚠ ${corrupt.length} corrupt file${corrupt.length > 1 ? 's' : ''} in playlist`);
+	}
+	// No "all OK" message — unnecessary noise on every playlist load
+}
 function isContainerVisible(container) {
 	const style = window.getComputedStyle(container);
 	if (style.display === 'none' || style.visibility === 'hidden') return false;
@@ -3351,18 +3582,18 @@ function updateSortUI() {
 		el.classList.toggle('active', isActive);
 		// Update cm-check icon (context menu)
 		const cmCheck = el.querySelector('.cm-check');
-		if (cmCheck) cmCheck.innerHTML = isActive ? '<img class="svg-icon" src="../assets/icons/fa/check.svg" alt="">' : '';
+		if (cmCheck) cmCheck.innerHTML = isActive ? '<img class="svg-icon" src="../../assets/icons/fa/check.svg" alt="">' : '';
 		// Update nav-sort-check icon (nav bar)
 		const navCheck = el.querySelector('.nav-sort-check');
-		if (navCheck) navCheck.innerHTML = isActive ? '<img class="svg-icon" src="../assets/icons/fa/check.svg" alt="">' : '';
+		if (navCheck) navCheck.innerHTML = isActive ? '<img class="svg-icon" src="../../assets/icons/fa/check.svg" alt="">' : '';
 	});
 	document.querySelectorAll('[data-sort="ascending"], [data-sort="descending"]').forEach(el => {
 		const isActive = el.dataset.sort === sortDirection;
 		el.classList.toggle('active', isActive);
 		const cmCheck = el.querySelector('.cm-check');
-		if (cmCheck) cmCheck.innerHTML = isActive ? '<img class="svg-icon" src="../assets/icons/fa/check.svg" alt="">' : '';
+		if (cmCheck) cmCheck.innerHTML = isActive ? '<img class="svg-icon" src="../../assets/icons/fa/check.svg" alt="">' : '';
 		const navCheck = el.querySelector('.nav-sort-check');
-		if (navCheck) navCheck.innerHTML = isActive ? '<img class="svg-icon" src="../assets/icons/fa/check.svg" alt="">' : '';
+		if (navCheck) navCheck.innerHTML = isActive ? '<img class="svg-icon" src="../../assets/icons/fa/check.svg" alt="">' : '';
 	});
 }
 
@@ -4106,7 +4337,7 @@ function createTooltip() {
 // Audio Context and Gain Node setup (existing)
 const videoElement = document.querySelector("video");
 const volumeSlider = document.getElementById("volume-slider");
-volumeSlider.max = 200; // Set the maximum slider value to 200% volume
+volumeSlider.max = 350; // 350% — gives real headroom beyond VLC's 200%
 
 // ── AUDIO GRAPH ─────────────────────────────────────────────────────────────
 // Chain: source → [EQ filters] → compressor → stereoPanner → gainNode → masterLimiter → destination
@@ -4158,15 +4389,14 @@ window.addEventListener('blur', () => {
 });
 
 
-// ── User volume control (0.0–2.0 = 0%–200%) ─────────────────────────────────
+// ── User volume control (0.0–3.5 = 0%–350%) ─────────────────────────────────
 const gainNode = audioContext.createGain();
 
 // ── Master limiter — brick-wall peak limiter AFTER the gain node ─────────────
-// Ratio 20:1 + knee 0 = true hard limiter. Threshold –1 dBFS = only catches real clips.
+// Threshold 0 dBFS (true digital ceiling). Catches only real clipping peaks.
 // 1 ms attack stops peaks before they crack. 80 ms release = no pumping artifacts.
-// Result: 200% sounds genuinely louder AND stays clean — no harsh digital noise.
 const masterLimiter = audioContext.createDynamicsCompressor();
-masterLimiter.threshold.value = -1;    // –1 dBFS ceiling
+masterLimiter.threshold.value = -0.1;  // true ceiling, not robbing 1 dB of headroom
 masterLimiter.knee.value      = 0;     // Hard knee = true brick-wall
 masterLimiter.ratio.value     = 20;    // 20:1 = limiter not compressor
 masterLimiter.attack.value    = 0.001; // 1 ms — kills peaks before distortion
@@ -4180,6 +4410,14 @@ compressor.ratio.value     = 3;
 compressor.attack.value    = 0.015;
 compressor.release.value   = 0.2;
 
+// ── Compressor makeup gain — restores level lost to compression ───────────────
+// The compressor silently removes 15–25 dB before the user gainNode runs.
+// Without makeup the user's "200%" sounds like VLC's "50%".
+// 'auto' preset uses passthrough (makeup=1, ratio=1) so it matches VLC directly.
+// Other presets set their own makeup to compensate for their compression depth.
+const compMakeupNode = audioContext.createGain();
+compMakeupNode.gain.value = 1.0; // passthrough by default (overridden by preset)
+
 // ── Stereo panner (each preset can set this; default = dead center) ───────────
 const stereoPanner = audioContext.createStereoPanner();
 stereoPanner.pan.value = 0; // center (was 0.2 before — permanently off-balance)
@@ -4191,10 +4429,12 @@ const bufferLength = audioAnalyser.frequencyBinCount;
 const timeDomainData = new Uint8Array(bufferLength);
 
 // ── Wire the base chain ──────────────────────────────────────────────────────
-// applyAudioEffect() will splice EQ filter nodes between source and compressor.
+// applyAudioEffect() splices EQ filters between source and compressor.
+// Chain: source → [EQ] → compressor → compMakeupNode → pan → gainNode → masterLimiter → dest
 const source = audioContext.createMediaElementSource(videoElement);
 source.connect(compressor);
-compressor.connect(stereoPanner);
+compressor.connect(compMakeupNode);
+compMakeupNode.connect(stereoPanner);
 stereoPanner.connect(gainNode);
 gainNode.connect(masterLimiter);
 masterLimiter.connect(audioContext.destination);
@@ -4232,8 +4472,8 @@ loadVolumeSetting(); // Load saved volume or apply default volume (100%)
 
 // Update the volume update function to handle exact synchronization
 function updateVolume(newVolume, source = null) {
-	// Ensure the volume value is within the precise range [0, 2]
-	newVolume = parseFloat(Math.max(0, Math.min(2, newVolume).toFixed(2)));
+	// Ensure the volume value is within the precise range [0, 3.5]
+	newVolume = parseFloat(Math.max(0, Math.min(3.5, newVolume)).toFixed(2));
 
 	// Update the actual audio volume using ramp
 	gainNode.gain.linearRampToValueAtTime(newVolume, audioContext.currentTime + 0.1);
@@ -4243,14 +4483,15 @@ function updateVolume(newVolume, source = null) {
 	gainNode.gain.value = newVolume;
 
 	// Sync volume to external audio element (non-native codec path)
-	// audioTrackPlayer.volume is 0–1, gainNode supports 0–2 (boosted)
+	// If connected to Web Audio API, volume is already handled by gainNode.
+	// Only set the HTML property as fallback when Web Audio connection failed.
 	if (audioTrackPlayer && audioTrackPlayer.src) {
-		audioTrackPlayer.volume = Math.min(1, newVolume);
+		audioTrackPlayer.volume = audioTrackPlayer._webAudioConnected ? 1.0 : Math.min(1, newVolume);
 	}
 
 	// Always update the slider to match the exact volume, except when the source is the slider
 	if (source !== 'slider') {
-		volumeSlider.value = Math.round(newVolume * 100); // Ensure integer values for the slider
+		volumeSlider.value = Math.round(newVolume * 100); // 0–350 slider range
 	}
 
 	// Tooltip shown by callers that have mouse context (slider/wheel/hover);
@@ -4275,7 +4516,7 @@ function showTooltip(volume, event = null) {
 	} else {
 		// Fallback positioning (near volume slider)
 		const sliderRect = volumeSlider.getBoundingClientRect();
-		tooltip.style.left = `${sliderRect.left + volumeSlider.offsetWidth * (volumeSlider.value / 200)}px`;
+		tooltip.style.left = `${sliderRect.left + volumeSlider.offsetWidth * (volumeSlider.value / 350)}px`;
 		tooltip.style.top = `${sliderRect.top - 30}px`;
 	}
 
@@ -4292,8 +4533,8 @@ function showTooltip(volume, event = null) {
 
 // Enhanced volume update with 200% amplification
 function updateVolumeEnhanced(newVolume) {
-	// Clamp between 0 and 2 (200%)
-	newVolume = Math.max(0, Math.min(2, newVolume));
+	// Clamp between 0 and 3.5 (350%)
+	newVolume = Math.max(0, Math.min(3.5, newVolume));
 	
 	// Apply to gainNode with amplification
 	if (gainNode) {
@@ -4304,9 +4545,10 @@ function updateVolumeEnhanced(newVolume) {
 		}
 	}
 
-	// Limit audioTrackPlayer to max 1.0 (HTML5 limit)
+	// audioTrackPlayer is now routed through gainNode via Web Audio API.
+	// Only set HTML volume as fallback when Web Audio connection failed.
 	if (audioTrackPlayer && audioTrackPlayer.volume !== undefined) {
-		audioTrackPlayer.volume = Math.min(1, newVolume);
+		audioTrackPlayer.volume = audioTrackPlayer._webAudioConnected ? 1.0 : Math.min(1, newVolume);
 	}
 
 	// Update UI
@@ -4385,7 +4627,7 @@ volumeSlider.addEventListener("wheel", (e) => {
 	// Calculate exact steps (1% per wheel tick)
 	const step = e.deltaY > 0 ? -1 : 1;
 	let newValue = parseInt(volumeSlider.value) + step;
-	newValue = Math.max(0, Math.min(newValue, 200));
+	newValue = Math.max(0, Math.min(newValue, 350));
 
 	const exactVolume = parseFloat((newValue / 100).toFixed(2));
 	updateVolume(exactVolume, 'wheel');
@@ -4490,7 +4732,7 @@ mediaPlayer.addEventListener("wheel", (event) => {
 		// Volume adjustment with exact steps
 		const step = event.deltaY > 0 ? -0.05 : 0.05;
 		let newVolume = parseFloat((gainNode.gain.value + step).toFixed(2));
-		newVolume = Math.max(0, Math.min(2, newVolume));
+		newVolume = Math.max(0, Math.min(3.5, newVolume));
 
 		updateVolume(newVolume, 'wheel');
 
@@ -4511,16 +4753,16 @@ mediaPlayer.addEventListener("wheel", (event) => {
 // Update the volume button icon and tooltip
 function updateVolumeIcon() {
 	if (gainNode.gain.value === 0) {
-		volumeBtn.src = "../assets/icons/volume-mute.png";
+		volumeBtn.src = "../../assets/icons/volume-mute.png";
 		volumeBtn.setAttribute("title", "Unmute"); // Update tooltip
 	} else if (gainNode.gain.value < 0.70) {
-		volumeBtn.src = "../assets/icons/volume-low.png";
+		volumeBtn.src = "../../assets/icons/volume-low.png";
 		volumeBtn.setAttribute("title", "Volume Low"); // Update tooltip
 	} else if (gainNode.gain.value < 1.2) {
-		volumeBtn.src = "../assets/icons/volume.png";
+		volumeBtn.src = "../../assets/icons/volume.png";
 		volumeBtn.setAttribute("title", "Normal Volume"); // Update tooltip
 	} else {
-		volumeBtn.src = "../assets/icons/volume-high.png";
+		volumeBtn.src = "../../assets/icons/volume-high.png";
 		volumeBtn.setAttribute("title", "Mute"); // Update tooltip
 	}
 }
@@ -4712,12 +4954,12 @@ function toggleShuffleMode() {
 function updateShuffleUI() {
 	if (isShuffle) {
 		shuffleButton.classList.add("active");
-		shuffleButton.src = "../assets/icons/shuffle.png";
+		shuffleButton.src = "../../assets/icons/shuffle.png";
 		showStatusMessage("Shuffle: On");
 		shuffleButton.title = "Shuffle off";
 	} else {
 		shuffleButton.classList.remove("active");
-		shuffleButton.src = "../assets/icons/no-shuffle.png";
+		shuffleButton.src = "../../assets/icons/no-shuffle.png";
 		showStatusMessage("Shuffle: Off");
 		shuffleButton.title = "Shuffle on";
 	}
@@ -4741,24 +4983,24 @@ function updateRepeatUI() {
 	switch (isRepeatMode) {
 		case 0:
 			showStatusMessage("Loop: Off");
-			loopBtn.src = "../assets/icons/repeat-on.png";
+			loopBtn.src = "../../assets/icons/repeat-on.png";
 			iconContainer.classList.add('off');
 			loopBtn.parentElement.setAttribute('data-tooltip', 'Loop off');
 			break;
 		case 1:
 			showStatusMessage("Loop: One");
-			loopBtn.src = "../assets/icons/repeat-one.png";
+			loopBtn.src = "../../assets/icons/repeat-one.png";
 			iconContainer.classList.remove('off');
 			loopBtn.parentElement.setAttribute('data-tooltip', 'Loop one');
 			break;
 		case 2:
 			showStatusMessage("Loop: All");
-			loopBtn.src = "../assets/icons/repeat-on.png";
+			loopBtn.src = "../../assets/icons/repeat-on.png";
 			iconContainer.classList.remove('off');
 			loopBtn.parentElement.setAttribute('data-tooltip', 'Loop All');
 			break;
 		default:
-			loopBtn.src = "../assets/icons/repeat-on.png";
+			loopBtn.src = "../../assets/icons/repeat-on.png";
 			iconContainer.classList.add('off');
 			loopBtn.parentElement.setAttribute('data-tooltip', 'Loop off');
 			break;
@@ -4816,15 +5058,15 @@ function updateFullscreenIcon(fullscreen) {
 		const img = button.querySelector("img");
 		if (img) {
 			img.src = isFullscreen ?
-				"../assets/icons/exit-full-screen.png" :
-				"../assets/icons/full-screen.png";
+				"../../assets/icons/exit-full-screen.png" :
+				"../../assets/icons/full-screen.png";
 		}
 		// Update FA icon if present (context menu / nav bar)
 		const icon = button.querySelector(".svg-icon");
 		if (icon) {
 			icon.src = isFullscreen ?
-				"../assets/icons/fa/compress.svg" :
-				"../assets/icons/fa/expand.svg";
+				"../../assets/icons/fa/compress.svg" :
+				"../../assets/icons/fa/expand.svg";
 		}
 		// Update text span if present (nav bar)
 		const textSpan = button.querySelector(".nav-row-text");
@@ -5345,10 +5587,10 @@ document.addEventListener("DOMContentLoaded", function() {
 
 		if (video.paused) {
 			textElement.innerText = "Play";
-			iconElement.innerHTML = '<img class="svg-icon" src="../assets/icons/fa/play.svg" alt="">';
+			iconElement.innerHTML = '<img class="svg-icon" src="../../assets/icons/fa/play.svg" alt="">';
 		} else {
 			textElement.innerText = "Pause";
-			iconElement.innerHTML = '<img class="svg-icon" src="../assets/icons/fa/pause.svg" alt="">';
+			iconElement.innerHTML = '<img class="svg-icon" src="../../assets/icons/fa/pause.svg" alt="">';
 		}
 	}
 
@@ -5619,7 +5861,7 @@ document.querySelectorAll(".quit").forEach((element) => {
 // Volume menu buttons — show status pill (no cursor = no tooltip)
 document.querySelectorAll(".increase-volume").forEach((element) => {
 	element.addEventListener("click", () => {
-		const newVol = Math.min(2, parseFloat((gainNode.gain.value + 0.1).toFixed(2)));
+		const newVol = Math.min(3.5, parseFloat((gainNode.gain.value + 0.1).toFixed(2)));
 		updateVolume(newVol);
 		showStatusMessage(`Volume: ${Math.round(newVol * 100)}%`, Math.round(newVol * 100) > 100 ? 'vol-high' : 'vol-normal');
 	});
@@ -5798,7 +6040,7 @@ document.addEventListener("keydown", (event) => {
 	if (!_plOpen) {
 		if (event.key === "ArrowUp") {
 			event.preventDefault();
-			const newVol = Math.min(2, parseFloat((gainNode.gain.value + 0.05).toFixed(2)));
+			const newVol = Math.min(3.5, parseFloat((gainNode.gain.value + 0.05).toFixed(2)));
 			updateVolume(newVol);
 			showStatusMessage(`Volume: ${Math.round(newVol * 100)}%`, Math.round(newVol * 100) > 100 ? 'vol-high' : 'vol-normal');
 		} else if (event.key === "ArrowDown") {
@@ -6069,7 +6311,7 @@ function updateAspectRatioUI(activeRatio) {
 		activeOption.classList.add('active');
 		const icon = activeOption.querySelector('.nav-aspect-check');
 		if (icon) {
-			icon.innerHTML = '<img class="svg-icon" src="../assets/icons/fa/check.svg" alt="">';
+			icon.innerHTML = '<img class="svg-icon" src="../../assets/icons/fa/check.svg" alt="">';
 		}
 	}
 }
@@ -6090,7 +6332,7 @@ function updateAspectRatioUICM(activeRatio) {
 		activeOption.classList.add('active');
 		const icon = activeOption.querySelector('.cm-aspect-check');
 		if (icon) {
-			icon.innerHTML = '<img class="svg-icon" src="../assets/icons/fa/check.svg" alt="">';
+			icon.innerHTML = '<img class="svg-icon" src="../../assets/icons/fa/check.svg" alt="">';
 		}
 	}
 }
@@ -6201,7 +6443,28 @@ function getAudioTrackPlayer() {
 		audioTrackPlayer.style.display = 'none';
 		audioTrackPlayer.preload = 'none';
 		document.body.appendChild(audioTrackPlayer);
-		// console.log('[Audio] audioTrackPlayer element created successfully');
+	}
+
+	// ── KEY FIX: route audioTrackPlayer through the Web Audio API ────────────
+	// Without this, ALL audio (video.muted=true, everything goes through this
+	// player) completely bypasses gainNode, compressor, and all processing.
+	// The HTML volume property tops out at 1.0, so the user's 200% gainNode
+	// setting has ZERO effect on what they actually hear.
+	// Connecting here sends the stream through: audioTrackPlayer → gainNode
+	// → masterLimiter → destination, giving full 200%+ amplification.
+	if (!audioTrackPlayer._webAudioConnected && typeof audioContext !== 'undefined' && typeof gainNode !== 'undefined') {
+		try {
+			const trackSource = audioContext.createMediaElementSource(audioTrackPlayer);
+			// Connect directly to gainNode — bypasses the EQ/compressor chain
+			// intentionally (those are calibrated for the main video element).
+			// The gainNode provides the user's volume boost (0–200%+).
+			trackSource.connect(gainNode);
+			audioTrackPlayer.volume = 1.0; // gain is now controlled by gainNode
+			audioTrackPlayer._webAudioConnected = true;
+			console.log('[Audio] audioTrackPlayer connected to Web Audio API (gainNode)');
+		} catch (e) {
+			console.warn('[Audio] Could not connect audioTrackPlayer to Web Audio API:', e);
+		}
 	}
 
 	return audioTrackPlayer;
@@ -6322,7 +6585,7 @@ function startExternalAudio(index) {
 
 	audioTrackPlayer.src = url;
 	audioTrackPlayer.muted = false;
-	audioTrackPlayer.volume = Math.min(1, gainNode ? gainNode.gain.value : 1);
+	audioTrackPlayer.volume = audioTrackPlayer._webAudioConnected ? 1.0 : Math.min(1, gainNode ? gainNode.gain.value : 1);
 	audioTrackPlayer.playbackRate = video.playbackRate;
 
 	// Explicitly load the new source
@@ -6415,34 +6678,48 @@ function stopExternalAudio() {
 	_activeAudioIndex = -1;
 }
 
-// Drift correction: every 2 s check how far audio has wandered from video.
-// audioTrackPlayer.currentTime counts up from 0 since stream start.
-// Expected audio time = video.currentTime - _streamStartedAt.
-// If |expected - actual| > DRIFT_MAX, restart the stream from current position.
+// ── REPLACE the existing _startDriftTimer() function ────────────────────────
 function _startDriftTimer() {
-	_stopDriftTimer();
-	_driftTimer = setInterval(function() {
-		if (!audioTrackPlayer || !audioTrackPlayer.src) {
-			_stopDriftTimer();
-			return;
-		}
-		if (video.paused || audioTrackPlayer.paused) return; 
+  _stopDriftTimer();
+  _driftTimer = setInterval(() => {
+    if (!audioTrackPlayer || !audioTrackPlayer.src) { _stopDriftTimer(); return; }
 
-		if (audioTrackPlayer.readyState < 2) {
-			// Stalled
-			// console.log('[Audio] stalled — restarting');
-			startExternalAudio(_activeAudioIndex);
-			return;
-		}
+    // Resume AudioContext if browser suspended it (tab backgrounded, etc.)
+    if (audioContext && audioContext.state === 'suspended') {
+      audioContext.resume().catch(() => {});
+    }
 
-		var expected = video.currentTime - _streamStartedAt;
-		var actual = audioTrackPlayer.currentTime;
-		var drift = Math.abs(expected - actual);
-		if (drift > DRIFT_MAX) {
-			// console.log('[Audio] drift=' + drift.toFixed(3) + 's — resyncing');
-			startExternalAudio(_activeAudioIndex);
-		}
-	}, 2000);
+    // If video is paused, keep audio paused (don't drift-correct while paused)
+    if (video.paused) {
+      if (!audioTrackPlayer.paused) audioTrackPlayer.pause();
+      return;
+    }
+
+    // If audio is paused but video is playing, restart the stream
+    if (audioTrackPlayer.paused && !video.paused) {
+      audioTrackPlayer.play().catch(() => {
+        startExternalAudio(_activeAudioIndex);
+      });
+      return;
+    }
+
+    // Stalled (readyState < 2 while video is playing) — restart stream
+    if (audioTrackPlayer.readyState < 2) {
+      console.warn('[Audio] Stream stalled — restarting');
+      startExternalAudio(_activeAudioIndex);
+      return;
+    }
+
+    // Drift correction
+    const expected = video.currentTime - _streamStartedAt;
+    const actual   = audioTrackPlayer.currentTime;
+    const drift    = Math.abs(expected - actual);
+
+    if (drift > DRIFT_MAX) {
+      console.warn(`[Audio] Drift ${drift.toFixed(3)}s — resyncing`);
+      startExternalAudio(_activeAudioIndex);
+    }
+  }, 1500); // 1.5s — slightly faster than before to catch stalls quicker
 }
 
 function _stopDriftTimer() {
@@ -6490,10 +6767,18 @@ video.addEventListener('pause', function() {
 	});
 });
 
+// ── Debounced audio restart on seek ─────────────────────────────────────────
+// Problem: calling startExternalAudio() on EVERY seeked event causes FFmpeg to
+// restart its transcoding pipe continuously during drag-seeking, making the UI
+// freeze for 500ms–2s per seek tick.
+// Fix: debounce 250ms so FFmpeg only restarts ONCE after the user stops seeking.
+let _audioRestartTimer = null;
 video.addEventListener('seeked', function() {
-	if (!audioTrackPlayer || !audioTrackPlayer.src) return;
-	// Live stream can't seek in place — restart from new position
-	startExternalAudio(_activeAudioIndex);
+	if (!audioTrackPlayer || !audioTrackPlayer.src || _activeAudioIndex < 0) return;
+	clearTimeout(_audioRestartTimer);
+	_audioRestartTimer = setTimeout(() => {
+		startExternalAudio(_activeAudioIndex);
+	}, 250);
 });
 
 video.addEventListener('ratechange', function() {
@@ -7316,12 +7601,22 @@ function _renderCues(activeCues) {
 
 // Attach cuechange + seeked listeners once cues are confirmed loaded.
 function _attachSubtitleListeners(track) {
-	_subCueHandler = () => _renderCues(track.activeCues);
-	_subSeekHandler = () => _renderCues(track.activeCues);
-	track.addEventListener('cuechange', _subCueHandler);
-	video.addEventListener('seeked', _subSeekHandler);
-	// Render immediately in case video is mid-cue
-	_renderCues(track.activeCues);
+  // Debounce cuechange — fires up to 4x/sec on some tracks, causing layout thrash
+  let _cueDebounce = null;
+  function _debouncedRender() {
+    clearTimeout(_cueDebounce);
+    _cueDebounce = setTimeout(() => _renderCues(track.activeCues), 16); // ≤1 frame late
+  }
+
+  _subCueHandler  = _debouncedRender;
+  _subSeekHandler = () => {
+    clearTimeout(_cueDebounce);
+    _renderCues(track.activeCues); // seek: render immediately, no debounce
+  };
+
+  track.addEventListener('cuechange', _subCueHandler);
+  video.addEventListener('seeked',    _subSeekHandler);
+  _renderCues(track.activeCues);
 }
 
 function switchSubtitleTrack(index) {
@@ -7470,8 +7765,8 @@ function updateMaximizeIcon(maximized) {
 	const maximizeIcon = document.querySelector("#maximize img");
 	if (maximizeIcon) {
 		maximizeIcon.src = isMaximized ?
-			"../assets/icons/win/restore-maximize.png" :
-			"../assets/icons/win/maximize.png";
+			"../../assets/icons/win/restore-maximize.png" :
+			"../../assets/icons/win/maximize.png";
 		maximizeIcon.parentElement.title = isMaximized ? "Restore Down" : "Maximize";
 	}
 }
@@ -7602,7 +7897,7 @@ document.addEventListener('DOMContentLoaded', () => {
 		updateDialog.show(info?.version);
 		_setUpdateStatus(
 			'about-update-status--available',
-			`<img class="svg-icon" src="../assets/icons/fa/arrow-up-from-bracket.svg" alt=""> Update v${info?.version || ''} available — click to install`
+			`<img class="svg-icon" src="../../assets/icons/fa/arrow-up-from-bracket.svg" alt=""> Update v${info?.version || ''} available — click to install`
 		);
 	});
 
@@ -7611,7 +7906,7 @@ document.addEventListener('DOMContentLoaded', () => {
 		window.electron.onUpdateNotAvailable(() => {
 			_setUpdateStatus(
 				'about-update-status--ok',
-				'<img class="svg-icon" src="../assets/icons/fa/circle-check.svg" alt=""> You\'re up to date!'
+				'<img class="svg-icon" src="../../assets/icons/fa/circle-check.svg" alt=""> You\'re up to date!'
 			);
 			// No showStatusMessage here — user should not see a popup on every launch
 		});
@@ -7627,7 +7922,7 @@ document.addEventListener('DOMContentLoaded', () => {
 		    !statusEl.classList.contains('about-update-status--available')) {
 			_setUpdateStatus(
 				'about-update-status--error',
-				'<img class="svg-icon" src="../assets/icons/fa/triangle-exclamation.svg" alt=""> Update check failed — check your connection.'
+				'<img class="svg-icon" src="../../assets/icons/fa/triangle-exclamation.svg" alt=""> Update check failed — check your connection.'
 			);
 		} else if (statusEl) {
 			// Still clear the icon spinner and timer
@@ -7636,6 +7931,44 @@ document.addEventListener('DOMContentLoaded', () => {
 			if (_updateCheckTimer) { clearTimeout(_updateCheckTimer); _updateCheckTimer = null; }
 		}
 	});
+
+	// ── Folder validation progress feedback ─────────────────────────────────
+  if (window.electron.onFolderValidationStart) {
+    window.electron.onFolderValidationStart(({ total }) => {
+      showStatusMessage(`Scanning ${total} file${total !== 1 ? 's' : ''}…`);
+    });
+  }
+  if (window.electron.onFolderValidationProgress) {
+    window.electron.onFolderValidationProgress(({ done, total }) => {
+      if (done % 5 === 0 || done === total) { // update every 5 files
+        showStatusMessage(`Validating ${done} / ${total}…`);
+      }
+    });
+  }
+  if (window.electron.onFolderValidationDone) {
+    window.electron.onFolderValidationDone(({ validCount, skippedCount, skipped }) => {
+      if (skippedCount === 0) {
+        showStatusMessage(`Loaded ${validCount} file${validCount !== 1 ? 's' : ''}`);
+      } else {
+        showStatusMessage(
+          `Loaded ${validCount} file${validCount !== 1 ? 's' : ''} · skipped ${skippedCount} corrupt`
+        );
+        console.group('[Folder Scan] Skipped files:');
+        skipped.forEach(s => console.warn(`  • ${s.name}: ${s.reason}`));
+        console.groupEnd();
+      }
+    });
+  }
+  if (window.electron.onBackgroundValidationDone) {
+    window.electron.onBackgroundValidationDone(({ skipped }) => {
+      if (skipped.length > 0) {
+        showStatusMessage(`⚠ ${skipped.length} corrupt file${skipped.length > 1 ? 's' : ''} detected in playlist`);
+        console.group('[Background Validation] Corrupt files found:');
+        skipped.forEach(s => console.warn(`  • ${s.name}: ${s.reason}`));
+        console.groupEnd();
+      }
+    });
+  }
 });
 
 
@@ -7685,7 +8018,7 @@ window.electron.onPrevious(() => {
 
 // Handle volume increase action from tray
 window.electron.onIncreaseVolume(() => {
-	const newVol = Math.min(2, parseFloat((gainNode.gain.value + 0.1).toFixed(2)));
+	const newVol = Math.min(3.5, parseFloat((gainNode.gain.value + 0.1).toFixed(2)));
 	updateVolume(newVol);
 	showStatusMessage(`Volume: ${Math.round(newVol * 100)}%`, Math.round(newVol * 100) > 100 ? 'vol-high' : 'vol-normal');
 });
@@ -7734,8 +8067,12 @@ const EQ_PRESETS = {
 			// Air — opens up high end, reduces that "under a blanket" feel
 			{ type: 'highshelf', frequency: 9000, Q: 0.8, gain: 2 },
 		],
-		compThreshold: -28, compRatio: 2.5, compKnee: 10,
+		// Passthrough compressor — no gain reduction, no makeup needed.
+		// Ratio 1:1 + threshold 0 = completely transparent. This makes the
+		// 'auto' preset match VLC's volume exactly at the same slider position.
+		compThreshold: 0,   compRatio: 1,   compKnee: 0,
 		compAttack: 0.015,  compRelease: 0.2,
+		compMakeupGain: 1.0,
 		panValue: 0,
 	},
 
@@ -7761,6 +8098,8 @@ const EQ_PRESETS = {
 		// Heavier compression: brings up background voices, quieter characters
 		compThreshold: -32, compRatio: 5, compKnee: 8,
 		compAttack: 0.008,  compRelease: 0.15,
+		// Full makeup: threshold -32, ratio 5 → ~25 dB reduction → 10^(25/20) ≈ 17.8× (capped at 10×)
+		compMakeupGain: 10.0,
 		panValue: 0,
 	},
 
@@ -7780,6 +8119,8 @@ const EQ_PRESETS = {
 		// Medium compression: evening out action scenes vs quiet dialogue
 		compThreshold: -26, compRatio: 4, compKnee: 10,
 		compAttack: 0.01,   compRelease: 0.25,
+		// Full makeup: threshold -26, ratio 4 → ~19 dB reduction → 10^(19/20) ≈ 8.9×
+		compMakeupGain: 8.9,
 		panValue: 0,
 	},
 
@@ -7798,6 +8139,8 @@ const EQ_PRESETS = {
 		],
 		compThreshold: -30, compRatio: 3, compKnee: 12,
 		compAttack: 0.012,  compRelease: 0.2,
+		// Full makeup: threshold -30, ratio 3 → ~20 dB reduction → 10^(20/20) = 10.0×
+		compMakeupGain: 10.0,
 		panValue: 0,
 	},
 
@@ -7819,6 +8162,8 @@ const EQ_PRESETS = {
 		// Heavy gentle comp: raises whispers, softens shouts — night-mode leveling
 		compThreshold: -40, compRatio: 6, compKnee: 15,
 		compAttack: 0.02,   compRelease: 0.3,
+		// Full makeup: threshold -40, ratio 6 → ~33 dB reduction → capped at 15× for safety
+		compMakeupGain: 15.0,
 		panValue: 0,
 	},
 };
@@ -7858,15 +8203,14 @@ function applyAudioEffect(key) {
 		filters.reduce((prev, curr) => { prev.connect(curr); return curr; });
 	}
 
-	// 5. Re-wire full chain: source → [EQ] → compressor → stereoPanner → gainNode → masterLimiter → destination
+	// 5. Re-wire: source → [EQ] → compressor → compMakeupNode → stereoPanner → gainNode → masterLimiter → dest
 	if (filters.length > 0) {
 		source.connect(filters[0]);
 		filters[filters.length - 1].connect(compressor);
 	} else {
 		source.connect(compressor);
 	}
-	// Downstream chain is always connected (compressor → stereoPanner → gainNode → masterLimiter → destination)
-	// Those connections were made at init and are never broken.
+	// Downstream nodes are permanently wired (compressor → compMakeupNode → stereoPanner → gainNode → masterLimiter)
 
 	_eqFilterNodes = filters;
 
@@ -7877,6 +8221,12 @@ function applyAudioEffect(key) {
 	if (preset.compKnee   !== undefined) compressor.knee.linearRampToValueAtTime(preset.compKnee,    ramp);
 	if (preset.compAttack  !== undefined) compressor.attack.linearRampToValueAtTime(preset.compAttack,  ramp);
 	if (preset.compRelease !== undefined) compressor.release.linearRampToValueAtTime(preset.compRelease, ramp);
+
+	// 6b. Apply makeup gain to restore level lost to compression.
+	//     'auto' uses compMakeupGain: 1.0 (passthrough) — matches VLC volume directly.
+	//     Other presets use calculated values to compensate their compression depth.
+	const makeup = preset.compMakeupGain ?? 1.0;
+	compMakeupNode.gain.linearRampToValueAtTime(makeup, ramp);
 
 	// 7. Pan (center by default in all presets)
 	if (typeof stereoPanner !== 'undefined') {
@@ -7895,10 +8245,10 @@ function _updateEffectUI(activeKey) {
 		el.classList.toggle('effect-active', isActive);
 		// Update cm-check icon (context menu)
 		const cmCheck = el.querySelector('.cm-check');
-		if (cmCheck) cmCheck.innerHTML = isActive ? '<img class="svg-icon" src="../assets/icons/fa/check.svg" alt="">' : '';
+		if (cmCheck) cmCheck.innerHTML = isActive ? '<img class="svg-icon" src="../../assets/icons/fa/check.svg" alt="">' : '';
 		// Update nav-effect-check icon (nav bar)
 		const navCheck = el.querySelector('.nav-effect-check');
-		if (navCheck) navCheck.innerHTML = isActive ? '<img class="svg-icon" src="../assets/icons/fa/check.svg" alt="">' : '';
+		if (navCheck) navCheck.innerHTML = isActive ? '<img class="svg-icon" src="../../assets/icons/fa/check.svg" alt="">' : '';
 	});
 }
 
@@ -8990,8 +9340,8 @@ function _renderShortcutEditorRows() {
 			<td class="sc-ed-label">${binding.label}</td>
 			<td class="sc-ed-key"><span class="sc-ed-combo" data-action="${actionId}">${_keyComboLabel(binding)}</span></td>
 			<td class="sc-ed-actions">
-				<button class="sc-ed-edit-btn" data-action="${actionId}" title="Re-bind"><img class="svg-icon sc-ed-btn-icon" src="../assets/icons/fa/pen-to-square.svg" alt="edit"></button>
-				<button class="sc-ed-reset-btn" data-action="${actionId}" title="Reset to default"><img class="svg-icon sc-ed-btn-icon" src="../assets/icons/fa/rotate-left.svg" alt="reset"></button>
+				<button class="sc-ed-edit-btn" data-action="${actionId}" title="Re-bind"><img class="svg-icon sc-ed-btn-icon" src="../../assets/icons/fa/pen-to-square.svg" alt="edit"></button>
+				<button class="sc-ed-reset-btn" data-action="${actionId}" title="Reset to default"><img class="svg-icon sc-ed-btn-icon" src="../../assets/icons/fa/rotate-left.svg" alt="reset"></button>
 			</td>`;
 		tbody.appendChild(tr);
 	});

@@ -2,7 +2,7 @@
   font-family: "Fira Sans";
   src: local("Fira Sans Regular"),
   local("FiraSans-Regular"),
-  url(../assets/font/FiraSans-Regular.ttf) format("truetype");
+  url(../../assets/font/FiraSans-Regular.ttf) format("truetype");
   font-weight: normal;
   font-style: normal;
   font-display: swap; /* Shows system font immediately while loading */
@@ -13,7 +13,7 @@
   box-sizing: border-box;
   margin: 0;
   padding: 0;
-  /* cursor: url('../assets/icons/cursor.png') 4 4, auto !important; */
+  /* cursor: url('../../assets/icons/cursor.png') 4 4, auto !important; */
 }
 
 body {
