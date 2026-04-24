@@ -2039,9 +2039,6 @@ currentMedia.addEventListener("loadedmetadata", async () => {
 			? loadChaptersFromFile(mediaFiles[currentVideoIndex])
 			: Promise.resolve(),
 	]).catch(() => {});
-
-	// Skip-intro detection — uses hidden previewVideo, never interrupts playback
-	_detectBlackFrames();
 });
 
 video.addEventListener("ended", async () => {
@@ -4337,7 +4334,14 @@ function createTooltip() {
 // Audio Context and Gain Node setup (existing)
 const videoElement = document.querySelector("video");
 const volumeSlider = document.getElementById("volume-slider");
-volumeSlider.max = 350; // 350% — gives real headroom beyond VLC's 200%
+volumeSlider.max = 200; 
+
+function pctToGain(pct) {
+	return Math.pow(Math.max(0, pct) / 100, 3);   // (pct/100)^3
+}
+function gainToPct(gain) {
+	return Math.round(Math.cbrt(Math.max(0, gain)) * 100); // cube-root × 100
+}
 
 // ── AUDIO GRAPH ─────────────────────────────────────────────────────────────
 // Chain: source → [EQ filters] → compressor → stereoPanner → gainNode → masterLimiter → destination
@@ -4457,29 +4461,31 @@ function loadVolumeSetting() {
 	if (savedMuteState === "true") {
 		updateVolume(0); // If muted, set volume to 0
 	} else if (savedVolume) {
-		updateVolume(parseFloat(savedVolume)); // Update volume based on saved value
+		// Saved value may be an old linear gain (0-3.5) or a new cubic gain (0-8).
+		// In both cases we just reload the raw gain — the slider will display the
+		// correct cubic-mapped percentage via gainToPct().
+		updateVolume(parseFloat(savedVolume));
 	} else {
-		updateVolume(0.1); // Set default to 10% volume if no saved value
+		updateVolume(1.0); // Default: 100% display = 1.0 gain (unity)
 	}
 }
 
-// Set initial volume (existing)
-gainNode.gain.value = 0.1; // Set default volume to 10%
-volumeSlider.value = gainNode.gain.value * 100; // Sync slider with volume (0-200 range)
+// Set initial volume — 100% display = 1.0 gain (unity, same as VLC default)
+gainNode.gain.value = 1.0;
+volumeSlider.value = gainToPct(gainNode.gain.value); // shows 100
 
 // Call the loadVolumeSetting to apply saved or default volume
 loadVolumeSetting(); // Load saved volume or apply default volume (100%)
 
 // Update the volume update function to handle exact synchronization
 function updateVolume(newVolume, source = null) {
-	// Ensure the volume value is within the precise range [0, 3.5]
-	newVolume = parseFloat(Math.max(0, Math.min(3.5, newVolume)).toFixed(2));
+	// Gain range: 0 (mute) to 8.0 (200% on VLC cubic curve = +18 dB)
+	newVolume = parseFloat(Math.max(0, Math.min(8, newVolume)).toFixed(4));
 
 	// Update the actual audio volume using ramp
 	gainNode.gain.linearRampToValueAtTime(newVolume, audioContext.currentTime + 0.1);
 	
 	// IMMEDIATE: Set the gain value directly for instant icon/slider update
-	// (The ramp above still applies for smooth transition to audio output)
 	gainNode.gain.value = newVolume;
 
 	// Sync volume to external audio element (non-native codec path)
@@ -4489,9 +4495,9 @@ function updateVolume(newVolume, source = null) {
 		audioTrackPlayer.volume = audioTrackPlayer._webAudioConnected ? 1.0 : Math.min(1, newVolume);
 	}
 
-	// Always update the slider to match the exact volume, except when the source is the slider
+	// Sync slider display (shows 0-200% via cubic inverse)
 	if (source !== 'slider') {
-		volumeSlider.value = Math.round(newVolume * 100); // 0–350 slider range
+		volumeSlider.value = gainToPct(newVolume); // 0-200 display %
 	}
 
 	// Tooltip shown by callers that have mouse context (slider/wheel/hover);
@@ -4505,8 +4511,15 @@ function updateVolume(newVolume, source = null) {
 }
 
 // Function to update and show the tooltip
-function showTooltip(volume, event = null) {
-	tooltip.textContent = `Volume: ${(volume * 100).toFixed(0)}%`;
+// Accepts display percent (0-200) — the same number the slider shows.
+function showTooltip(displayPctOrGain, event = null) {
+	// If called with a gain value (old callers pass gainNode.gain.value),
+	// convert to display %.  Values > 2 are definitely gains, ≤ 2 are
+	// ambiguous but we treat them as gains for safety.
+	const displayPct = displayPctOrGain > 2
+		? Math.round(displayPctOrGain) // already a display %
+		: gainToPct(displayPctOrGain); // convert gain → display %
+	tooltip.textContent = `Volume: ${displayPct}%`;
 
 	if (event) {
 		const offsetX = 10; // Offset to avoid covering the mouse
@@ -4516,7 +4529,7 @@ function showTooltip(volume, event = null) {
 	} else {
 		// Fallback positioning (near volume slider)
 		const sliderRect = volumeSlider.getBoundingClientRect();
-		tooltip.style.left = `${sliderRect.left + volumeSlider.offsetWidth * (volumeSlider.value / 350)}px`;
+		tooltip.style.left = `${sliderRect.left + volumeSlider.offsetWidth * (volumeSlider.value / 200)}px`;
 		tooltip.style.top = `${sliderRect.top - 30}px`;
 	}
 
@@ -4528,43 +4541,18 @@ function showTooltip(volume, event = null) {
 		tooltip.style.opacity = "0";
 	}, 1500);
 }
-// ── VOLUME FUNCTIONS with 200% support ──────────────────────────────────────
+// ── VOLUME FUNCTIONS with VLC cubic curve ────────────────────────────────────
 // masterLimiter (above) provides clean 200% power — no initializeAdvancedAudio needed.
 
-// Enhanced volume update with 200% amplification
+// Enhanced volume update — delegates to updateVolume (gain value 0-8)
 function updateVolumeEnhanced(newVolume) {
-	// Clamp between 0 and 3.5 (350%)
-	newVolume = Math.max(0, Math.min(3.5, newVolume));
-	
-	// Apply to gainNode with amplification
-	if (gainNode) {
-		const amplifiedVolume = newVolume * VOLUME_CONFIG.amplificationFactor;
-		gainNode.gain.setValueAtTime(amplifiedVolume, audioContext?.currentTime || 0);
-		if (audioContext) {
-			gainNode.gain.linearRampToValueAtTime(amplifiedVolume, audioContext.currentTime + VOLUME_CONFIG.smoothingFactor);
-		}
-	}
-
-	// audioTrackPlayer is now routed through gainNode via Web Audio API.
-	// Only set HTML volume as fallback when Web Audio connection failed.
-	if (audioTrackPlayer && audioTrackPlayer.volume !== undefined) {
-		audioTrackPlayer.volume = audioTrackPlayer._webAudioConnected ? 1.0 : Math.min(1, newVolume);
-	}
-
-	// Update UI
-	volumeSlider.value = Math.round(newVolume * 100);
-	
-	// Save setting
-	saveVolumeSetting(newVolume);
-	
-	// Show tooltip
-	showTooltipEnhanced(newVolume);
+	updateVolume(newVolume);
 }
 
-// Enhanced tooltip for volume display with 200% indicator
+// Enhanced tooltip — shows display % (0-200), not raw gain
 function showTooltipEnhanced(volume) {
-	const percentage = (volume * 100).toFixed(0);
-	const displayText = percentage > 100 ? `📢 Volume: ${percentage}%` : `Volume: ${percentage}%`;
+	const pct = gainToPct(volume); // cubic inverse → display %
+	const displayText = pct > 100 ? `📢 Volume: ${pct}%` : `Volume: ${pct}%`;
 	
 	tooltip.textContent = displayText;
 	tooltip.style.opacity = '1';
@@ -4577,15 +4565,16 @@ function showTooltipEnhanced(volume) {
 	}, 1500);
 }
 
-// Volume slider input handler - use exact values
+// Volume slider input handler — display % → cubic gain
 volumeSlider.addEventListener("input", (event) => {
-	const exactVolume = parseFloat(event.target.value) / 100;
-	updateVolume(exactVolume, 'slider');
-	showTooltip(exactVolume, event); // tooltip near cursor only — no status pill
+	const displayPct = parseFloat(event.target.value); // 0-200
+	const gain = pctToGain(displayPct);                // 0-8 via cubic
+	updateVolume(gain, 'slider');
+	showTooltip(displayPct, event); // show display % (0-200) near cursor
 });
 
 volumeSlider.addEventListener("mouseenter", () => {
-	showTooltip(gainNode.gain.value); // hover shows tooltip only
+	showTooltip(gainToPct(gainNode.gain.value)); // show display % on hover
 });
 
 volumeSlider.addEventListener("mouseleave", () => {
@@ -4596,7 +4585,7 @@ volumeSlider.addEventListener("mouseleave", () => {
 
 window.addEventListener('load', () => {
 	// Force sync the slider with current volume on load
-	volumeSlider.value = Math.round(gainNode.gain.value * 100);
+	volumeSlider.value = gainToPct(gainNode.gain.value); // show display %
 	
 	// ✅ Initialize wheel scrolling for bottom playlist container ONLY
 	const bottomPlaylistContainer = document.querySelector(".playlist-container");
@@ -4621,17 +4610,16 @@ window.addEventListener('load', () => {
 	}
 });
 
-// Mouse wheel handler for slider - use same calculation
+// Mouse wheel handler for slider — step 2 display % per tick, convert to gain
 volumeSlider.addEventListener("wheel", (e) => {
 	e.preventDefault();
-	// Calculate exact steps (1% per wheel tick)
-	const step = e.deltaY > 0 ? -1 : 1;
-	let newValue = parseInt(volumeSlider.value) + step;
-	newValue = Math.max(0, Math.min(newValue, 350));
+	const step = e.deltaY > 0 ? -2 : 2; // 2 display % per tick
+	let newDisplayPct = parseInt(volumeSlider.value) + step;
+	newDisplayPct = Math.max(0, Math.min(newDisplayPct, 200));
 
-	const exactVolume = parseFloat((newValue / 100).toFixed(2));
-	updateVolume(exactVolume, 'wheel');
-	showTooltip(exactVolume, e); // tooltip near mouse only — no status pill
+	const gain = pctToGain(newDisplayPct);
+	updateVolume(gain, 'wheel');
+	showTooltip(newDisplayPct, e);
 });
 
 // Initialize tooltip for font size
@@ -4729,19 +4717,19 @@ mediaPlayer.addEventListener("wheel", (event) => {
 		setTimeout(() => { fontSizeTooltip.style.display = "none"; }, 1500);
 
 	} else {
-		// Volume adjustment with exact steps
-		const step = event.deltaY > 0 ? -0.05 : 0.05;
-		let newVolume = parseFloat((gainNode.gain.value + step).toFixed(2));
-		newVolume = Math.max(0, Math.min(3.5, newVolume));
+		// Volume: step 2 display-% per tick, convert through VLC cubic curve
+		const currentDisplayPct = gainToPct(gainNode.gain.value);
+		const step = event.deltaY > 0 ? -2 : 2;
+		const newDisplayPct = Math.max(0, Math.min(200, currentDisplayPct + step));
+		const newGain = pctToGain(newDisplayPct);
 
-		updateVolume(newVolume, 'wheel');
+		updateVolume(newGain, 'wheel');
 
-		const volumePercent = Math.round(newVolume * 100);
-		showStatusMessage(`Volume: ${volumePercent}%`, volumePercent > 100 ? 'vol-high' : 'vol-normal');
+		showStatusMessage(`Volume: ${newDisplayPct}%`, newDisplayPct > 100 ? 'vol-high' : 'vol-normal');
 
 		tooltip.style.left = `${event.pageX}px`;
 		tooltip.style.top = `${event.pageY - 30}px`;
-		tooltip.textContent = `Volume: ${Math.round(newVolume * 100)}%`;
+		tooltip.textContent = `Volume: ${newDisplayPct}%`;
 		tooltip.style.display = "block";
 
 		setTimeout(() => {
@@ -4752,18 +4740,20 @@ mediaPlayer.addEventListener("wheel", (event) => {
 
 // Update the volume button icon and tooltip
 function updateVolumeIcon() {
-	if (gainNode.gain.value === 0) {
+	const gain = gainNode.gain.value;
+	const pct  = gainToPct(gain); // 0-200 display %
+	if (gain === 0) {
 		volumeBtn.src = "../../assets/icons/volume-mute.png";
-		volumeBtn.setAttribute("title", "Unmute"); // Update tooltip
-	} else if (gainNode.gain.value < 0.70) {
+		volumeBtn.setAttribute("title", "Unmute");
+	} else if (pct < 40) {       // < 40% display = gain < 0.064
 		volumeBtn.src = "../../assets/icons/volume-low.png";
-		volumeBtn.setAttribute("title", "Volume Low"); // Update tooltip
-	} else if (gainNode.gain.value < 1.2) {
+		volumeBtn.setAttribute("title", "Volume Low");
+	} else if (pct <= 100) {     // 40-100% display = unity and below
 		volumeBtn.src = "../../assets/icons/volume.png";
-		volumeBtn.setAttribute("title", "Normal Volume"); // Update tooltip
-	} else {
+		volumeBtn.setAttribute("title", "Normal Volume");
+	} else {                      // > 100% = boosted
 		volumeBtn.src = "../../assets/icons/volume-high.png";
-		volumeBtn.setAttribute("title", "Mute"); // Update tooltip
+		volumeBtn.setAttribute("title", "Mute");
 	}
 }
 
@@ -5861,17 +5851,19 @@ document.querySelectorAll(".quit").forEach((element) => {
 // Volume menu buttons — show status pill (no cursor = no tooltip)
 document.querySelectorAll(".increase-volume").forEach((element) => {
 	element.addEventListener("click", () => {
-		const newVol = Math.min(3.5, parseFloat((gainNode.gain.value + 0.1).toFixed(2)));
+		const newPct = Math.min(200, gainToPct(gainNode.gain.value) + 5);
+		const newVol = pctToGain(newPct);
 		updateVolume(newVol);
-		showStatusMessage(`Volume: ${Math.round(newVol * 100)}%`, Math.round(newVol * 100) > 100 ? 'vol-high' : 'vol-normal');
+		showStatusMessage(`Volume: ${newPct}%`, newPct > 100 ? 'vol-high' : 'vol-normal');
 	});
 });
 
 document.querySelectorAll(".decrease-volume").forEach((element) => {
 	element.addEventListener("click", () => {
-		const newVol = Math.max(0, parseFloat((gainNode.gain.value - 0.1).toFixed(2)));
+		const newPct = Math.max(0, gainToPct(gainNode.gain.value) - 5);
+		const newVol = pctToGain(newPct);
 		updateVolume(newVol);
-		showStatusMessage(`Volume: ${Math.round(newVol * 100)}%`, Math.round(newVol * 100) > 100 ? 'vol-high' : 'vol-normal');
+		showStatusMessage(`Volume: ${newPct}%`, newPct > 100 ? 'vol-high' : 'vol-normal');
 	});
 });
 
@@ -6040,14 +6032,16 @@ document.addEventListener("keydown", (event) => {
 	if (!_plOpen) {
 		if (event.key === "ArrowUp") {
 			event.preventDefault();
-			const newVol = Math.min(3.5, parseFloat((gainNode.gain.value + 0.05).toFixed(2)));
+			const newPct = Math.min(200, gainToPct(gainNode.gain.value) + 5);
+			const newVol = pctToGain(newPct);
 			updateVolume(newVol);
-			showStatusMessage(`Volume: ${Math.round(newVol * 100)}%`, Math.round(newVol * 100) > 100 ? 'vol-high' : 'vol-normal');
+			showStatusMessage(`Volume: ${newPct}%`, newPct > 100 ? 'vol-high' : 'vol-normal');
 		} else if (event.key === "ArrowDown") {
 			event.preventDefault();
-			const newVol = Math.max(0, parseFloat((gainNode.gain.value - 0.05).toFixed(2)));
+			const newPct = Math.max(0, gainToPct(gainNode.gain.value) - 5);
+			const newVol = pctToGain(newPct);
 			updateVolume(newVol);
-			showStatusMessage(`Volume: ${Math.round(newVol * 100)}%`, Math.round(newVol * 100) > 100 ? 'vol-high' : 'vol-normal');
+			showStatusMessage(`Volume: ${newPct}%`, newPct > 100 ? 'vol-high' : 'vol-normal');
 		}
 	}
 
@@ -8018,16 +8012,18 @@ window.electron.onPrevious(() => {
 
 // Handle volume increase action from tray
 window.electron.onIncreaseVolume(() => {
-	const newVol = Math.min(3.5, parseFloat((gainNode.gain.value + 0.1).toFixed(2)));
+	const newPct = Math.min(200, gainToPct(gainNode.gain.value) + 5);
+	const newVol = pctToGain(newPct);
 	updateVolume(newVol);
-	showStatusMessage(`Volume: ${Math.round(newVol * 100)}%`, Math.round(newVol * 100) > 100 ? 'vol-high' : 'vol-normal');
+	showStatusMessage(`Volume: ${newPct}%`, newPct > 100 ? 'vol-high' : 'vol-normal');
 });
 
 // Handle volume decrease action from tray
 window.electron.onDecreaseVolume(() => {
-	const newVol = Math.max(0, parseFloat((gainNode.gain.value - 0.1).toFixed(2)));
+	const newPct = Math.max(0, gainToPct(gainNode.gain.value) - 5);
+	const newVol = pctToGain(newPct);
 	updateVolume(newVol);
-	showStatusMessage(`Volume: ${Math.round(newVol * 100)}%`, Math.round(newVol * 100) > 100 ? 'vol-high' : 'vol-normal');
+	showStatusMessage(`Volume: ${newPct}%`, newPct > 100 ? 'vol-high' : 'vol-normal');
 });
 
 // Handle mute action from tray
@@ -8914,521 +8910,253 @@ document.addEventListener('DOMContentLoaded', () => {
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // SHORTCUT EDITOR  (F6)
-// Lets the user re-bind all keyboard shortcuts live.
-// Bindings persist in localStorage as JSON.
 // ═══════════════════════════════════════════════════════════════════════════════
 
-// Default shortcut bindings — key = action ID, value = { key, ctrl, shift, alt, meta }
+const SC_GROUPS = [
+  { label: 'Playback',   ids: ['play-pause','seek-back-5','seek-fwd-5','seek-back-10','seek-fwd-10','seek-back-60','seek-fwd-60'] },
+  { label: 'Volume',     ids: ['volume-up','volume-down','mute'] },
+  { label: 'Speed',      ids: ['speed-up','speed-down','speed-reset'] },
+  { label: 'Navigation', ids: ['next','previous','shuffle','loop','next-chapter','prev-chapter'] },
+  { label: 'View',       ids: ['fullscreen','pip','zoom-in'] },
+  { label: 'Tracks',     ids: ['subtitle-cycle','audio-cycle','sub-delay-minus','sub-delay-plus','audio-delay-minus','audio-delay-plus'] },
+  { label: 'Files',      ids: ['open-file','open-folder','rename'] },
+  { label: 'Tools',      ids: ['video-effects','track-sync','show-time','shortcuts','minimize'] },
+];
+
 const DEFAULT_SHORTCUTS = {
-	'play-pause':         { key: ' ',           ctrl: false, shift: false, alt: false, label: 'Play / Pause' },
-	'seek-back-10':       { key: 'ArrowLeft',   ctrl: false, shift: false, alt: false, label: 'Seek Back 10s' },
-	'seek-fwd-10':        { key: 'ArrowRight',  ctrl: false, shift: false, alt: false, label: 'Seek Forward 10s' },
-	'seek-back-5':        { key: 'ArrowLeft',   ctrl: false, shift: true,  alt: false, label: 'Seek Back 5s' },
-	'seek-fwd-5':         { key: 'ArrowRight',  ctrl: false, shift: true,  alt: false, label: 'Seek Forward 5s' },
-	'seek-back-60':       { key: 'ArrowLeft',   ctrl: true,  shift: false, alt: false, label: 'Seek Back 60s' },
-	'seek-fwd-60':        { key: 'ArrowRight',  ctrl: true,  shift: false, alt: false, label: 'Seek Forward 60s' },
-	'volume-up':          { key: 'ArrowUp',     ctrl: false, shift: false, alt: false, label: 'Volume Up' },
-	'volume-down':        { key: 'ArrowDown',   ctrl: false, shift: false, alt: false, label: 'Volume Down' },
-	'mute':               { key: 'm',           ctrl: false, shift: false, alt: false, label: 'Mute' },
-	'fullscreen':         { key: 'f',           ctrl: false, shift: false, alt: false, label: 'Fullscreen' },
-	'next':               { key: 'n',           ctrl: false, shift: false, alt: false, label: 'Next Video' },
-	'previous':           { key: 'p',           ctrl: false, shift: false, alt: false, label: 'Previous Video' },
-	'shuffle':            { key: 's',           ctrl: false, shift: false, alt: false, label: 'Toggle Shuffle' },
-	'loop':               { key: 'l',           ctrl: false, shift: false, alt: false, label: 'Toggle Loop' },
-	'open-file':          { key: 'o',           ctrl: true,  shift: false, alt: false, label: 'Open File' },
-	'open-folder':        { key: 'f',           ctrl: true,  shift: false, alt: false, label: 'Open Folder' },
-	'video-effects':      { key: 'e',           ctrl: true,  shift: false, alt: false, label: 'Video Effects' },
-	'track-sync':         { key: 'y',           ctrl: true,  shift: false, alt: false, label: 'Track Sync Tool' },
-	'rename':             { key: 'F2',          ctrl: false, shift: false, alt: false, label: 'Rename File' },
-	'shortcuts':          { key: 'F6',          ctrl: false, shift: false, alt: false, label: 'Shortcut Editor' },
-	'zoom-in':            { key: 'z',           ctrl: false, shift: false, alt: false, label: 'Cycle Zoom' },
-	'pip':                { key: 'p',           ctrl: true,  shift: false, alt: false, label: 'Picture-in-Picture' },
-	'subtitle-cycle':     { key: 'v',           ctrl: false, shift: false, alt: false, label: 'Cycle Subtitle Track' },
-	'audio-cycle':        { key: 'b',           ctrl: false, shift: false, alt: false, label: 'Cycle Audio Track' },
-	'speed-up':           { key: '+',           ctrl: false, shift: false, alt: false, label: 'Speed Up' },
-	'speed-down':         { key: '-',           ctrl: false, shift: false, alt: false, label: 'Speed Down' },
-	'speed-reset':        { key: '=',           ctrl: false, shift: false, alt: false, label: 'Reset Speed' },
-	'show-time':          { key: 't',           ctrl: false, shift: false, alt: false, label: 'Show Current Time' },
-	'next-chapter':       { key: ']',           ctrl: false, shift: false, alt: false, label: 'Next Chapter' },
-	'prev-chapter':       { key: '[',           ctrl: false, shift: false, alt: false, label: 'Previous Chapter' },
-	'audio-delay-minus':  { key: 'g',           ctrl: false, shift: false, alt: false, label: 'Audio Delay −' },
-	'audio-delay-plus':   { key: 'h',           ctrl: false, shift: false, alt: false, label: 'Audio Delay +' },
-	'sub-delay-minus':    { key: 'd',           ctrl: false, shift: false, alt: false, label: 'Subtitle Delay −' },
-	'sub-delay-plus':     { key: 'e',           ctrl: false, shift: false, alt: false, label: 'Subtitle Delay +' },
-	'minimize':           { key: '`',           ctrl: true,  shift: false, alt: false, label: 'Minimize Window' },
+  'play-pause':         { key: ' ',           ctrl: false, shift: false, alt: false, label: 'Play / Pause' },
+  'seek-back-10':       { key: 'ArrowLeft',   ctrl: false, shift: false, alt: false, label: 'Seek Back 10s' },
+  'seek-fwd-10':        { key: 'ArrowRight',  ctrl: false, shift: false, alt: false, label: 'Seek Forward 10s' },
+  'seek-back-5':        { key: 'ArrowLeft',   ctrl: false, shift: true,  alt: false, label: 'Seek Back 5s' },
+  'seek-fwd-5':         { key: 'ArrowRight',  ctrl: false, shift: true,  alt: false, label: 'Seek Forward 5s' },
+  'seek-back-60':       { key: 'ArrowLeft',   ctrl: true,  shift: false, alt: false, label: 'Seek Back 60s' },
+  'seek-fwd-60':        { key: 'ArrowRight',  ctrl: true,  shift: false, alt: false, label: 'Seek Forward 60s' },
+  'volume-up':          { key: 'ArrowUp',     ctrl: false, shift: false, alt: false, label: 'Volume Up' },
+  'volume-down':        { key: 'ArrowDown',   ctrl: false, shift: false, alt: false, label: 'Volume Down' },
+  'mute':               { key: 'm',           ctrl: false, shift: false, alt: false, label: 'Mute' },
+  'fullscreen':         { key: 'f',           ctrl: false, shift: false, alt: false, label: 'Fullscreen' },
+  'next':               { key: 'n',           ctrl: false, shift: false, alt: false, label: 'Next Video' },
+  'previous':           { key: 'p',           ctrl: false, shift: false, alt: false, label: 'Previous Video' },
+  'shuffle':            { key: 's',           ctrl: false, shift: false, alt: false, label: 'Toggle Shuffle' },
+  'loop':               { key: 'l',           ctrl: false, shift: false, alt: false, label: 'Toggle Loop' },
+  'open-file':          { key: 'o',           ctrl: true,  shift: false, alt: false, label: 'Open File' },
+  'open-folder':        { key: 'f',           ctrl: true,  shift: false, alt: false, label: 'Open Folder' },
+  'video-effects':      { key: 'e',           ctrl: true,  shift: false, alt: false, label: 'Video Effects' },
+  'track-sync':         { key: 'y',           ctrl: true,  shift: false, alt: false, label: 'Track Sync Tool' },
+  'rename':             { key: 'F2',          ctrl: false, shift: false, alt: false, label: 'Rename File' },
+  'shortcuts':          { key: 'F6',          ctrl: false, shift: false, alt: false, label: 'Shortcut Editor' },
+  'zoom-in':            { key: 'z',           ctrl: false, shift: false, alt: false, label: 'Cycle Zoom' },
+  'pip':                { key: 'p',           ctrl: true,  shift: false, alt: false, label: 'Picture-in-Picture' },
+  'subtitle-cycle':     { key: 'v',           ctrl: false, shift: false, alt: false, label: 'Cycle Subtitle Track' },
+  'audio-cycle':        { key: 'b',           ctrl: false, shift: false, alt: false, label: 'Cycle Audio Track' },
+  'speed-up':           { key: '+',           ctrl: false, shift: false, alt: false, label: 'Speed Up' },
+  'speed-down':         { key: '-',           ctrl: false, shift: false, alt: false, label: 'Speed Down' },
+  'speed-reset':        { key: '=',           ctrl: false, shift: false, alt: false, label: 'Reset Speed' },
+  'show-time':          { key: 't',           ctrl: false, shift: false, alt: false, label: 'Show Current Time' },
+  'next-chapter':       { key: ']',           ctrl: false, shift: false, alt: false, label: 'Next Chapter' },
+  'prev-chapter':       { key: '[',           ctrl: false, shift: false, alt: false, label: 'Previous Chapter' },
+  'audio-delay-minus':  { key: 'g',           ctrl: false, shift: false, alt: false, label: 'Audio Delay −' },
+  'audio-delay-plus':   { key: 'h',           ctrl: false, shift: false, alt: false, label: 'Audio Delay +' },
+  'sub-delay-minus':    { key: 'd',           ctrl: false, shift: false, alt: false, label: 'Subtitle Delay −' },
+  'sub-delay-plus':     { key: 'e',           ctrl: false, shift: false, alt: false, label: 'Subtitle Delay +' },
+  'minimize':           { key: '`',           ctrl: true,  shift: false, alt: false, label: 'Minimize Window' },
 };
 
-// ── Hold-? shortcut cheat-sheet overlay ──────────────────────────────────────
-(function _initHelpOverlay() {
-	let _helpOverlay = null;
-
-	function _buildOverlay() {
-		const el = document.createElement('div');
-		el.id = 'shortcutHelpOverlay';
-		el.style.cssText = [
-			'position:fixed','inset:0','z-index:9999',
-			'background:rgba(0,0,0,0.82)','display:none',
-			'align-items:center','justify-content:center',
-			'pointer-events:none',
-		].join(';');
-
-		const box = document.createElement('div');
-		box.style.cssText = [
-			'background:#1a1a1a','border:1px solid rgba(255,255,255,0.12)',
-			'border-radius:10px','padding:28px 36px','max-width:620px','width:90vw',
-			'max-height:80vh','overflow-y:auto',
-			'display:grid','grid-template-columns:1fr 1fr','gap:6px 32px',
-			'font-size:13px','color:#ddd',
-		].join(';');
-
-		const heading = document.createElement('div');
-		heading.style.cssText = 'grid-column:1/-1;font-size:15px;font-weight:700;margin-bottom:8px;color:#fff;';
-		heading.textContent = 'Keyboard Shortcuts  (hold ? to peek)';
-		box.appendChild(heading);
-
-		const pairs = [
-			['Space',          'Play / Pause'],
-			['← →',           'Seek ±10s'],
-			['Shift + ← →',   'Seek ±5s'],
-			['Ctrl + ← →',    'Seek ±60s'],
-			['↑ ↓',           'Volume ±5%'],
-			['m',             'Mute'],
-			['f',             'Fullscreen'],
-			['n / p',         'Next / Previous'],
-			['s',             'Shuffle'],
-			['l',             'Loop'],
-			['v',             'Cycle Subtitles'],
-			['b',             'Cycle Audio'],
-			['[ ]',           'Prev / Next Chapter'],
-			['+ / −',         'Speed Up / Down'],
-			['=',             'Reset Speed'],
-			['z',             'Cycle Zoom'],
-			['g / h',         'Audio Delay ± '],
-			['d / e',         'Subtitle Delay ±'],
-			['Ctrl+O',        'Open File'],
-			['Ctrl+F',        'Open Folder'],
-			['Ctrl+E',        'Video Effects'],
-			['Ctrl+Y',        'Track Sync'],
-			['Ctrl+Shift+S',  'Screenshot'],
-			['Shift+A',       'Audio-only Mode'],
-			['F2',            'Rename File'],
-			['F6',            'Shortcut Editor'],
-			['Shift+I',       'Watch Stats'],
-			['Shift+:',       'Playlist'],
-			['t',             'Show Time'],
-			['c',             'Chapters'],
-		];
-		pairs.forEach(([k, desc]) => {
-			const kEl = document.createElement('span');
-			kEl.style.cssText = 'font-family:monospace;background:rgba(255,255,255,0.09);border-radius:4px;padding:1px 6px;white-space:nowrap;';
-			kEl.textContent = k;
-			const dEl = document.createElement('span');
-			dEl.style.cssText = 'opacity:.75;';
-			dEl.textContent = desc;
-			box.appendChild(kEl);
-			box.appendChild(dEl);
-		});
-
-		el.appendChild(box);
-		document.body.appendChild(el);
-		return el;
-	}
-
-	document.addEventListener('keydown', (e) => {
-		if (e.key !== '?' || e.ctrlKey || e.altKey) return;
-		const active = document.activeElement;
-		if (active && (active.tagName === 'INPUT' || active.tagName === 'TEXTAREA' || active.isContentEditable)) return;
-		if (!_helpOverlay) _helpOverlay = _buildOverlay();
-		_helpOverlay.style.display = 'flex';
-	});
-
-	document.addEventListener('keyup', (e) => {
-		if (e.key !== '?') return;
-		if (_helpOverlay && !_helpOverlay._pinned) _helpOverlay.style.display = 'none';
-	});
-
-	// Escape closes it even when pinned
-	document.addEventListener('keydown', (e) => {
-		if (e.key === 'Escape' && _helpOverlay && _helpOverlay.style.display === 'flex') {
-			_helpOverlay.style.display = 'none';
-			_helpOverlay._pinned = false;
-		}
-	});
-})();
-
 let _shortcutBindings = {};
+let _scEdRecording = null; // action ID currently being recorded
 
+// ── Helpers ──────────────────────────────────────────────────────────────────
+function _keyComboLabel(b) {
+  const k = b.key === ' ' ? 'Space' : b.key;
+  const parts = [];
+  if (b.ctrl)  parts.push('Ctrl');
+  if (b.shift) parts.push('Shift');
+  if (b.alt)   parts.push('Alt');
+  parts.push(k);
+  return parts.join('+');
+}
+
+function _comboFingerprint(b) {
+  return [b.ctrl ? 1 : 0, b.shift ? 1 : 0, b.alt ? 1 : 0, (b.key || '').toLowerCase()].join('|');
+}
+
+function _hasConflict(id) {
+  const fp = _comboFingerprint(_shortcutBindings[id]);
+  return Object.entries(_shortcutBindings).some(([oid, ob]) => oid !== id && _comboFingerprint(ob) === fp);
+}
+
+// ── Persistence ───────────────────────────────────────────────────────────────
 function _loadShortcutBindings() {
-	try {
-		const saved = JSON.parse(localStorage.getItem('shortcutBindings'));
-		if (saved && typeof saved === 'object') {
-			_shortcutBindings = Object.assign({}, DEFAULT_SHORTCUTS, saved);
-		} else {
-			_shortcutBindings = Object.assign({}, DEFAULT_SHORTCUTS);
-		}
-	} catch { _shortcutBindings = Object.assign({}, DEFAULT_SHORTCUTS); }
+  try {
+    const saved = JSON.parse(localStorage.getItem('shortcutBindings'));
+    _shortcutBindings = saved && typeof saved === 'object'
+      ? Object.assign({}, DEFAULT_SHORTCUTS, saved)
+      : Object.assign({}, DEFAULT_SHORTCUTS);
+  } catch {
+    _shortcutBindings = Object.assign({}, DEFAULT_SHORTCUTS);
+  }
 }
 
 function _saveShortcutBindings() {
-	localStorage.setItem('shortcutBindings', JSON.stringify(_shortcutBindings));
-	// Also write to file via main process for persistence across profiles
-	if (window.electron && window.electron.invoke) {
-		// Fire-and-forget — failure is non-fatal
-		window.electron.invoke('save-shortcut-bindings', _shortcutBindings).catch(() => {});
-	}
+  localStorage.setItem('shortcutBindings', JSON.stringify(_shortcutBindings));
+  if (window.electron && window.electron.invoke) {
+    window.electron.invoke('save-shortcut-bindings', _shortcutBindings).catch(() => {});
+  }
 }
 
-function _keyComboLabel(binding) {
-	const parts = [];
-	if (binding.ctrl)  parts.push('Ctrl');
-	if (binding.shift) parts.push('Shift');
-	if (binding.alt)   parts.push('Alt');
-	if (binding.meta)  parts.push('Meta');
-	const k = binding.key === ' ' ? 'Space' : binding.key;
-	parts.push(k);
-	return parts.join(' + ');
+// ── Render ────────────────────────────────────────────────────────────────────
+function _scEdRender() {
+  const list = document.getElementById('scEdList');
+  if (!list) return;
+
+  const q = (document.getElementById('scEdSearch')?.value || '').toLowerCase().trim();
+  let html = '';
+  let total = 0;
+
+  SC_GROUPS.forEach(group => {
+    const rows = group.ids.filter(id =>
+      _shortcutBindings[id] && (!q || _shortcutBindings[id].label.toLowerCase().includes(q))
+    );
+    if (!rows.length) return;
+    total += rows.length;
+
+    html += `<div style="font-size:10px;font-weight:600;color:var(--m-muted);letter-spacing:0.08em;text-transform:uppercase;padding:10px 16px 4px;user-select:none;">${group.label}</div>`;
+
+    rows.forEach(id => {
+      const b = _shortcutBindings[id];
+      const isRec      = _scEdRecording === id;
+      const isConflict = !isRec && _hasConflict(id);
+
+      let kbdClass = 'sc-ed-kbd';
+      if (isRec)      kbdClass += ' sc-ed-kbd--rec';
+      if (isConflict) kbdClass += ' sc-ed-kbd--conflict';
+
+      html += `
+        <div class="sc-ed-row" data-id="${id}">
+          <span class="sc-ed-lbl">${b.label}</span>
+          <div style="display:flex;align-items:center;gap:6px;">
+            ${isConflict ? `<span title="Conflicts with another shortcut" style="font-size:11px;color:rgba(255,100,80,0.8);">⚠</span>` : ''}
+            <span class="${kbdClass}" data-action="${id}">${isRec ? '⌨ …' : _keyComboLabel(b)}</span>
+            <button class="sc-ed-reset-one" data-action="${id}" title="Reset to default">↺</button>
+          </div>
+        </div>`;
+    });
+  });
+
+  list.innerHTML = total
+    ? html
+    : `<div style="font-size:12px;color:var(--m-muted);text-align:center;padding:28px 0;">No shortcuts match</div>`;
+
+  // Wire click-to-record on kbd chips
+  list.querySelectorAll('.sc-ed-kbd[data-action]').forEach(chip => {
+    chip.addEventListener('click', () => _scEdStartRecording(chip.dataset.action));
+  });
+
+  // Wire per-row reset buttons
+  list.querySelectorAll('.sc-ed-reset-one').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const id = btn.dataset.action;
+      if (DEFAULT_SHORTCUTS[id]) {
+        _shortcutBindings[id] = Object.assign({}, DEFAULT_SHORTCUTS[id]);
+        _saveShortcutBindings();
+        _scEdRender();
+      }
+    });
+  });
 }
 
+// ── Recording ─────────────────────────────────────────────────────────────────
+function _scEdStartRecording(actionId) {
+  if (_scEdRecording) return; // already recording — ignore double-click
+  _scEdRecording = actionId;
+  _scEdRender();
 
+  function _capture(e) {
+    e.preventDefault();
+    e.stopPropagation();
 
+    if (e.key === 'Escape') {
+      _scEdRecording = null;
+      _scEdRender();
+      document.removeEventListener('keydown', _capture, true);
+      return;
+    }
+    if (['Control', 'Shift', 'Alt', 'Meta'].includes(e.key)) return;
 
-// ═══════════════════════════════════════════════════════════════════════════════
-// SKIP-INTRO  — black-frame detection
-// Samples the hidden previewVideo at t=5,10,15,20s via a sequential seek chain.
-// If mean luma < 5 we mark that window as an "intro black segment" and offer a
-// "Skip Intro" button that jumps past it.
-// ═══════════════════════════════════════════════════════════════════════════════
-function _detectBlackFrames() {
-	// Only run for video files with meaningful duration
-	if (!video.duration || video.duration < 30 || isNaN(video.duration)) return;
+    _shortcutBindings[actionId] = {
+      ..._shortcutBindings[actionId],
+      key:   e.key,
+      ctrl:  e.ctrlKey,
+      shift: e.shiftKey,
+      alt:   e.altKey,
+    };
+    _scEdRecording = null;
+    _saveShortcutBindings();
+    _scEdRender();
+    document.removeEventListener('keydown', _capture, true);
+  }
 
-	const SAMPLE_TIMES  = [5, 10, 15, 20];
-	const LUMA_THRESH   = 5;      // 0-255; below = black frame
-	const SKIP_TARGET   = 90;     // seconds to jump to when intro skipped
-
-	// Find the hidden previewVideo we already created in initSeekPreview()
-	const pv = document.querySelector('video[style*="opacity:0"]');
-	if (!pv || !pv.src) return;
-
-	// Offscreen 1×1 canvas — we only need mean luma, not an image
-	const cvs = document.createElement('canvas');
-	cvs.width = cvs.height = 1;
-	const ctx = cvs.getContext('2d', { willReadFrequently: true });
-
-	let sampleIndex    = 0;
-	let blackRunStart  = null;
-	let blackRunEnd    = null;
-	let _skipBtn       = null;
-
-	function _sample() {
-		if (sampleIndex >= SAMPLE_TIMES.length) {
-			_finalize();
-			return;
-		}
-		const t = SAMPLE_TIMES[sampleIndex];
-		if (t >= pv.duration) { _finalize(); return; }
-
-		const _onSeeked = () => {
-			pv.removeEventListener('seeked', _onSeeked);
-			try {
-				ctx.drawImage(pv, 0, 0, 1, 1);
-				const [r, g, b] = ctx.getImageData(0, 0, 1, 1).data;
-				const luma = 0.299 * r + 0.587 * g + 0.114 * b;
-				if (luma < LUMA_THRESH) {
-					if (blackRunStart === null) blackRunStart = t;
-					blackRunEnd = t;
-				}
-			} catch {}
-			sampleIndex++;
-			_sample();
-		};
-		pv.addEventListener('seeked', _onSeeked);
-		try { pv.currentTime = t; } catch { _finalize(); }
-	}
-
-	function _finalize() {
-		// Only offer skip if we found ≥2 consecutive black samples
-		if (blackRunStart === null || blackRunEnd <= blackRunStart) return;
-		const skipTo = Math.min(blackRunEnd + 5, video.duration - 5);
-		_showSkipIntroButton(skipTo);
-	}
-
-	function _showSkipIntroButton(skipTo) {
-		if (_skipBtn) _skipBtn.remove();
-		_skipBtn = document.createElement('button');
-		_skipBtn.id = 'skipIntroBtn';
-		_skipBtn.textContent = '⏭ Skip Intro';
-		_skipBtn.style.cssText = [
-			'position:absolute','bottom:72px','right:24px','z-index:300',
-			'background:rgba(20,20,20,0.88)','color:#fff','border:1px solid rgba(255,255,255,0.25)',
-			'border-radius:6px','padding:8px 18px','font-size:13px','font-weight:600',
-			'cursor:pointer','transition:opacity .3s',
-		].join(';');
-		mediaPlayer.style.position = 'relative';
-		mediaPlayer.appendChild(_skipBtn);
-
-		// Auto-hide when video passes the black segment
-		const _checkTime = () => {
-			if (video.currentTime > blackRunEnd + 1) {
-				_skipBtn?.remove();
-				_skipBtn = null;
-				video.removeEventListener('timeupdate', _checkTime);
-			}
-		};
-		video.addEventListener('timeupdate', _checkTime);
-
-		_skipBtn.addEventListener('click', () => {
-			_seekMedia(video, skipTo);
-			_skipBtn.remove();
-			_skipBtn = null;
-			video.removeEventListener('timeupdate', _checkTime);
-			showStatusMessage(`Skipped intro → ${formatTime(skipTo)}`);
-		});
-
-		// Fade out after 8 s if not clicked
-		setTimeout(() => {
-			if (_skipBtn) {
-				_skipBtn.style.opacity = '0';
-				setTimeout(() => { _skipBtn?.remove(); _skipBtn = null; }, 400);
-			}
-		}, 8000);
-	}
-
-	_sample();
+  document.addEventListener('keydown', _capture, true);
 }
 
-// ═══════════════════════════════════════════════════════════════════════════════
-// SCREENSHOT  (Ctrl+Shift+S)
-// Captures the current video frame to a canvas, encodes as PNG, and sends
-// to the main process via IPC to save alongside the media file.
-// ═══════════════════════════════════════════════════════════════════════════════
-async function _takeScreenshot() {
-	if (!video.src && !video.currentSrc) {
-		showStatusMessage('No video loaded');
-		return;
-	}
-	try {
-		const w = video.videoWidth  || 1280;
-		const h = video.videoHeight || 720;
-		const cvs = document.createElement('canvas');
-		cvs.width  = w;
-		cvs.height = h;
-		const ctx2 = cvs.getContext('2d');
-		const rotAngle = parseInt(video.dataset.rotation) || 0;
-		ctx2.save();
-		if (rotAngle === 90 || rotAngle === -90) {
-			cvs.width = h; cvs.height = w;
-			ctx2.translate(h / 2, w / 2);
-			ctx2.rotate(rotAngle * Math.PI / 180);
-			ctx2.drawImage(video, -w / 2, -h / 2, w, h);
-		} else if (rotAngle === 180) {
-			ctx2.translate(w, h);
-			ctx2.rotate(Math.PI);
-			ctx2.drawImage(video, 0, 0, w, h);
-		} else {
-			ctx2.drawImage(video, 0, 0, w, h);
-		}
-		ctx2.restore();
-
-		const dataUrl = cvs.toDataURL('image/png');
-		const base64  = dataUrl.split(',')[1];
-		const binary  = atob(base64);
-		const bytes   = new Uint8Array(binary.length);
-		for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
-
-		// Open OS save dialog — user picks exactly where the PNG lands
-		const result = await window.electron.invoke('save-screenshot', bytes.buffer);
-		if (result && result.success) {
-			const fileName = result.path.split(/[\\/]/).pop();
-			showStatusMessage(`📷 Saved: ${fileName}`);
-		} else if (result && result.canceled) {
-			// User dismissed dialog — silent
-		} else {
-			showStatusMessage('Screenshot failed');
-		}
-	} catch (err) {
-		console.error('[Screenshot]', err);
-		showStatusMessage('Screenshot failed');
-	}
-}
-
-// ═══════════════════════════════════════════════════════════════════════════════
-// STATS DASHBOARD  (Shift+I or menu)
-// Reads accumulated localStorage totals written by the timeupdate handler and
-// auto-mark-watched logic, displays them in a modal overlay.
-// ═══════════════════════════════════════════════════════════════════════════════
-function showStatsDashboard() {
-	let modal = document.getElementById('statsDashboardModal');
-	if (!modal) {
-		modal = document.createElement('div');
-		modal.id = 'statsDashboardModal';
-		modal.className = 'modal-overlay';
-		modal.innerHTML = `
-			<div class="modal-box" style="max-width:420px;min-width:300px;">
-				<div class="modal-header">
-					<span class="modal-title">📊 Watch Stats</span>
-					<button class="modal-close" id="statsModalClose">✕</button>
-				</div>
-				<div class="modal-body" id="statsModalBody" style="padding:18px 24px;line-height:2;font-size:14px;"></div>
-				<div class="modal-footer" style="padding:10px 24px;text-align:right;">
-					<button class="tool-btn" id="statsResetBtn" style="color:#e55;">Reset Stats</button>
-				</div>
-			</div>`;
-		document.body.appendChild(modal);
-		modal.querySelector('#statsModalClose').addEventListener('click', () => ModalAnimator.close(modal));
-		modal.querySelector('#statsResetBtn').addEventListener('click', () => {
-			if (!confirm('Reset all watch stats?')) return;
-			try {
-				const keys = Object.keys(localStorage).filter(k => k.startsWith('_playerStats') || k.startsWith('watched:'));
-				keys.forEach(k => localStorage.removeItem(k));
-			} catch {}
-			_renderStatsBody(modal);
-			showStatusMessage('Stats reset');
-		});
-		modal.addEventListener('click', (e) => { if (e.target === modal) ModalAnimator.close(modal); });
-	}
-	_renderStatsBody(modal);
-	ModalAnimator.open(modal);
-}
-
-function _renderStatsBody(modal) {
-	let stats = {};
-	try { stats = JSON.parse(localStorage.getItem('_playerStats') || '{}'); } catch {}
-	const totalSec   = stats.totalWatchedSeconds || 0;
-	const episodes   = stats.episodesCompleted   || 0;
-	const hours      = Math.floor(totalSec / 3600);
-	const minutes    = Math.floor((totalSec % 3600) / 60);
-	// Count distinct watched files
-	const watchedFiles = Object.keys(localStorage).filter(k => k.startsWith('watched:')).length;
-	const body = modal.querySelector('#statsModalBody');
-	body.innerHTML = `
-		<table style="width:100%;border-collapse:collapse;">
-			<tr><td style="opacity:.6;padding:4px 0;">Total watch time</td><td style="text-align:right;font-weight:600;">${hours}h ${minutes}m</td></tr>
-			<tr><td style="opacity:.6;padding:4px 0;">Episodes completed (≥85%)</td><td style="text-align:right;font-weight:600;">${episodes}</td></tr>
-			<tr><td style="opacity:.6;padding:4px 0;">Unique files watched</td><td style="text-align:right;font-weight:600;">${watchedFiles}</td></tr>
-			<tr><td style="opacity:.6;padding:4px 0;">Current playlist size</td><td style="text-align:right;font-weight:600;">${mediaFiles.length}</td></tr>
-		</table>`;
-}
-
+// ── Open / Close ──────────────────────────────────────────────────────────────
 function toggleShortcutEditor() {
-	const modal = document.getElementById('shortcutEditorModal');
-	if (!modal) { buildShortcutEditorModal(); return; }
-	if (modal.classList.contains('show') || ModalAnimator.isOpen(modal)) {
-		ModalAnimator.close(modal);
-	} else {
-		_renderShortcutEditorRows();
-		ModalAnimator.open(modal);
-	}
+  const modal = document.getElementById('shortcutEditorModal');
+  if (!modal) return;
+  if (modal.classList.contains('show') || ModalAnimator.isOpen(modal)) {
+    _scEdRecording = null;
+    ModalAnimator.close(modal);
+  } else {
+    _scEdRender();
+    ModalAnimator.open(modal);
+  }
 }
 
-function buildShortcutEditorModal() {
-	// Modal already exists in HTML — just open it
-	const modal = document.getElementById('shortcutEditorModal');
-	if (!modal) return;
-	_renderShortcutEditorRows();
-	ModalAnimator.open(modal);
-}
-
-function _renderShortcutEditorRows() {
-	const tbody = document.getElementById('shortcutEditorBody');
-	if (!tbody) return;
-	tbody.innerHTML = '';
-
-	Object.entries(_shortcutBindings).forEach(([actionId, binding]) => {
-		const tr = document.createElement('tr');
-		tr.innerHTML = `
-			<td class="sc-ed-label">${binding.label}</td>
-			<td class="sc-ed-key"><span class="sc-ed-combo" data-action="${actionId}">${_keyComboLabel(binding)}</span></td>
-			<td class="sc-ed-actions">
-				<button class="sc-ed-edit-btn" data-action="${actionId}" title="Re-bind"><img class="svg-icon sc-ed-btn-icon" src="../../assets/icons/fa/pen-to-square.svg" alt="edit"></button>
-				<button class="sc-ed-reset-btn" data-action="${actionId}" title="Reset to default"><img class="svg-icon sc-ed-btn-icon" src="../../assets/icons/fa/rotate-left.svg" alt="reset"></button>
-			</td>`;
-		tbody.appendChild(tr);
-	});
-
-	// Edit (capture next key)
-	tbody.querySelectorAll('.sc-ed-edit-btn').forEach(btn => {
-		btn.addEventListener('click', () => {
-			const actionId = btn.dataset.action;
-			const comboSpan = tbody.querySelector(`.sc-ed-combo[data-action="${actionId}"]`);
-			if (!comboSpan) return;
-			const origText = comboSpan.textContent;
-			comboSpan.textContent = '⌨ Press a key…';
-			comboSpan.style.color = '#f4a261';
-
-			function onKey(e) {
-				e.preventDefault();
-				e.stopPropagation();
-				// Ignore modifier-only presses
-				if (['Control','Shift','Alt','Meta'].includes(e.key)) return;
-
-				_shortcutBindings[actionId] = {
-					key:   e.key,
-					ctrl:  e.ctrlKey,
-					shift: e.shiftKey,
-					alt:   e.altKey,
-					meta:  e.metaKey,
-					label: _shortcutBindings[actionId].label,
-				};
-				comboSpan.textContent = _keyComboLabel(_shortcutBindings[actionId]);
-				comboSpan.style.color = '';
-				_saveShortcutBindings();
-				document.removeEventListener('keydown', onKey, { capture: true });
-			}
-
-			document.addEventListener('keydown', onKey, { capture: true, once: false });
-			// Cancel on Escape
-			document.addEventListener('keydown', function onEsc(e) {
-				if (e.key === 'Escape') {
-					comboSpan.textContent = origText;
-					comboSpan.style.color = '';
-					document.removeEventListener('keydown', onKey, { capture: true });
-					document.removeEventListener('keydown', onEsc, { capture: true });
-				}
-			}, { capture: true });
-		});
-	});
-
-	// Reset individual
-	tbody.querySelectorAll('.sc-ed-reset-btn').forEach(btn => {
-		btn.addEventListener('click', () => {
-			const actionId = btn.dataset.action;
-			if (DEFAULT_SHORTCUTS[actionId]) {
-				_shortcutBindings[actionId] = Object.assign({}, DEFAULT_SHORTCUTS[actionId]);
-				_saveShortcutBindings();
-				_renderShortcutEditorRows();
-			}
-		});
-	});
-}
-
-// Reset all button
+// ── Wire DOM on load ──────────────────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', () => {
-	const resetAllBtn = document.getElementById('shortcutEditorResetAll');
-	if (resetAllBtn) {
-		resetAllBtn.addEventListener('click', () => {
-			_shortcutBindings = Object.assign({}, DEFAULT_SHORTCUTS);
-			_saveShortcutBindings();
-			_renderShortcutEditorRows();
-			showStatusMessage('All shortcuts reset to defaults');
-		});
-	}
-	const closeBtn = document.getElementById('shortcutEditorClose');
-	if (closeBtn) {
-		closeBtn.addEventListener('click', () => {
-			ModalAnimator.close(document.getElementById('shortcutEditorModal'));
-		});
-	}
-	const helpBtn = document.getElementById('showShortcutEditorBtn');
-	if (helpBtn) helpBtn.addEventListener('click', toggleShortcutEditor);
+  const modal       = document.getElementById('shortcutEditorModal');
+  const closeBtn    = document.getElementById('shortcutEditorClose');
+  const closeBtn2   = document.getElementById('shortcutEditorClose2');
+  const resetAllBtn = document.getElementById('shortcutEditorResetAll');
+  const searchInput = document.getElementById('scEdSearch');
+  const helpBtn     = document.getElementById('showShortcutEditorBtn');
 
-	// Belt-and-suspenders: close shortcut editor modal when clicking the backdrop
-	const scModal = document.getElementById('shortcutEditorModal');
-	if (scModal) {
-		scModal.addEventListener('mousedown', (e) => {
-			if (e.target === scModal) ModalAnimator.close(scModal);
-		});
-	}
+  if (closeBtn)    closeBtn.addEventListener('click',    () => { _scEdRecording = null; ModalAnimator.close(modal); });
+  if (closeBtn2)   closeBtn2.addEventListener('click',   () => { _scEdRecording = null; ModalAnimator.close(modal); });
+  if (helpBtn)     helpBtn.addEventListener('click',     toggleShortcutEditor);
+  if (searchInput) searchInput.addEventListener('input', _scEdRender);
+  if (searchInput) searchInput.addEventListener('keydown', e => e.stopPropagation());
+
+  if (resetAllBtn) {
+    resetAllBtn.addEventListener('click', () => {
+      _scEdRecording = null;
+      _shortcutBindings = Object.fromEntries(
+        Object.entries(DEFAULT_SHORTCUTS).map(([id, b]) => [id, Object.assign({}, b)])
+      );
+      _saveShortcutBindings();
+      _scEdRender();
+      showStatusMessage('All shortcuts reset to defaults');
+    });
+  }
+
+  // Close on backdrop click; cancel any active recording
+  if (modal) {
+    modal.addEventListener('mousedown', (e) => {
+      if (e.target === modal) {
+        _scEdRecording = null;
+        ModalAnimator.close(modal);
+      }
+    });
+    modal.addEventListener('keydown', e => {
+      // Escape cancels recording without closing modal
+      if (e.key === 'Escape' && _scEdRecording) {
+        e.stopPropagation();
+        _scEdRecording = null;
+        _scEdRender();
+      }
+    });
+  }
 });
 
 // Load bindings on startup

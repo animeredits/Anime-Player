@@ -6087,121 +6087,69 @@ video:-ms-fullscreen {
 }
 .sync-apply-btn:hover::before { left: 100%; }
 
-/* ═══════════════════════════════════════════════════════════════════════════
-   NEW FEATURE STYLES  (appended by patch — do not duplicate above)
-   ═══════════════════════════════════════════════════════════════════════════ */
-
-/* ── Shortcut Editor Modal ─────────────────────────────────────────────────── */
-.sc-ed-modal-inner {
-  width: min(680px, 95vw);
-  max-height: 80vh;
+/* ── Shortcut Editor ─────────────────────────────────────────────────── */
+.sc-ed-row {
   display: flex;
-  flex-direction: column;
-}
-.sc-ed-hint {
-  font-size: 11.5px;
-  color: rgba(255,255,255,0.45);
-  padding: 6px 16px 2px;
-  line-height: 1.5;
-}
-.sc-ed-body {
-  overflow-y: auto;
-  flex: 1;
-  padding: 8px 16px 12px;
-}
-.sc-ed-table {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: 12.5px;
-}
-.sc-ed-table thead th {
-  text-align: left;
-  padding: 6px 8px;
-  color: rgba(255,255,255,0.45);
-  font-weight: 500;
-  font-size: 11px;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-  border-bottom: 1px solid rgba(255,255,255,0.08);
-}
-.sc-ed-table tbody tr:hover { background: rgba(255,255,255,0.04); }
-.sc-ed-label {
-  padding: 6px 8px;
-  color: rgba(255,255,255,0.82);
-  white-space: nowrap;
-}
-.sc-ed-key {
-  padding: 6px 8px;
-}
-.sc-ed-combo {
-  display: inline-block;
-  background: rgba(255,255,255,0.08);
-  border: 1px solid rgba(255,255,255,0.15);
+  align-items: center;
+  justify-content: space-between;
+  padding: 5px 16px;
   border-radius: 4px;
-  padding: 2px 8px;
-  font-family: monospace;
-  font-size: 12px;
-  color: rgba(255,255,255,0.85);
-  min-width: 80px;
-  text-align: center;
+  margin: 0 4px;
   cursor: default;
-  transition: color 0.2s, background 0.2s;
 }
-.sc-ed-actions {
-  padding: 4px 8px;
+.sc-ed-row:hover { background: rgba(255,255,255,0.04); }
+.sc-ed-row:hover .sc-ed-reset-one { opacity: 1; }
+
+.sc-ed-lbl {
+  font-size: 12.5px;
+  color: rgba(255,255,255,0.75);
+}
+
+.sc-ed-kbd {
+  font-family: var(--m-mono, monospace);
+  font-size: 11px;
+  color: rgba(255,255,255,0.9);
+  background: rgba(255,255,255,0.07);
+  border: 1px solid rgba(255,255,255,0.12);
+  border-radius: 5px;
+  padding: 3px 9px;
+  cursor: pointer;
   white-space: nowrap;
+  transition: border-color 0.12s;
+  user-select: none;
 }
-.sc-ed-edit-btn, .sc-ed-reset-btn {
-  background: transparent;
+.sc-ed-kbd:hover { border-color: rgba(255,255,255,0.28); }
+.sc-ed-kbd--rec {
+  background: rgba(62,207,255,0.1);
+  border-color: rgba(62,207,255,0.4);
+  color: #3ecfff;
+}
+.sc-ed-kbd--conflict {
+  background: rgba(255,80,60,0.1);
+  border-color: rgba(255,80,60,0.4);
+  color: rgba(255,130,110,0.95);
+}
+
+.sc-ed-reset-one {
+  opacity: 0;
+  background: none;
   border: none;
   cursor: pointer;
-  padding: 3px 5px;
-  border-radius: 4px;
+  padding: 2px 4px;
+  color: var(--m-muted, rgba(255,255,255,0.35));
   font-size: 13px;
-  opacity: 0.6;
-  transition: opacity 0.15s, background 0.15s;
+  line-height: 1;
+  border-radius: 4px;
+  transition: opacity 0.15s, color 0.12s;
 }
-.sc-ed-edit-btn:hover  { opacity: 1; background: rgba(255,255,255,0.1); }
-.sc-ed-reset-btn:hover { opacity: 1; background: rgba(255,200,100,0.1); }
+.sc-ed-reset-one:hover { color: rgba(255,255,255,0.7); }
+
 .sc-ed-footer {
   display: flex;
   justify-content: flex-end;
-  gap: 8px;
   padding: 10px 16px 12px;
-  border-top: 1px solid rgba(255,255,255,0.08);
+  border-top: 1px solid rgba(255,255,255,0.07);
 }
-
-/* ── Shortcut editor: colored action-button icons ──────────────────────────── */
-/* Edit button → blue pen */
-.sc-ed-btn-icon {
-  width: 13px;
-  height: 13px;
-  vertical-align: middle;
-  pointer-events: none;
-  transition: filter 0.15s ease;
-}
-.sc-ed-edit-btn .sc-ed-btn-icon {
-  filter: invert(0.45) sepia(1) saturate(7) hue-rotate(195deg) brightness(1.1) opacity(0.80);
-}
-.sc-ed-edit-btn:hover .sc-ed-btn-icon {
-  filter: invert(0.45) sepia(1) saturate(7) hue-rotate(195deg) brightness(1.45) opacity(1);
-}
-/* Reset button → amber rotate-left */
-.sc-ed-reset-btn .sc-ed-btn-icon {
-  filter: invert(0.65) sepia(1) saturate(4) hue-rotate(10deg) brightness(1.2) opacity(0.80);
-}
-.sc-ed-reset-btn:hover .sc-ed-btn-icon {
-  filter: invert(0.65) sepia(1) saturate(4) hue-rotate(10deg) brightness(1.55) opacity(1);
-}
-/* Hint-text inline icon matches edit-button colour */
-.sc-ed-hint-icon {
-  width: 11px;
-  height: 11px;
-  vertical-align: -0.1em;
-  flex-shrink: 0;
-  filter: invert(0.45) sepia(1) saturate(7) hue-rotate(195deg) brightness(1.2) opacity(0.85);
-}
-
 /* ── Seek Bar Thumbnail Preview ─────────────────────────────────────────────── */
 #seekPreview {
   transition: opacity 0.12s ease;
