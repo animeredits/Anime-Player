@@ -1175,24 +1175,122 @@ function adjustAudioDelay(delta) {
 	showStatusMessage(`Audio delay: ${_audioDelay > 0 ? '+' : ''}${_audioDelay.toFixed(3)}s`);
 }
 
+// Replace adjustSubtitleDelay()
 function adjustSubtitleDelay(delta) {
 	_subDelay = Math.round((_subDelay + delta) * 1000) / 1000;
 	const el = document.getElementById('subDelayVal');
 	if (el) el.textContent = _subDelay.toFixed(3);
-	// Apply subtitle offset to all active cues
-	for (let i = 0; i < video.textTracks.length; i++) {
-		const track = video.textTracks[i];
-		if (track.mode === 'showing' && track.cues) {
-			for (let c = 0; c < track.cues.length; c++) {
-				const cue = track.cues[c];
-				// Store original on first adjustment
-				if (cue._origStart === undefined) { cue._origStart = cue.startTime; cue._origEnd = cue.endTime; }
-				cue.startTime = cue._origStart + _subDelay;
-				cue.endTime   = cue._origEnd   + _subDelay;
-			}
-		}
-	}
+
+	// Apply offset to all active cues on the current track
+	const track = Array.from(video.textTracks)[currentSubtitleIndex];
+	if (track && track.cues) {
+		for (let c = 0; c < track.cues.length; c++) {
+			const cue = track.cues[c];
+		  if (cue._origStart === undefined) { cue._origStart = cue.startTime; cue._origEnd = cue.endTime; }
+		  cue.startTime = cue._origStart + _subDelay;
+		  cue.endTime = cue._origEnd + _subDelay;
+	  }
+  }
+
+	// Persist so it survives track switches for the same file
+	const _subDelayKey = 'subDelay:' + (mediaFiles[currentVideoIndex] || '');
+	try { localStorage.setItem(_subDelayKey, _subDelay); } catch { }
+
 	showStatusMessage(`Subtitle delay: ${_subDelay > 0 ? '+' : ''}${_subDelay.toFixed(3)}s`);
+}
+
+// Replace switchSubtitleTrack() — add delay restore after activation
+function switchSubtitleTrack(index) {
+	currentSubtitleIndex = index;
+	_subtitleTeardown();
+
+	const _subKey = 'lastSub:' + (mediaFiles[currentVideoIndex] || '');
+	try { localStorage.setItem(_subKey, index); } catch { }
+
+	document.querySelectorAll('.subtitle-item').forEach(el =>
+		el.classList.toggle('active', parseInt(el.dataset.index) === index)
+	);
+
+	if (index === -1) {
+		showStatusMessage('Subtitles Off');
+		return;
+	}
+
+	const track = Array.from(video.textTracks)[index];
+	if (!track) {
+		console.warn('[Sub] No textTrack at index', index);
+		return;
+	}
+
+	track.mode = 'hidden';
+	_subTrack = track;
+
+	function _afterActivate() {
+		// Restore saved subtitle delay for this file
+		const _subDelayKey = 'subDelay:' + (mediaFiles[currentVideoIndex] || '');
+		try {
+			const saved = parseFloat(localStorage.getItem(_subDelayKey));
+			if (!isNaN(saved) && saved !== 0) {
+				_subDelay = 0; // start from 0 so adjustSubtitleDelay applies the full delta
+				adjustSubtitleDelay(saved);
+				const el = document.getElementById('subDelayVal');
+				if (el) el.textContent = _subDelay.toFixed(3);
+			}
+		} catch { }
+	}
+
+	if (track.cues && track.cues.length > 0) {
+		_attachSubtitleListeners(track);
+		_afterActivate();
+		showStatusMessage('Subtitle: ' + (track.label || `Track ${index + 1}`));
+		return;
+	}
+
+	let waited = 0;
+	_subReadyTimer = setInterval(() => {
+		waited += 80;
+		if (track.cues && track.cues.length > 0) {
+			clearInterval(_subReadyTimer);
+			_subReadyTimer = null;
+			_attachSubtitleListeners(track);
+			_afterActivate();
+			showStatusMessage('Subtitle: ' + (track.label || `Track ${index + 1}`));
+		} else if (waited >= 5000) {
+			clearInterval(_subReadyTimer);
+			_subReadyTimer = null;
+			console.warn('[Sub] Cues never loaded for track', index);
+			showStatusMessage('Subtitle: no cues found');
+		}
+	}, 80);
+}
+
+// Replace stopPlayback() — add _subDelay reset
+function stopPlayback() {
+	video.pause();
+	stopExternalAudio();
+	video.style.display = "none";
+	updateVideoTitle(video.dataset.videoId);
+	updatePlayPauseIcon(false);
+	playedVideos = [];
+	video.currentTime = 0;
+	updateSeekBar();
+	currentTimeDisplay.textContent = formatTime(0);
+	seekBar.style.width = `0%`;
+	seekBarHandle.style.left = `0%`;
+	audioImage.style.display = "none";
+	document.getElementById("audioLogo").style.display = "none";
+	stopGifPlayback();
+	updateNavigationButtons();
+
+	// Reset subtitle delay state
+	_subDelay = 0;
+	const el = document.getElementById('subDelayVal');
+	if (el) el.textContent = '0.000';
+
+	const cleanupPromise = window.electron.invoke('cleanup-subtitles');
+	if (cleanupPromise && typeof cleanupPromise.catch === 'function') {
+		cleanupPromise.catch(e => console.warn('Subtitle cleanup:', e));
+	}
 }
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -1891,7 +1989,7 @@ async function loadMediaFile(filePath, fileName) {
 		video.style.display = "none";
 		document.getElementById("noMediaLogo").style.display = "block";
 		audioImage.style.display = "none";
-		document.getElemezntById("audioLogo").style.display = "none";
+		document.getElementById("audioLogo").style.display = "none";
 		return false; // ✅ Return false on empty path
 	}
 
@@ -2039,53 +2137,6 @@ currentMedia.addEventListener("loadedmetadata", async () => {
 			? loadChaptersFromFile(mediaFiles[currentVideoIndex])
 			: Promise.resolve(),
 	]).catch(() => {});
-});
-
-video.addEventListener("ended", async () => {
-  // ── Reset freeze-frame overlay if still visible ──────────────────────────
-  if (typeof _releaseFreezeFrame === 'function') _releaseFreezeFrame();
-  resetZoom();
-
-  // ── Determine what to play next ──────────────────────────────────────────
-  // NOTE: when video.loop = true (isRepeatMode === 1), browsers do NOT fire
-  // 'ended' — the loop is transparent. This handler only fires for:
-  //   • isRepeatMode 0 (no repeat) — stop or advance
-  //   • isRepeatMode 2 (repeat all) — advance with wrap
-  //   • Edge case: some Chromium builds DO fire ended on loop start
-
-  const nextIndex = getNextIndex();
-
-  if (nextIndex !== null) {
-    // ── Hide UI during transition for seamless feel ──────────────────────
-    const _mc  = document.querySelector('.video-controls-container');
-    const _nav = document.querySelector('nav');
-    const _na  = document.querySelector('.nav-arrows');
-    const _wb  = document.querySelector('.win-buttons');
-    video.style.cursor = 'none';
-    [_nav, _mc].forEach(el => { if (el) { el.classList.add('hidden'); el.classList.remove('visible'); } });
-    [_na, _wb].forEach(el => { if (el)   el.classList.add('hidden'); });
-
-    // Stop external audio cleanly BEFORE loading the new file
-    // (avoids the old stream and new stream overlapping)
-    stopExternalAudio();
-
-    await playVideoByIndex(nextIndex);
-  } else {
-    // No next video — stop cleanly
-    stopExternalAudio();
-    stopPlayback();
-    updateNavigationButtons();
-    updateSeekBar();
-    updateDurationDisplay();
-
-    if (isShutdownAtPlaylistEndEnabled) {
-      window.electron.sendShutdownRequest();
-    }
-  }
-
-  if (isShutdownAtVideoEndEnabled) {
-    window.electron.sendShutdownRequest();
-  }
 });
 
 // ── REPLACE the existing startExternalAudio() function ──────────────────────
@@ -2310,34 +2361,33 @@ async function playVideoByIndex(index, skipHistoryUpdate = false) {
 }
 
 video.addEventListener("ended", async () => {
+	if (typeof _releaseFreezeFrame === 'function') _releaseFreezeFrame();
+	resetZoom();
+
 	const nextIndex = getNextIndex();
+
 	if (nextIndex !== null) {
-		// ── Seamless next-video transition ──────────────────────────────────
-		const _mc  = document.querySelector(".video-controls-container");
-		const _nav = document.querySelector("nav");
-		const _na  = document.querySelector(".nav-arrows");
-		const _wb  = document.querySelector(".win-buttons");
-		video.style.cursor = "none";
-		if (_nav) { _nav.classList.add("hidden"); _nav.classList.remove("visible"); }
-		if (_mc)  { _mc.classList.add("hidden");  _mc.classList.remove("visible"); }
-		if (_na)  { _na.classList.add("hidden"); }
-		if (_wb)  { _wb.classList.add("hidden");  _wb.classList.remove("visible"); }
-		// ────────────────────────────────────────────────────────────────────
-		// ✅ Make playVideoByIndex async call
-		await playVideoByIndex(nextIndex);
-	} else {
-		stopPlayback();
+	  const _mc = document.querySelector('.video-controls-container');
+	  const _nav = document.querySelector('nav');
+	  const _na = document.querySelector('.nav-arrows');
+	  const _wb = document.querySelector('.win-buttons');
+	  video.style.cursor = 'none';
+	  [_nav, _mc].forEach(el => { if (el) { el.classList.add('hidden'); el.classList.remove('visible'); } });
+	  [_na, _wb].forEach(el => { if (el) el.classList.add('hidden'); });
 
-		// Shutdown PC if the "Shutdown at end of playlist" checkbox is checked
-		if (isShutdownAtPlaylistEndEnabled) {
-			window.electron.sendShutdownRequest();
-		}
-	}
+	  stopExternalAudio();
+	  await playVideoByIndex(nextIndex);
+  } else {
+	  stopExternalAudio();
+	  stopPlayback();
+	  updateNavigationButtons();
+	  updateSeekBar();
+	  updateDurationDisplay();
 
-	// Shutdown PC if the "Shutdown at end of video" checkbox is checked
-	if (isShutdownAtVideoEndEnabled) {
-		window.electron.sendShutdownRequest(); 
-	}
+	  if (isShutdownAtPlaylistEndEnabled) window.electron.sendShutdownRequest();
+  }
+
+	if (isShutdownAtVideoEndEnabled) window.electron.sendShutdownRequest();
 });
 
 // 🟢 Open file dialog - replaces playlist and plays instantly
@@ -8291,48 +8341,52 @@ async function populateAudioDevices() {
 
 	let devices = [];
 	try {
-		// Only enumerate — never call getUserMedia().
-		// getUserMedia({audio:true}) triggers the OS microphone indicator
-		// even though we only need OUTPUT (speaker) devices for setSinkId().
-		const all = await navigator.mediaDevices.enumerateDevices();
-		devices = all.filter(d => d.kind === 'audiooutput');
-	} catch (e) {
-		console.warn('[AudioDevice] enumerateDevices failed:', e);
-	}
+	  const all = await navigator.mediaDevices.enumerateDevices();
+	  devices = all.filter(d => d.kind === 'audiooutput');
+  } catch (e) {
+	  console.warn('[AudioDevice] enumerateDevices failed:', e);
+  }
 
 	_devicesPopulated = true;
 
+	// Friendly label for well-known device IDs
+	function _friendlyLabel(device, index) {
+		const id = device.deviceId || 'default';
+		if (device.label && device.label.trim()) return device.label.trim();
+		if (id === 'default') return 'System Default';
+		if (id === 'communications') return 'Communication Device';
+		return `Output Device ${index + 1}`;
+	}
+
 	lists.forEach(list => {
 		list.innerHTML = '';
-		const deviceList = devices.length ? devices : [{
-			deviceId: 'default',
-			label: 'Default'
-		}];
+	  const deviceList = devices.length ? devices : [{ deviceId: 'default', label: '' }];
 
-		deviceList.forEach(device => {
-			const id = device.deviceId || 'default';
-			const label = device.label || (id === 'default' ? 'Default' : `Speaker (${id.slice(0,6)})`);
-			const a = document.createElement('a');
-			a.href = 'javascript:void(0)';
-			a.className = 'device-item' + (id === currentAudioDeviceId ? ' device-active' : '');
+	  deviceList.forEach((device, index) => {
+		  const id = device.deviceId || 'default';
+		  const isActive = id === currentAudioDeviceId;
+		  const label = _friendlyLabel(device, index) + (isActive ? ' (current)' : '');
 
-			const ic = document.createElement('span');
-			ic.className = 'cm-icon';
-			ic.textContent = id === currentAudioDeviceId ? '●' : '';
+		const a = document.createElement('a');
+		a.href = 'javascript:void(0)';
+		a.className = 'device-item' + (isActive ? ' device-active' : '');
 
-			const tx = document.createElement('span');
-			tx.className = 'cm-text';
-			tx.textContent = label;
+		const ic = document.createElement('span');
+		ic.className = 'cm-icon';
+		ic.textContent = isActive ? '●' : '';
 
-			a.append(ic, tx);
-			// Use closure-safe reference — create once per item
-			a.addEventListener('click', (function(devId) {
-				return () => switchAudioDevice(devId);
-			})(id));
+		const tx = document.createElement('span');
+		tx.className = 'cm-text';
+		tx.textContent = label;
 
-			list.appendChild(a);
-		});
+		a.append(ic, tx);
+		a.addEventListener('click', (function (devId) {
+			return () => switchAudioDevice(devId);
+		})(id));
+
+		list.appendChild(a);
 	});
+  });
 }
 
 async function switchAudioDevice(deviceId) {

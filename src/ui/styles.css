@@ -6159,8 +6159,6 @@ video:-ms-fullscreen {
   border-radius: 3px;
 }
 
-/* ── M3U menu items use standard nav-row styles — no extra CSS needed ───────── */
-
 /* ── Pinch-zoom visual feedback: smooth transform during pinch ───────────────── */
 #media {
   touch-action: none;   /* prevent browser native pinch-zoom; we handle it ourselves */
