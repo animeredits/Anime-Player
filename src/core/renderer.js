@@ -132,12 +132,15 @@ let defaultFontSize = 16;
 let scale = 1;
 let zoomLevels = [1.3, 1.5, 2, 2.5, 3, 1];
 let currentZoomIndex = 0;
+let aspectRatioLevels = ['original', 'fit', 'fill', '16-9', '4-3', '21-9', '1-1'];
+let currentAspectRatioIndex = 0;
 let panX = 0;
 let panY = 0;
 let isPanning = false;
 let startX, startY;
 let minZoom = 0.25;
 let maxZoom = 3;
+const pinchZoomSensitivity = 0.9700; // smaller step for smoother pinch zoom
 let currentAspectRatio = 'original'; // Track current aspect ratio
 let recognitionActive = false;
 let isMouseOver = false;
@@ -1981,6 +1984,15 @@ document.addEventListener('DOMContentLoaded', () => {
           }
           ModalAnimator.setupOverlayClose(modal, modal.querySelector('.tool-modal-inner'));
         });
+
+		  const modals = document.querySelectorAll('.modal');
+		  modals.forEach(modal => {
+			  const closeBtn = modal.querySelector('.modalClose');
+			  if (closeBtn) {
+				  ModalAnimator.setupCloseButton(closeBtn, modal);
+			  }
+			  ModalAnimator.setupOverlayClose(modal, modal.querySelector('.modal-content'));
+		  });
       }
 
 // ✅ Function to load media file
@@ -4711,15 +4723,11 @@ let _ctrlPhysicallyDown = false;
 document.addEventListener('keydown', (e) => { if (e.key === 'Control') _ctrlPhysicallyDown = true;  }, true);
 document.addEventListener('keyup',   (e) => { if (e.key === 'Control') _ctrlPhysicallyDown = false; }, true);
 
-// Text size + zoom wheel handler
-// Ctrl+Shift+scroll         → video zoom (keyboard shortcut, legacy)
-// Trackpad pinch            → video zoom (ctrlKey synthetic, no physical Ctrl)
-// Physical Ctrl+scroll      → font size for title + subtitle (synced)
-// scroll (no modifier)      → volume
-mediaPlayer.addEventListener("wheel", (event) => {
+function handleMediaWheel(event) {
 	// Always prevent default — stops browser zoom on Ctrl+pinch and seek-bar
 	// scroll bleeding through
 	event.preventDefault();
+	event.stopPropagation();
 
 	// If the mouse is over the playlist, allow it to scroll naturally
 	if (isMouseOver) return;
@@ -4729,9 +4737,9 @@ mediaPlayer.addEventListener("wheel", (event) => {
 	if (event.ctrlKey && event.shiftKey && _ctrlPhysicallyDown) {
 		// ── Keyboard Ctrl+Shift+scroll → video zoom (legacy shortcut) ──────────
 		if (event.deltaY < 0) {
-			scale = Math.min(scale + 0.1, maxZoom);
+			scale = Math.min(scale + 0.05, maxZoom);
 		} else {
-			scale = Math.max(scale - 0.1, minZoom);
+			scale = Math.max(scale - 0.05, minZoom);
 		}
 		applyTransformations();
 		video.style.transformOrigin = "center center";
@@ -4741,7 +4749,7 @@ mediaPlayer.addEventListener("wheel", (event) => {
 		// ── Trackpad pinch (Windows/Linux) → video zoom ──────────────────────
 		// deltaY is negative when pinching out (zoom in), positive when pinching in
 		// Use exponential scaling so small and large deltas feel proportional
-		const factor = Math.pow(0.998, event.deltaY); // smooth multiplicative step
+		const factor = Math.pow(pinchZoomSensitivity, event.deltaY); // smoother step
 		scale = Math.max(minZoom, Math.min(maxZoom, scale * factor));
 		applyTransformations();
 		video.style.transformOrigin = "center center";
@@ -4757,14 +4765,6 @@ mediaPlayer.addEventListener("wheel", (event) => {
 
 		videoTitleElement.style.fontSize = `${fontSize}px`;
 		fontSizeTooltip.style.fontSize = `${fontSize}px`;
-		// Both video title and subtitle stay in sync via the CSS custom property
-		document.documentElement.style.setProperty('--subtitle-font-size', `${fontSize}px`);
-		saveFontSize(fontSize);
-
-		const fontSizePercentage = Math.round(((fontSize - minFontSize) / (maxFontSize - minFontSize)) * 100);
-		fontSizeTooltip.textContent = `Text size: ${fontSizePercentage}%`;
-		fontSizeTooltip.style.display = "block";
-		setTimeout(() => { fontSizeTooltip.style.display = "none"; }, 1500);
 
 	} else {
 		// Volume: step 2 display-% per tick, convert through VLC cubic curve
@@ -4786,7 +4786,10 @@ mediaPlayer.addEventListener("wheel", (event) => {
 			tooltip.style.display = "none";
 		}, 3900);
 	}
-});
+}
+
+mediaPlayer.addEventListener("wheel", handleMediaWheel, { passive: false });
+video.addEventListener("wheel", handleMediaWheel, { passive: false });
 
 // Update the volume button icon and tooltip
 function updateVolumeIcon() {
@@ -4946,13 +4949,59 @@ mediaPlayer.addEventListener('touchend', (e) => {
 // Chromium fires 'gesturechange' for native trackpad pinch on macOS
 mediaPlayer.addEventListener('gesturestart',  (e) => { _pinchStartScale = scale; e.preventDefault(); }, { passive: false });
 mediaPlayer.addEventListener('gesturechange', (e) => {
-	scale = Math.max(minZoom, Math.min(maxZoom, _pinchStartScale * e.scale));
+	const gestureScale = 1 + (e.scale - 1) * 0.75; // dampen native pinch sensitivity
+	scale = Math.max(minZoom, Math.min(maxZoom, _pinchStartScale * gestureScale));
 	applyTransformations();
 	e.preventDefault();
 }, { passive: false });
 mediaPlayer.addEventListener('gestureend',    (e) => {
 	showStatusMessage(`Zoom: ${Math.round(scale * 100)}%`);
 	e.preventDefault();
+}, { passive: false });
+
+video.addEventListener('touchstart', (e) => {
+	if (e.touches.length === 2) {
+		_pinchActive = true;
+		_pinchStartDist = _pinchDist(e.touches);
+		_pinchStartScale = scale;
+		_pinchMidX = (e.touches[0].clientX + e.touches[1].clientX) / 2;
+		_pinchMidY = (e.touches[0].clientY + e.touches[1].clientY) / 2;
+		e.preventDefault();
+		e.stopPropagation();
+	}
+}, { passive: false });
+
+video.addEventListener('touchmove', (e) => {
+	if (_pinchActive && e.touches.length === 2) {
+		const dist = _pinchDist(e.touches);
+		const ratio = dist / (_pinchStartDist || 1);
+		scale = Math.max(minZoom, Math.min(maxZoom, _pinchStartScale * ratio));
+		applyTransformations();
+		e.preventDefault();
+		e.stopPropagation();
+	}
+}, { passive: false });
+
+video.addEventListener('touchend', (e) => {
+	if (e.touches.length < 2 && _pinchActive) {
+		_pinchActive = false;
+		showStatusMessage(`Zoom: ${Math.round(scale * 100)}%`);
+	}
+	e.stopPropagation();
+}, { passive: true });
+
+video.addEventListener('gesturestart', (e) => { _pinchStartScale = scale; e.preventDefault(); e.stopPropagation(); }, { passive: false });
+video.addEventListener('gesturechange', (e) => {
+	const gestureScale = 1 + (e.scale - 1) * 0.75;
+	scale = Math.max(minZoom, Math.min(maxZoom, _pinchStartScale * gestureScale));
+	applyTransformations();
+	e.preventDefault();
+	e.stopPropagation();
+}, { passive: false });
+video.addEventListener('gestureend', (e) => {
+	showStatusMessage(`Zoom: ${Math.round(scale * 100)}%`);
+	e.preventDefault();
+	e.stopPropagation();
 }, { passive: false });
 
 // Function to apply both zoom, pan, and rotation
@@ -5942,7 +5991,7 @@ document.addEventListener("keydown", (event) => {
 
 		// Escape: close any open modal and blur the input
 		if (isEscape) {
-			['videoEffectsModal', 'syncToolModal', 'aboutModal', 'shortcutEditorModal'].forEach(id => {
+			['videoEffectsModal', 'syncToolModal', 'aboutModal', 'shortcutsModal'].forEach(id => {
 				const m = document.getElementById(id);
 				if (m && (m.classList.contains('show') || ModalAnimator.isOpen(m))) {
 					ModalAnimator.close(m);
@@ -5959,6 +6008,13 @@ document.addEventListener("keydown", (event) => {
 	if (event.ctrlKey && event.key.toLowerCase() === 'e') {
 		event.preventDefault();
 		toggleToolModal('videoEffectsModal');
+		return;
+	}
+
+	// Ctrl+S → Sleep Timer
+	if (event.ctrlKey && event.key.toLowerCase() === 's') {
+		event.preventDefault();
+		showTimerContainer(true);
 		return;
 	}
 
@@ -6023,11 +6079,14 @@ document.addEventListener("keydown", (event) => {
 
 	if (event.key === "?" || (!event.shiftKey && event.key === "/")) {
 		event.preventDefault();
-		const _ov = document.getElementById('shortcutHelpOverlay');
-		if (_ov) {
-			const open = _ov.style.display === 'flex';
-			_ov.style.display = open ? 'none' : 'flex';
-			_ov._pinned = !open;
+		const modal = document.getElementById('shortcutsModal');
+		if (modal) {
+			const isOpen = modal.classList.contains('show') || ModalAnimator.isOpen(modal);
+			if (isOpen) {
+				ModalAnimator.close(modal);
+			} else {
+				ModalAnimator.open(modal);
+			}
 		}
 		return;
 	}
@@ -6120,6 +6179,17 @@ document.addEventListener("keydown", (event) => {
 
 		const zoomPercentage = Math.round(scale * 100);
 		showStatusMessage(`Zoom: ${zoomPercentage}%`);
+	}
+
+	if (event.key.toLowerCase() === "a") {
+		currentAspectRatioIndex = (currentAspectRatioIndex + 1) % aspectRatioLevels.length; // Cycle through aspect ratios
+		const ratio = aspectRatioLevels[currentAspectRatioIndex];
+		applyAspectRatio(ratio);
+		updateAspectRatioUI(ratio);
+		updateAspectRatioUICM(ratio);
+		const option = document.querySelector(`[data-aspect-ratio="${ratio}"].aspect-ratio-option`);
+		const text = option ? option.querySelector('.nav-row-text').textContent : ratio;
+		showStatusMessage(`Aspect Ratio: ${text}`);
 	}
 
 	if (event.key.toLowerCase() === 't' && !event.ctrlKey) {
@@ -6330,6 +6400,7 @@ function applyAspectRatio(ratio) {
 	// Save to localStorage
 	localStorage.setItem('videoAspectRatio', ratio);
 	currentAspectRatio = ratio;
+	currentAspectRatioIndex = aspectRatioLevels.indexOf(ratio);
 }
 
 // Get and apply saved aspect ratio
@@ -6337,6 +6408,7 @@ function loadSavedAspectRatio() {
 	const savedRatio = localStorage.getItem('videoAspectRatio') || 'original';
 	applyAspectRatio(savedRatio);
 	updateAspectRatioUI(savedRatio);
+	currentAspectRatioIndex = aspectRatioLevels.indexOf(savedRatio);
 }
 
 // Update UI to show which aspect ratio is active (navbar)
@@ -6411,18 +6483,17 @@ cmAspectRatioOptions.forEach((option) => {
 loadSavedAspectRatio();
 
 
-// showShortcuts button → open the ? cheatsheet overlay (old shortcutsModal removed)
+// showShortcuts button → toggle the shortcuts modal
 const btn = document.getElementById("showShortcuts");
 if (btn) btn.onclick = () => {
-	let ov = document.getElementById('shortcutHelpOverlay');
-	if (!ov) return;
-	// Toggle: if already pinned open, close; otherwise pin open until Escape or re-click
-	if (ov.style.display === 'flex') {
-		ov.style.display = 'none';
-		ov._pinned = false;
-	} else {
-		ov.style.display = 'flex';
-		ov._pinned = true;
+	const modal = document.getElementById('shortcutsModal');
+	if (modal) {
+		const isOpen = modal.classList.contains('show') || ModalAnimator.isOpen(modal);
+		if (isOpen) {
+			ModalAnimator.close(modal);
+		} else {
+			ModalAnimator.open(modal);
+		}
 	}
 };
 
@@ -8821,9 +8892,13 @@ document.addEventListener('DOMContentLoaded', () => {
 	].join(';');
 
 	const canvas = document.createElement('canvas');
-	canvas.width  = 160;
-	canvas.height = 90;
-	canvas.style.cssText = 'width:100%;height:100%;display:block;';
+	// Use 2x resolution for sharper rendering, then CSS scales it down smoothly
+	const dpr = window.devicePixelRatio || 1;
+	const canvasDisplayWidth = 160;
+	const canvasDisplayHeight = 90;
+	canvas.width = canvasDisplayWidth * dpr;
+	canvas.height = canvasDisplayHeight * dpr;
+	canvas.style.cssText = 'width:100%;height:100%;display:block;image-rendering:auto;';
 	preview.appendChild(canvas);
 
 	const timeLabel = document.createElement('div');
@@ -8844,6 +8919,9 @@ document.addEventListener('DOMContentLoaded', () => {
 	wrapper.appendChild(preview);
 
 	const ctx = canvas.getContext('2d');
+	// Enable image smoothing for smooth downscaling
+	ctx.imageSmoothingEnabled = true;
+	ctx.imageSmoothingQuality = 'high';
 
 	// ── Hidden preview video ──────────────────────────────────────────────────
 	// A second video element that seeks independently so the main playback is
@@ -8866,6 +8944,9 @@ document.addEventListener('DOMContentLoaded', () => {
 		const src = video.currentSrc || video.src;
 		if (!src || src === _lastSrc) return;
 		_lastSrc = src;
+		// Clear canvas immediately when switching videos (prevents ghosting/blur)
+		ctx.fillStyle = '#000';
+		ctx.fillRect(0, 0, canvas.width, canvas.height);
 		previewVideo.src = src;
 		// Don't call .load() — setting .src already triggers it in most browsers
 	}
@@ -8877,17 +8958,43 @@ document.addEventListener('DOMContentLoaded', () => {
 		try {
 			const rotAngle = parseInt(video.dataset.rotation) || 0;
 			ctx.save();
-			ctx.clearRect(0, 0, 160, 90);
+			ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+			// Get video dimensions for aspect ratio calculation
+			const videoW = previewVideo.videoWidth || 160;
+			const videoH = previewVideo.videoHeight || 90;
+			const canvasW = 160 * dpr;
+			const canvasH = 90 * dpr;
+
 			if (rotAngle === 90 || rotAngle === -90) {
-				ctx.translate(80, 45);
+				ctx.translate(80 * dpr, 45 * dpr);
 				ctx.rotate(rotAngle * Math.PI / 180);
-				ctx.drawImage(previewVideo, -45, -80, 90, 160);
+				ctx.drawImage(previewVideo, -45 * dpr, -80 * dpr, 90 * dpr, 160 * dpr);
 			} else if (rotAngle === 180) {
-				ctx.translate(160, 90);
+				ctx.translate(160 * dpr, 90 * dpr);
 				ctx.rotate(Math.PI);
-				ctx.drawImage(previewVideo, 0, 0, 160, 90);
+				ctx.drawImage(previewVideo, 0, 0, 160 * dpr, 90 * dpr);
 			} else {
-				ctx.drawImage(previewVideo, 0, 0, 160, 90);
+				// Calculate aspect-fit dimensions (like object-fit: contain)
+				const videoAspect = videoW / videoH;
+				const canvasAspect = canvasW / canvasH;
+				let drawW, drawH, drawX, drawY;
+
+				if (videoAspect > canvasAspect) {
+					// Video is wider - fit to width
+					drawW = canvasW;
+					drawH = canvasW / videoAspect;
+					drawX = 0;
+					drawY = (canvasH - drawH) / 2;
+				} else {
+					// Video is taller - fit to height
+					drawH = canvasH;
+					drawW = canvasH * videoAspect;
+					drawX = (canvasW - drawW) / 2;
+					drawY = 0;
+				}
+
+				ctx.drawImage(previewVideo, drawX, drawY, drawW, drawH);
 			}
 			ctx.restore();
 		} catch (_e) {}
@@ -8923,6 +9030,14 @@ document.addEventListener('DOMContentLoaded', () => {
 	// If the preview video stalls/errors on a given time, release the lock
 	previewVideo.addEventListener('error',   () => { _seeking = false; });
 	previewVideo.addEventListener('waiting', () => { /* intentional no-op — seeked will still fire */ });
+
+	// Clear canvas when preview video starts loading a new source (prevents ghosting)
+	previewVideo.addEventListener('loadstart', () => {
+		ctx.fillStyle = '#000';
+		ctx.fillRect(0, 0, canvas.width, canvas.height);
+		_seeking = false;
+		_pendingTime = null;
+	});
 
 	// Keep src in sync when main video loads a new file
 	video.addEventListener('loadedmetadata', _syncSrc);
