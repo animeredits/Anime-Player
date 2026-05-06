@@ -1931,11 +1931,12 @@ async function validateSingleFile(filePath) {
 
 // Batch validator — 8 concurrent probes (header-only = low CPU, fast I/O).
 // progressCb(done, total) fires after each file so renderer can update UI.
-async function validateMediaFiles(filePaths, progressCb) {
+async function validateMediaFiles(filePaths, progressCb, limit) {
   const valid = [], skipped = [];
-  const CONCURRENCY = 8;
+  const CONCURRENCY = Math.min(os.cpus().length * 2, 12); // Use available cores, capped.
   let done = 0;
-  const total = filePaths.length;
+  const total = limit ? Math.min(filePaths.length, limit) : filePaths.length;
+  const filesToCheck = limit ? filePaths.slice(0, limit) : filePaths;
 
   async function probe(fp) {
     try {
@@ -1955,10 +1956,10 @@ async function validateMediaFiles(filePaths, progressCb) {
     }
   }
 
-  for (let i = 0; i < filePaths.length; i += CONCURRENCY) {
-    await Promise.all(filePaths.slice(i, i + CONCURRENCY).map(probe));
+  for (let i = 0; i < filesToCheck.length; i += CONCURRENCY) {
+    await Promise.all(filesToCheck.slice(i, i + CONCURRENCY).map(probe));
   }
-  return { valid, skipped };
+  return { valid, skipped, totalChecked: filesToCheck.length, totalFiles: filePaths.length };
 }
 
 // Open file dialog to select media files or folders
@@ -2025,17 +2026,36 @@ async function handleOpenFolderDialog() {
     // Notify renderer that validation is starting
     appState.win?.webContents.send('folder-validation-start', { total: candidates.length });
 
-    const { valid, skipped } = await validateMediaFiles(candidates, (done, total) => {
+    // Only validate first 20 files initially for ultra-fast loading
+    const INITIAL_VALIDATION_LIMIT = 20;
+    const { valid: initialValid, skipped: initialSkipped, totalChecked } = await validateMediaFiles(candidates, (done, total) => {
       appState.win?.webContents.send('folder-validation-progress', { done, total });
-    });
+    }, INITIAL_VALIDATION_LIMIT);
+
+    // Include unchecked files as valid (fail-open approach)
+    const uncheckedFiles = candidates.slice(totalChecked);
+    const allValidFiles = [...initialValid, ...uncheckedFiles];
 
     appState.win?.webContents.send('folder-validation-done', {
-      validCount:   valid.length,
-      skippedCount: skipped.length,
-      skipped:      skipped.map(s => ({ name: path.basename(s.path), reason: s.reason }))
+      validCount: allValidFiles.length,
+      skippedCount: initialSkipped.length,
+      skipped: initialSkipped.map(s => ({ name: path.basename(s.path), reason: s.reason })),
+      totalFiles: candidates.length,
+      validatedCount: totalChecked
     });
 
-    return valid.length > 0 ? valid : null;
+    // Continue validating remaining files in background
+    if (uncheckedFiles.length > 0) {
+      validateMediaFiles(candidates.slice(INITIAL_VALIDATION_LIMIT), null, candidates.length - INITIAL_VALIDATION_LIMIT).then(({ valid: remainingValid, skipped: remainingSkipped }) => {
+        if (remainingSkipped.length > 0 && appState.win) {
+          appState.win.webContents.send('background-validation-done', {
+            skipped: remainingSkipped.map(s => ({ name: path.basename(s.path), reason: s.reason }))
+          });
+        }
+      });
+    }
+
+    return allValidFiles.length > 0 ? allValidFiles : null;
   } catch (error) {
     console.error('Error reading folder:', error);
     return null;

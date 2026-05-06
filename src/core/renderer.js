@@ -2409,8 +2409,7 @@ openFileButton.addEventListener("click", async () => {
 		if (!result) return;
 
 		if (result.singleFile) {
-			// ✅ Resolve currentFile in case it has short name
-			const resolvedCurrent = await window.electron.invoke('get-real-filename', result.currentFile);
+			const resolvedCurrent = result.currentFile;
 
 			const alreadyInPlaylist = mediaFiles.indexOf(resolvedCurrent);
 			if (alreadyInPlaylist !== -1) {
@@ -2420,24 +2419,14 @@ openFileButton.addEventListener("click", async () => {
 				return;
 			}
 
-			// ✅ Resolve all sibling files in case they have short names
-			const resolvedSiblings = await Promise.all(
-				result.siblingFiles.map(fp => window.electron.invoke('get-real-filename', fp))
-			);
-
-			mediaFiles = resolvedSiblings;
+			mediaFiles = result.siblingFiles;
 			currentVideoIndex = mediaFiles.indexOf(resolvedCurrent);
 			if (currentVideoIndex === -1) {
 				mediaFiles = [resolvedCurrent];
 				currentVideoIndex = 0;
 			}
 		} else {
-			// ✅ Resolve all selected files in case they have short names
-			const resolvedFiles = await Promise.all(
-				result.files.map(fp => window.electron.invoke('get-real-filename', fp))
-			);
-
-			mediaFiles = resolvedFiles;
+			mediaFiles = result.files;
 			currentVideoIndex = 0;
 		}
 
@@ -2456,13 +2445,8 @@ openFolderButton.addEventListener("click", async () => {
 	try {
 		const folderFiles = await window.electron.openFolderDialog();
 		if (folderFiles.length > 0) {
-			// ✅ Resolve all folder files in case they have short names
-			const resolvedFiles = await Promise.all(
-				folderFiles.map(fp => window.electron.invoke('get-real-filename', fp))
-			);
-
 			// Replace entire playlist with folder contents
-			mediaFiles = resolvedFiles;
+			mediaFiles = folderFiles;
 			currentVideoIndex = 0; // Always play first video in folder
 			playMediaFile(mediaFiles[currentVideoIndex]);
 			updatePlaylistDropdown(mediaFiles);
@@ -3147,7 +3131,13 @@ function updatePlaylistDropdown(mediaFiles) {
 
 		playlistContainer.appendChild(searchWrap);
 
-		mediaFiles.forEach((filePath, index) => {
+		// Limit display to first 1000 files to prevent DOM slowdowns
+		const DISPLAY_LIMIT = 1000;
+		const filesToDisplay = mediaFiles.slice(0, DISPLAY_LIMIT);
+		const hasMoreFiles = mediaFiles.length > DISPLAY_LIMIT;
+		const fragment = document.createDocumentFragment();
+
+		filesToDisplay.forEach((filePath, index) => {
 			// Extract REAL filename (not 8.3 short name)
 			const pathParts = filePath.split(/[/\\]/);
 			const realFileName = pathParts[pathParts.length - 1];
@@ -3178,8 +3168,27 @@ function updatePlaylistDropdown(mediaFiles) {
 				e.stopPropagation(); // Block dblclick from reaching mediaPlayer dblclick → fullscreen
 			});
 
-			playlistContainer.appendChild(fileLink);
+			fragment.appendChild(fileLink);
 		});
+
+		playlistContainer.appendChild(fragment);
+
+		// Add note about total count if truncated
+		if (hasMoreFiles) {
+			const totalNote = document.createElement("div");
+			totalNote.className = "playlist-total-note";
+			totalNote.textContent = `... and ${mediaFiles.length - DISPLAY_LIMIT} more files`;
+			totalNote.style.cssText = [
+				'padding: 8px 12px',
+				'font-size: 12px',
+				'color: #888',
+				'text-align: center',
+				'border-top: 1px solid #333',
+				'margin-top: 4px',
+				'font-style: italic'
+			].join(';');
+			playlistContainer.appendChild(totalNote);
+		}
 
 		// ✅ Activate search logic (with debounce)
 		let debounceTimeout;
@@ -3329,7 +3338,12 @@ function _markCorruptItem(filePath, reason) {
 async function _scheduleCorruptionScan(files) {
 	if (!files || files.length === 0 || _corruptScanInProgress) return;
 
-	const CACHE_KEY = 'corruptScan:' + _playlistFingerprint(files);
+	// Only scan a small subset of displayed files for performance
+	// Corruption scanning is mainly for user feedback, not comprehensive validation
+	const CORRUPTION_SCAN_LIMIT = 20;
+	const filesToScan = files.slice(0, CORRUPTION_SCAN_LIMIT);
+
+	const CACHE_KEY = 'corruptScan:' + _playlistFingerprint(filesToScan);
 	let cached = null;
 	try { cached = JSON.parse(localStorage.getItem(CACHE_KEY)); } catch {}
 
@@ -3337,23 +3351,23 @@ async function _scheduleCorruptionScan(files) {
 		// Re-apply badges from cache (DOM may have been rebuilt)
 		cached.forEach(({ path: fp, reason }) => _markCorruptItem(fp, reason));
 		if (cached.length > 0) {
-			showStatusMessage(`⚠ ${cached.length} corrupt file${cached.length > 1 ? 's' : ''} in playlist (cached)`);
+			showStatusMessage(`⚠ ${cached.length} corrupt file${cached.length > 1 ? 's' : ''} in displayed playlist (cached)`);
 		}
 		return;
 	}
 
 	_corruptScanInProgress = true;
-	const total = files.length;
+	const total = filesToScan.length;
 
 	// Batch with slight delay so playlist renders first
 	await new Promise(r => setTimeout(r, 300));
-	showStatusMessage(`Scanning ${total} file${total !== 1 ? 's' : ''}…`);
+	// showStatusMessage(`Scanning ${total} displayed file${total !== 1 ? 's' : ''}…`);
 
 	let corrupt = [];
 	try {
 		// Single batch IPC call — main process runs 8 concurrent ffprobe probes
 		// and returns only the corrupt ones. Much faster than one-by-one IPC.
-		const result = await window.electron.invoke('validate-media-files-batch', files);
+		const result = await window.electron.invoke('validate-media-files-batch', filesToScan);
 		if (result && result.skipped) {
 			corrupt = result.skipped; // [{ path, reason }]
 			corrupt.forEach(({ path: fp, reason }) => _markCorruptItem(fp, reason));
@@ -3366,7 +3380,7 @@ async function _scheduleCorruptionScan(files) {
 	try { localStorage.setItem(CACHE_KEY, JSON.stringify(corrupt)); } catch {}
 
 	if (corrupt.length > 0) {
-		showStatusMessage(`⚠ ${corrupt.length} corrupt file${corrupt.length > 1 ? 's' : ''} in playlist`);
+		showStatusMessage(`⚠ ${corrupt.length} corrupt file${corrupt.length > 1 ? 's' : ''} in displayed playlist`);
 	}
 	// No "all OK" message — unnecessary noise on every playlist load
 }
