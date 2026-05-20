@@ -6,9 +6,10 @@ on:
       - main
     tags:
       - 'v*'  
-  release:
-    types:
-      - published
+  # Remove the release trigger since we want auto-publishing from tags
+  # release:
+  #   types:
+  #     - published
 
 permissions:
   contents: write
@@ -44,7 +45,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: linux-build
-          path: dist/*.AppImage 
+          path: dist/*.AppImage
 
   # Build for Windows
   build-windows:
@@ -72,16 +73,13 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: windows-build
-          path: dist/*.exe 
+          path: dist/*.exe
 
-  # Build for macOS
+  # Build for macOS - Disabled but won't block release
   build-macos:
     name: Build for macOS
     runs-on: macos-latest
-    if: false
-    # IMPORTANT: Set to false to skip Mac builds until signing is configured
-    # Change to: if: true  OR  remove this line entirely to enable
-
+    if: false  # Keep disabled until signing configured
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
@@ -94,26 +92,9 @@ jobs:
       - name: Install Dependencies
         run: npm ci
 
-      # OPTIONAL: Code signing - only needed for signed distributions
-      # See: MAC_BUILD_SETUP.md for instructions
-      # Uncomment when ready with certificates:
-      #
-      # - name: Import Apple Signing Certificate
-      #   uses: apple-actions/import-codesign-certs@v2
-      #   with:
-      #     p12-file-base64: ${{ secrets.APPLE_SIGNING_CERT_BASE64 }}
-      #     p12-password: ${{ secrets.APPLE_SIGNING_CERT_PASSWORD }}
-      #
-      # - name: Set Signing Identity
-      #   run: |
-      #     echo "CSC_IDENTITY_AUTO_DISCOVERY=false" >> $GITHUB_ENV
-      #     echo "CSC_NAME=${{ secrets.APPLE_SIGNING_CERT_NAME }}" >> $GITHUB_ENV
-      #     echo "APPLE_TEAM_ID=${{ secrets.APPLE_TEAM_ID }}" >> $GITHUB_ENV
-
       - name: Build for macOS
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          # For unsigned builds (development):
           CSC_IDENTITY_AUTO_DISCOVERY: false
         run: npm run dist -- --mac
 
@@ -125,11 +106,11 @@ jobs:
             dist/*.dmg
             dist/*.zip
 
-  # Auto-tagging job (for main branch pushes and direct tag pushes)
+  # Auto-tagging job (only for main branch pushes)
   tag-release:
     name: Auto Tag Release
     runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v')
+    if: github.ref == 'refs/heads/main'  # Only run on main branch pushes
     needs: [build-linux, build-windows]
     outputs:
       tag_created: ${{ steps.tag_marker.outputs.tag_created }}
@@ -155,9 +136,7 @@ jobs:
       - name: Determine tag creation status
         id: tag_marker
         run: |
-          if [[ "${{ github.ref }}" == refs/tags/* ]]; then
-            echo "tag_created=false" >> $GITHUB_OUTPUT
-          elif [[ "${{ steps.check_tag.outputs.tag_exists }}" == '0' ]]; then
+          if [[ "${{ steps.check_tag.outputs.tag_exists }}" == '0' ]]; then
             echo "tag_created=true" >> $GITHUB_OUTPUT
           else
             echo "tag_created=false" >> $GITHUB_OUTPUT
@@ -170,22 +149,26 @@ jobs:
           git config --global user.name "GitHub Actions"
 
       - name: Create and Push Tag
-        id: create_tag
         if: steps.check_tag.outputs.tag_exists == '0'
         run: |
           git tag -a "${{ steps.get_version.outputs.version }}" -m "Release ${{ steps.get_version.outputs.version }}"
           git push origin "${{ steps.get_version.outputs.version }}"
 
-# Release Job (runs on direct tag push OR after tag-release creates a tag)
+  # Release Job - ALWAYS publishes when there's a tag (either pushed or auto-created)
   release:
     name: Publish Release
-    needs: [build-linux, build-windows, tag-release]
+    needs: [build-linux, build-windows]  # Don't wait for tag-release
     runs-on: ubuntu-latest
-    if: startsWith(github.ref, 'refs/tags/v') || (github.ref == 'refs/heads/main' && needs.tag-release.outputs.tag_created == 'true')
+    # Trigger on tag pushes OR after tag-release creates a tag
+    if: |
+      startsWith(github.ref, 'refs/tags/v') ||
+      (github.ref == 'refs/heads/main' && needs.tag-release.result == 'success' && needs.tag-release.outputs.tag_created == 'true')
 
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Needed for changelog
 
       - name: Download Linux Artifacts
         uses: actions/download-artifact@v4
@@ -198,6 +181,7 @@ jobs:
         with:
           name: windows-build
           path: windows-dist/
+
       - name: Extract Tag Version
         id: extract_tag
         run: |
@@ -225,29 +209,46 @@ jobs:
           CHANGELOG=""
           while IFS= read -r line; do
             case "$line" in
-              feat:*|feature:*) CHANGELOG="$CHANGELOG\n[NEW] ${line#*: }" ;;
-              fix:*|bug:*)      CHANGELOG="$CHANGELOG\n[FIX] ${line#*: }" ;;
-              perf:*|optimize:*)CHANGELOG="$CHANGELOG\n[PERF] ${line#*: }" ;;
-              ui:*|style:*)     CHANGELOG="$CHANGELOG\n[UI] ${line#*: }" ;;
-              break:*|breaking:*) CHANGELOG="$CHANGELOG\n[BREAK] ${line#*: }" ;;
+              feat:*|feature:*) CHANGELOG="$CHANGELOG\n✅ NEW: ${line#*: }" ;;
+              fix:*|bug:*)      CHANGELOG="$CHANGELOG\n🔧 FIX: ${line#*: }" ;;
+              perf:*|optimize:*)CHANGELOG="$CHANGELOG\n⚡ PERF: ${line#*: }" ;;
+              ui:*|style:*)     CHANGELOG="$CHANGELOG\n🎨 UI: ${line#*: }" ;;
+              break:*|breaking:*) CHANGELOG="$CHANGELOG\n⚠️ BREAKING: ${line#*: }" ;;
             esac
           done <<< "$COMMITS"
           
           # Fallback if no conventional commits found
           if [ -z "$CHANGELOG" ]; then
-            CHANGELOG="\n[NEW] Latest improvements and fixes\n[FIX] General stability updates"
+            CHANGELOG="\n✅ Latest improvements and fixes\n🔧 General stability updates"
           fi
           
-          # Write to file
+          # Also add build info
+          CHANGELOG="$CHANGELOG\n\n---\n**Build Info:**\n- Linux: ✅\n- Windows: ✅\n- macOS: ⏸️ (disabled)"
+          
+          # Save to file and output
           echo -e "$CHANGELOG" > changelog.txt
-          echo "changelog=$(cat changelog.txt | jq -R -s '.')" >> $GITHUB_OUTPUT
+          # Use file for notes to avoid escaping issues
+          echo "changelog_file=changelog.txt" >> $GITHUB_OUTPUT
 
-      - name: Upload Release Assets with Changelog
+      - name: Create and Publish Release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          gh release create "${{ steps.extract_tag.outputs.version }}" \
-            --title "Anime Player ${{ steps.extract_tag.outputs.version }}" \
-            --notes "${{ steps.changelog.outputs.changelog }}" \
-            linux-dist/*.AppImage \
-            windows-dist/*.exe
+          # Check if release already exists
+          if gh release view "${{ steps.extract_tag.outputs.version }}" 2>/dev/null; then
+            echo "Release already exists, updating assets..."
+            # Upload/update assets to existing release
+            gh release upload "${{ steps.extract_tag.outputs.version }}" \
+              linux-dist/*.AppImage \
+              windows-dist/*.exe \
+              --clobber
+          else
+            echo "Creating new release..."
+            # Create new release (NOT draft, NOT prerelease)
+            gh release create "${{ steps.extract_tag.outputs.version }}" \
+              --title "Anime Player ${{ steps.extract_tag.outputs.version }}" \
+              --notes-file "${{ steps.changelog.outputs.changelog_file }}" \
+              --verify-tag \
+              linux-dist/*.AppImage \
+              windows-dist/*.exe
+          fi
