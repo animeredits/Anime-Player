@@ -1641,6 +1641,12 @@ document.addEventListener('DOMContentLoaded', () => {
 		if (b) b.addEventListener('click', () => {
 			const statusEl = document.getElementById('aboutUpdateStatus');
 			const iconEl   = document.getElementById('aboutUpdateIcon');
+			const aboutModal = document.getElementById('aboutModal');
+
+			if (aboutModal && !aboutModal.classList.contains('show') && !ModalAnimator.isOpen(aboutModal)) {
+				toggleToolModal('aboutModal');
+			}
+
 			if (statusEl) {
 				statusEl.className = 'about-update-status about-update-status--checking';
 				statusEl.innerHTML = '<img class="svg-icon fa-spin" src="../../assets/icons/fa/circle-notch.svg" alt=""> Checking for updates…';
@@ -1651,22 +1657,19 @@ document.addEventListener('DOMContentLoaded', () => {
 			// Clear any previous pending timeout
 			if (_updateCheckTimer) { clearTimeout(_updateCheckTimer); _updateCheckTimer = null; }
 
-			// Safety net: if no IPC response within 8 s, show up-to-date (dev mode
-			// never fires update-not-available; packaged may time out on slow networks)
+			// Safety net: if no IPC response within 8 s, show timeout status instead of "up to date"
 			_updateCheckTimer = setTimeout(() => {
 				const el = document.getElementById('aboutUpdateStatus');
-				// Only act if still showing "checking" — don't override a real response
 				if (el && el.classList.contains('about-update-status--checking')) {
 					_setUpdateStatus(
-						'about-update-status--ok',
-						'<img class="svg-icon" src="../../assets/icons/fa/circle-check.svg" alt=""> You\'re up to date!'
+						'about-update-status--error',
+						'<img class="svg-icon" src="../../assets/icons/fa/triangle-exclamation.svg" alt=""> Update check timed out — try again.'
 					);
-					showStatusMessage('Anime Player is up to date');
+					showStatusMessage('Update check timed out. Please try again.', 5000);
 				}
 				_updateCheckTimer = null;
 			}, 8000);
 
-			// Use checkForUpdates (safe) — NOT startUpdateDownload (requires pending update)
 			if (window.electron && window.electron.checkForUpdates) {
 				window.electron.checkForUpdates();
 			}
@@ -8269,6 +8272,9 @@ document.addEventListener('DOMContentLoaded', () => {
 	updateDialog.init();
 
 	window.electron.onUpdateAvailable((_, info) => {
+		if (info?.version) {
+			showStatusMessage(`Update available: v${info.version} — open About to install`, 7000);
+		}
 		updateDialog.show(info?.version);
 		_setUpdateStatus(
 			'about-update-status--available',

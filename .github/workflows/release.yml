@@ -249,6 +249,5 @@ jobs:
           gh release create "${{ steps.extract_tag.outputs.version }}" \
             --title "Anime Player ${{ steps.extract_tag.outputs.version }}" \
             --notes "${{ steps.changelog.outputs.changelog }}" \
-            --clobber \
             linux-dist/*.AppImage \
             windows-dist/*.exe
