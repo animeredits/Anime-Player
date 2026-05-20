@@ -37,7 +37,7 @@ jobs:
 
       - name: Build for Linux
         env:
-          GH_TOKEN: ${{ secrets.GH_TOKEN }} 
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: npm run dist -- --linux
 
       - name: Upload Linux Build Artifacts
@@ -65,7 +65,7 @@ jobs:
 
       - name: Build for Windows
         env:
-          GH_TOKEN: ${{ secrets.GH_TOKEN }} 
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: npm run dist -- --win
 
       - name: Upload Windows Build Artifacts
@@ -112,7 +112,7 @@ jobs:
 
       - name: Build for macOS
         env:
-          GH_TOKEN: ${{ secrets.GH_TOKEN }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           # For unsigned builds (development):
           CSC_IDENTITY_AUTO_DISCOVERY: false
         run: npm run dist -- --mac
@@ -125,14 +125,14 @@ jobs:
             dist/*.dmg
             dist/*.zip
 
-  # Auto-tagging job (only on main branch pushes)
+  # Auto-tagging job (for main branch pushes and direct tag pushes)
   tag-release:
     name: Auto Tag Release
     runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main'
+    if: github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v')
     needs: [build-linux, build-windows]
     outputs:
-      tag_created: ${{ steps.create_tag.outputs.tag_created }}
+      tag_created: ${{ steps.tag_marker.outputs.tag_created }}
       version: ${{ steps.get_version.outputs.version }}
     steps:
       - name: Checkout Code
@@ -152,6 +152,17 @@ jobs:
           TAG_EXISTS=$(git ls-remote --tags origin "${{ steps.get_version.outputs.version }}" | wc -l)
           echo "tag_exists=$TAG_EXISTS" >> $GITHUB_OUTPUT
 
+      - name: Determine tag creation status
+        id: tag_marker
+        run: |
+          if [[ "${{ github.ref }}" == refs/tags/* ]]; then
+            echo "tag_created=false" >> $GITHUB_OUTPUT
+          elif [[ "${{ steps.check_tag.outputs.tag_exists }}" == '0' ]]; then
+            echo "tag_created=true" >> $GITHUB_OUTPUT
+          else
+            echo "tag_created=false" >> $GITHUB_OUTPUT
+          fi
+
       - name: Set Git User
         if: steps.check_tag.outputs.tag_exists == '0'
         run: |
@@ -164,7 +175,6 @@ jobs:
         run: |
           git tag -a "${{ steps.get_version.outputs.version }}" -m "Release ${{ steps.get_version.outputs.version }}"
           git push origin "${{ steps.get_version.outputs.version }}"
-          echo "tag_created=true" >> $GITHUB_OUTPUT
 
 # Release Job (runs on direct tag push OR after tag-release creates a tag)
   release:
@@ -234,7 +244,7 @@ jobs:
 
       - name: Upload Release Assets with Changelog
         env:
-          GH_TOKEN: ${{ secrets.GH_TOKEN }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           gh release create "${{ steps.extract_tag.outputs.version }}" \
             --title "Anime Player ${{ steps.extract_tag.outputs.version }}" \
