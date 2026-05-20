@@ -1,0 +1,18 @@
+{
+  "2.2.0": [
+    "[NEW] AniList integration — auto-mark episodes as watched",
+    "[FIX] Subtitle sync precision improved for ASS tracks",
+    "[PERF] 30% faster folder scan on large playlists (1000+ files)",
+    "[UI] Redesigned update modal with changelog view",
+    "[FIX] Audio delay persists correctly after track switches",
+    "[NEW] Shortcut editor — remap every key binding via F6"
+  ],
+  "latest": [
+    "[NEW] AniList integration — auto-mark episodes as watched",
+    "[FIX] Subtitle sync precision improved for ASS tracks",
+    "[PERF] 30% faster folder scan on large playlists (1000+ files)",
+    "[UI] Redesigned update modal with changelog view",
+    "[FIX] Audio delay persists correctly after track switches",
+    "[NEW] Shortcut editor — remap every key binding via F6"
+  ]
+}

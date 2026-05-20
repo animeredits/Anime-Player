@@ -531,7 +531,7 @@ appState.win.webContents.on('before-input-event', (event, input) => {
       isFullscreen: appState.windowState.isFullscreen
       });
       appState.win.webContents.send('initial-play-state', appState.playback.status);
-      appState.win.webContents.openDevTools();
+      // appState.win.webContents.openDevTools();
       setTimeout(() => {
       createTray();
       updateThumbarButtons();
@@ -2263,8 +2263,13 @@ function setupAutoUpdater() {
 
   autoUpdater.on('update-available', (info) => {
     // console.log('[Updater] Update available:', info.version);
-    appState.win?.webContents.send('update-available', { version: info.version });
+  appState.win?.webContents.send('update-available', {
+    version:      info.version,
+    releaseNotes: info.releaseNotes || '',   // ← GitHub release body
+    releaseDate:  info.releaseDate  || '',
+    files:        info.files        || [],   // ← includes .size for download size
   });
+});
 
   autoUpdater.on('update-not-available', () => {
     // console.log('[Updater] App is up to date');

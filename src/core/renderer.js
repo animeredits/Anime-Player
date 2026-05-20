@@ -2452,7 +2452,7 @@ openFolderButton.addEventListener("click", async () => {
 			updatePlaylistDropdown(mediaFiles);
 			// ✅  Highlight after playlist update
 			highlightCurrentVideo(mediaFiles[currentVideoIndex]);
-			showStatusMessage(`Loaded ${resolvedFiles.length} video(s) from folder`);
+			showStatusMessage(`Loaded ${folderFiles.length} video(s) from folder`);
 		}
 	} catch (error) {
 		console.error("Error opening folder:", error);
@@ -3653,21 +3653,25 @@ function updateSortUI() {
 	document.querySelectorAll('[data-sort="name"], [data-sort="date"]').forEach(el => {
 		const isActive = el.dataset.sort === sortMethod;
 		el.classList.toggle('active', isActive);
-		// Update cm-check icon (context menu)
 		const cmCheck = el.querySelector('.cm-check');
-		if (cmCheck) cmCheck.innerHTML = isActive ? '<img class="svg-icon" src="../../assets/icons/fa/check.svg" alt="">' : '';
-		// Update nav-sort-check icon (nav bar)
+		if (cmCheck) cmCheck.textContent = isActive ? '●' : '';
 		const navCheck = el.querySelector('.nav-sort-check');
-		if (navCheck) navCheck.innerHTML = isActive ? '<img class="svg-icon" src="../../assets/icons/fa/check.svg" alt="">' : '';
+		if (navCheck) navCheck.textContent = isActive ? '●' : '';
 	});
 	document.querySelectorAll('[data-sort="ascending"], [data-sort="descending"]').forEach(el => {
 		const isActive = el.dataset.sort === sortDirection;
 		el.classList.toggle('active', isActive);
 		const cmCheck = el.querySelector('.cm-check');
-		if (cmCheck) cmCheck.innerHTML = isActive ? '<img class="svg-icon" src="../../assets/icons/fa/check.svg" alt="">' : '';
+		if (cmCheck) cmCheck.textContent = isActive ? '●' : '';
 		const navCheck = el.querySelector('.nav-sort-check');
-		if (navCheck) navCheck.innerHTML = isActive ? '<img class="svg-icon" src="../../assets/icons/fa/check.svg" alt="">' : '';
+		if (navCheck) navCheck.textContent = isActive ? '●' : '';
 	});
+}
+
+if (document.readyState === 'loading') {
+	document.addEventListener('DOMContentLoaded', updateSortUI);
+} else {
+	updateSortUI();
 }
 
 // ✅ Wire up ALL sort clicks in both navbar + context menu dropdowns
@@ -4454,13 +4458,18 @@ window.addEventListener('focus', () => {
 	if (audioContext && audioContext.state === 'suspended') {
 		audioContext.resume().catch(() => {});
 	}
-	// Re-sync external FFmpeg audio if drift occurred during focus loss
+	// Re-sync external FFmpeg audio if drift occurred during focus loss.
+	// Wait 600ms first so AudioContext can fully resume before we measure drift —
+	// measuring immediately gives a false-positive large drift.
 	if (audioTrackPlayer && audioTrackPlayer.src && !video.paused && _activeAudioIndex >= 0) {
-		const expected = video.currentTime;
-		const actual = (_streamStartedAt || 0) + (audioTrackPlayer.currentTime || 0);
-		if (Math.abs(expected - actual) > DRIFT_MAX) {
-			startExternalAudio(_activeAudioIndex);
-		}
+		setTimeout(() => {
+			if (video.paused || _activeAudioIndex < 0) return; // state changed while we waited
+			const expected = video.currentTime;
+			const actual = (_streamStartedAt || 0) + (audioTrackPlayer.currentTime || 0);
+			if (Math.abs(expected - actual) > DRIFT_MAX) {
+				startExternalAudio(_activeAudioIndex);
+			}
+		}, 600);
 	}
 });
 window.addEventListener('blur', () => {
@@ -5032,9 +5041,11 @@ function resetZoom() {
 	scale = 1;
 	panX = 0;
 	panY = 0;
+	currentZoomIndex = 0;
 
 	// Reset the CSS transform for zoom, pan, and maintain rotation
 	applyTransformations();
+	updateZoomMenuUI();
 }
 
 // Toggle shuffle mode
@@ -6191,6 +6202,7 @@ document.addEventListener("keydown", (event) => {
 		video.style.transform = `scale(${scale})`;
 		video.style.transformOrigin = "center center"; // Zoom from the center
 
+		updateZoomMenuUI();
 		const zoomPercentage = Math.round(scale * 100);
 		showStatusMessage(`Zoom: ${zoomPercentage}%`);
 	}
@@ -6361,6 +6373,16 @@ if (event.key.toLowerCase() === 't' && !event.ctrlKey) {
 
 });
 
+function updateZoomMenuUI() {
+	zoomOptions.forEach(option => {
+		const lvl = parseInt(option.dataset.zoomLevel, 10);
+		const isActive = lvl === currentZoomIndex;
+		option.classList.toggle('active', isActive);
+		const icon = option.querySelector('.nav-row-icon, .cm-icon');
+		if (icon && !icon.querySelector('img')) icon.textContent = isActive ? '●' : '';
+	});
+}
+
 // Function to handle zoom menu clicks (fix: use dataset.zoomLevel, not undefined `index`)
 zoomOptions.forEach((option) => {
 	option.addEventListener("click", () => {
@@ -6368,6 +6390,8 @@ zoomOptions.forEach((option) => {
 		// Last zoom level (index 5) is the reset entry
 		if (lvl === 5 || isNaN(lvl)) {
 			resetZoom();
+			currentZoomIndex = 0;
+			updateZoomMenuUI();
 			showStatusMessage("Zoom: 100%");
 			return;
 		}
@@ -6378,11 +6402,16 @@ zoomOptions.forEach((option) => {
 		applyTransformations(); // keeps rotation + pan intact
 		video.style.transformOrigin = "center center"; // Zoom from the center
 
+		updateZoomMenuUI();
+
 		// Display status message
 		const zoomPercentage = Math.round(scale * 100);
 		showStatusMessage(`Zoom: ${zoomPercentage}%`);
 	});
 });
+
+// Initialize zoom menu active state on startup
+updateZoomMenuUI();
 
 // ═══════════════════════════════════════════════════════════════════════════
 // ASPECT RATIO CONTROLS
@@ -6422,6 +6451,7 @@ function loadSavedAspectRatio() {
 	const savedRatio = localStorage.getItem('videoAspectRatio') || 'original';
 	applyAspectRatio(savedRatio);
 	updateAspectRatioUI(savedRatio);
+	updateAspectRatioUICM(savedRatio);
 	currentAspectRatioIndex = aspectRatioLevels.indexOf(savedRatio);
 }
 
@@ -6432,7 +6462,7 @@ function updateAspectRatioUI(activeRatio) {
 		option.classList.remove('active');
 		const icon = option.querySelector('.nav-aspect-check');
 		if (icon) {
-			icon.innerHTML = '';
+			icon.textContent = '';
 		}
 	});
 	
@@ -6441,7 +6471,7 @@ function updateAspectRatioUI(activeRatio) {
 		activeOption.classList.add('active');
 		const icon = activeOption.querySelector('.nav-aspect-check');
 		if (icon) {
-			icon.innerHTML = '<img class="svg-icon" src="../../assets/icons/fa/check.svg" alt="">';
+			icon.textContent = '●';
 		}
 	}
 }
@@ -6453,7 +6483,7 @@ function updateAspectRatioUICM(activeRatio) {
 		option.classList.remove('active');
 		const icon = option.querySelector('.cm-aspect-check');
 		if (icon) {
-			icon.innerHTML = '';
+			icon.textContent = '';
 		}
 	});
 	
@@ -6462,7 +6492,7 @@ function updateAspectRatioUICM(activeRatio) {
 		activeOption.classList.add('active');
 		const icon = activeOption.querySelector('.cm-aspect-check');
 		if (icon) {
-			icon.innerHTML = '<img class="svg-icon" src="../../assets/icons/fa/check.svg" alt="">';
+			icon.textContent = '●';
 		}
 	}
 }
@@ -6590,7 +6620,7 @@ function getAudioTrackPlayer() {
 			trackSource.connect(gainNode);
 			audioTrackPlayer.volume = 1.0; // gain is now controlled by gainNode
 			audioTrackPlayer._webAudioConnected = true;
-			console.log('[Audio] audioTrackPlayer connected to Web Audio API (gainNode)');
+			// console.log('[Audio] audioTrackPlayer connected to Web Audio API (gainNode)');
 		} catch (e) {
 			console.warn('[Audio] Could not connect audioTrackPlayer to Web Audio API:', e);
 		}
@@ -6652,11 +6682,18 @@ async function populateAudioTracks() {
 				var item = document.createElement("a");
 				item.href = "javascript:void(0)";
 				item.className = "track-item" + (i === autoIndex ? " selected-track" : "");
+				var icon = document.createElement("span");
+				icon.className = "cm-icon";
+				icon.textContent = i === autoIndex ? '●' : '';
+				var text = document.createElement("span");
+				text.className = "cm-text";
 				var codec = track.codec.toUpperCase();
 				var ch = track.channelLayout || (track.channels ? track.channels + 'ch' : '');
 				var lang = (track.lang && track.lang !== 'track' + (i + 1)) ? ' - ' + track.lang : '';
 				var title = (track.title && track.title !== track.codec) ? ' [' + track.title + ']' : '';
-				item.textContent = '[' + codec + (ch ? ' ' + ch : '') + ']' + lang + title;
+				text.textContent = '[' + codec + (ch ? ' ' + ch : '') + ']' + lang + title;
+				item.appendChild(icon);
+				item.appendChild(text);
 				item.addEventListener('click', function() {
 					switchAudioTrackByIndex(i);
 				});
@@ -6848,7 +6885,7 @@ function _startDriftTimer() {
       console.warn(`[Audio] Drift ${drift.toFixed(3)}s — resyncing`);
       startExternalAudio(_activeAudioIndex);
     }
-  }, 1500); // 1.5s — slightly faster than before to catch stalls quicker
+  }, 3000); // 3s — less aggressive polling; rate-limiter in startExternalAudio prevents storm calls
 }
 
 function _stopDriftTimer() {
@@ -6870,9 +6907,15 @@ function applyAudioTrack(index) {
 	video.muted = true;
 
 	// Update UI highlight
-	document.querySelectorAll('.audio-track-list .track-item').forEach((el, i) => {
-		el.classList.toggle('selected-track', i === index);
-	});
+// Iterate per-list so index stays correct inside each list
+document.querySelectorAll('.audio-track-list').forEach(list => {
+    list.querySelectorAll('.track-item').forEach((el, i) => {
+        const icon = el.querySelector('.cm-icon');
+        const isActive = i === index;
+        el.classList.toggle('selected-track', isActive);
+        if (icon) icon.textContent = isActive ? '●' : '';
+    });
+});
 
 	// Start/switch the ffmpeg audio stream for this track
 	startExternalAudio(index);
@@ -7191,11 +7234,16 @@ async function populateSubtitleTracks() {
 		offBtn.href = 'javascript:void(0)';
 		offBtn.className = 'subtitle-item active';
 		offBtn.dataset.index = '-1';
-		offBtn.textContent = 'Off';
+		const offIcon = document.createElement('span');
+		offIcon.className = 'cm-icon';
+		offIcon.textContent = '●';
+		const offText = document.createElement('span');
+		offText.className = 'cm-text';
+		offText.textContent = 'Off';
+		offBtn.append(offIcon, offText);
 		offBtn.addEventListener('click', () => switchSubtitleTrack(-1));
 		list.appendChild(offBtn);
 	});
-
 	let result;
 	try {
 		result = await window.electron.invoke('get-subtitle-tracks', filePath);
@@ -7239,7 +7287,13 @@ async function populateSubtitleTracks() {
 			a.className = 'subtitle-item';
 			a.dataset.index = i;
 			const badge = track.forced ? ' ⚡' : '';
-			a.textContent = `${track.title} (${track.lang})${badge}`;
+			const icon = document.createElement('span');
+			icon.className = 'cm-icon';
+			icon.textContent = '';
+			const text = document.createElement('span');
+			text.className = 'cm-text';
+			text.textContent = `${track.title} (${track.lang})${badge}`;
+			a.append(icon, text);
 			a.addEventListener('click', () => switchSubtitleTrack(i));
 			list.appendChild(a);
 		});
@@ -7757,10 +7811,12 @@ function switchSubtitleTrack(index) {
 	try { localStorage.setItem(_subKey, index); } catch {}
 
 	// UI highlight
-	document.querySelectorAll('.subtitle-item').forEach(el =>
-		el.classList.toggle('active', parseInt(el.dataset.index) === index)
-	);
-
+	document.querySelectorAll('.subtitle-item').forEach(el => {
+		const isActive = parseInt(el.dataset.index, 10) === index;
+		el.classList.toggle('active', isActive);
+		const icon = el.querySelector('.cm-icon');
+		if (icon) icon.textContent = isActive ? '●' : '';
+	});
 	if (index === -1) {
 		showStatusMessage('Subtitles Off');
 		return;
@@ -7978,40 +8034,230 @@ window.electron.openFolderFromContext(async (folderPath) => {
 
 // Update Dialog Functions
 const updateDialog = {
-	_snoozeTimer: null,
+  _snoozeTimer: null,
+  _currentVersion: null,
+ 
+  init() {
+    this.dialog       = document.getElementById('updateDialog');
+    this.laterBtn     = document.getElementById('updateLaterBtn');
+    this.installBtn   = document.getElementById('updateNowBtn');
+    this.verFrom      = document.getElementById('udVerFrom');
+    this.verTo        = document.getElementById('udVerTo');
+    this.badge        = document.getElementById('udBadge');
+    this.changelogList = document.getElementById('udChangelogList');
+    this.sizeLabel    = document.getElementById('udSizeLabel');
+ 
+    this.installBtn?.addEventListener('click', () => {
+      window.electron.startUpdateDownload();
+      this.hide();
+    });
+ 
+    this.laterBtn?.addEventListener('click', () => {
+      this.hide();
+      if (this._snoozeTimer) clearTimeout(this._snoozeTimer);
+      // Remind again in 10 minutes
+      this._snoozeTimer = setTimeout(() => this.show(), 10 * 60 * 1000);
+    });
+ 
+    // Close on backdrop click
+    this.dialog?.addEventListener('click', (e) => {
+      if (e.target === this.dialog) this.hide();
+    });
+  },
+ 
+_parseChangelog(notes) {
+  // First try to use release notes from GitHub
+  if (notes && notes.length > 10) {
+    const plainText = notes
+      .replace(/<br\s*\/?>/gi, '\n')
+      .replace(/<[^>]+>/g, '')
+      .replace(/&amp;/g, '&')
+      .replace(/&lt;/g, '<')
+      .replace(/&gt;/g, '>')
+      .replace(/&nbsp;/g, ' ');
+    
+    const TAG_MAP = {
+      new:   { label: 'NEW',   cls: 'ud-tag--new' },
+      fix:   { label: 'FIX',   cls: 'ud-tag--fix' },
+      perf:  { label: 'PERF',  cls: 'ud-tag--perf' },
+      ui:    { label: 'UI',    cls: 'ud-tag--ui' },
+      break: { label: 'BREAK', cls: 'ud-tag--break' },
+    };
+    
+    const entries = [];
+    const lines = plainText.split('\n');
+    
+    for (const rawLine of lines) {
+      const line = rawLine.replace(/^[-*•]\s*/, '').trim();
+      if (!line || line.startsWith('#')) continue;
+      
+      const tagMatch = line.match(/^\[([A-Z]+)\]\s*(.*)/i);
+      if (tagMatch) {
+        const key = tagMatch[1].toLowerCase();
+        const text = tagMatch[2].trim();
+        if (!text) continue;
+        const tagDef = TAG_MAP[key] || { label: tagMatch[1].toUpperCase(), cls: 'ud-tag--other' };
+        entries.push({ tag: tagDef.label, cls: tagDef.cls, text });
+      } else if (line.length > 3) {
+        entries.push({ tag: '·', cls: 'ud-tag--other', text: line });
+      }
+    }
+    
+    if (entries.length) return entries.slice(0, 8);
+  }
+  
+  // Fallback: load from local changelog.json
+  try {
+    // Fetch from bundled JSON
+    return fetch('../../core/changelog.json')
+      .then(res => res.json())
+      .then(data => {
+        const entries = [];
+        const changelog = data.latest || [];
+        for (const line of changelog) {
+          const tagMatch = line.match(/^\[([A-Z]+)\]\s*(.*)/);
+          if (tagMatch) {
+            const tag = tagMatch[1];
+            const text = tagMatch[2];
+            let cls = 'ud-tag--other';
+            if (tag === 'NEW') cls = 'ud-tag--new';
+            else if (tag === 'FIX') cls = 'ud-tag--fix';
+            else if (tag === 'PERF') cls = 'ud-tag--perf';
+            else if (tag === 'UI') cls = 'ud-tag--ui';
+            else if (tag === 'BREAK') cls = 'ud-tag--break';
+            entries.push({ tag, cls, text });
+          } else if (line.trim()) {
+            entries.push({ tag: '·', cls: 'ud-tag--other', text: line });
+          }
+        }
+        return entries;
+      })
+      .catch(() => {
+        // Ultimate fallback
+        return [
+          { tag: 'NEW', cls: 'ud-tag--new', text: 'Latest features and improvements' },
+          { tag: 'FIX', cls: 'ud-tag--fix', text: 'Bug fixes and stability updates' },
+          { tag: 'PERF', cls: 'ud-tag--perf', text: 'Performance optimizations' },
+        ];
+      });
+  } catch (e) {
+    return [
+      { tag: 'NEW', cls: 'ud-tag--new', text: 'Latest features and improvements' },
+      { tag: 'FIX', cls: 'ud-tag--fix', text: 'Bug fixes and stability updates' },
+    ];
+  }
+},
 
-	init: function() {
-		this.dialog    = document.getElementById('updateDialog');
-		this.versionEl = document.getElementById('updateVersionLabel');
-		this.updateNowBtn  = document.getElementById('updateNowBtn');
-		this.updateLaterBtn = document.getElementById('updateLaterBtn');
-
-		this.updateNowBtn.addEventListener('click', () => {
-			window.electron.startUpdateDownload();
-			this.hide();
-		});
-
-		// "Later" snoozes for 10 minutes then reminds again
-		this.updateLaterBtn.addEventListener('click', () => {
-			this.hide();
-			if (this._snoozeTimer) clearTimeout(this._snoozeTimer);
-			this._snoozeTimer = setTimeout(() => this.show(), 10 * 60 * 1000);
-		});
-	},
-
-	show: function(version) {
-		if (version && this.versionEl) {
-			this.versionEl.textContent = `v${version}`;
-			this.versionEl.style.display = 'inline';
-		}
-		this.dialog.classList.add('active');
-		void this.dialog.offsetWidth; // force reflow
-	},
-
-	hide: function() {
-		this.dialog.classList.remove('active');
-	}
+async _renderChangelog(entries) {
+  if (!this.changelogList) return;
+  
+  // If entries is a Promise (from fetch), resolve it first
+  let resolvedEntries = entries;
+  if (entries && typeof entries.then === 'function') {
+    resolvedEntries = await entries;
+  }
+  
+  if (!resolvedEntries || resolvedEntries.length === 0) {
+    this.changelogList.innerHTML =
+      '<div class="ud-changelog-empty">No changelog available for this release.</div>';
+    return;
+  }
+  
+  this.changelogList.innerHTML = '';
+  resolvedEntries.forEach(({ tag, cls, text }, i) => {
+    const row = document.createElement('div');
+    row.className = 'ud-entry';
+    row.style.animationDelay = `${0.04 + i * 0.05}s`;
+    
+    const pill = document.createElement('span');
+    pill.className = `ud-tag ${cls}`;
+    pill.textContent = tag;
+    
+    const label = document.createElement('span');
+    label.textContent = text;
+    
+    row.append(pill, label);
+    this.changelogList.appendChild(row);
+  });
+},
+  // ── Detect stability tier from version string ────────────────────────────
+  // e.g. "2.2.0-beta.1" → beta, "2.2.0-rc.1" → rc, "2.2.0" → stable
+  _detectStability(version) {
+    if (!version) return 'STABLE';
+    const v = version.toLowerCase();
+    if (v.includes('beta'))  return 'BETA';
+    if (v.includes('rc'))    return 'RC';
+    if (v.includes('alpha')) return 'ALPHA';
+    if (v.includes('nightly')) return 'NIGHTLY';
+    return 'STABLE';
+  },
+ 
+  // ── Show the dialog ──────────────────────────────────────────────────────
+  async show(info = {}) {
+    if (!this.dialog) return;
+ 
+    const newVersion = info.version || '—';
+    this._currentVersion = newVersion;
+ 
+    // Populate version labels
+    if (this.verTo) this.verTo.textContent = `v${newVersion}`;
+ 
+    // Current version — try to get from electron, fall back to '?'
+    try {
+      const appInfo = await window.electron.getAppInfo?.();
+      if (appInfo?.version && this.verFrom) {
+        this.verFrom.textContent = `v${appInfo.version}`;
+      }
+    } catch {
+      if (this.verFrom) this.verFrom.textContent = '...';
+    }
+ 
+    // Stability badge
+    const stability = this._detectStability(newVersion);
+    if (this.badge) {
+      this.badge.textContent = stability;
+      this.badge.className = 'ud-badge';
+      if (stability === 'BETA')   this.badge.classList.add('ud-badge--beta');
+      if (stability === 'RC')     this.badge.classList.add('ud-badge--rc');
+    }
+ 
+    // Download size — electron-updater provides info.files[].size in bytes
+    const totalBytes = info.files?.reduce((sum, f) => sum + (f.size || 0), 0) ?? 0;
+    if (this.sizeLabel) {
+      if (totalBytes > 0) {
+        const mb = (totalBytes / (1024 * 1024)).toFixed(0);
+        this.sizeLabel.textContent = `~${mb} MB download`;
+      } else {
+        this.sizeLabel.textContent = 'Download size unknown';
+      }
+    }
+ 
+  // Show skeletons immediately
+  if (this.changelogList) {
+    this.changelogList.innerHTML = `
+      <div class="ud-changelog-loading">
+        <div class="ud-skeleton"></div>
+        <div class="ud-skeleton ud-skeleton--short"></div>
+        <div class="ud-skeleton"></div>
+      </div>`;
+  }
+ 
+    // Parse release notes (provided by electron-updater from GitHub release body)
+    const notes = info.releaseNotes || info.releaseNote || '';
+    const entries = this._parseChangelog(notes);
+ 
+    // Brief delay so skeletons are visible (feels like it fetched something)
+    setTimeout(() => this._renderChangelog(entries), 350);
+ 
+    // Show the dialog
+    this.dialog.classList.add('active');
+  },
+ 
+  hide() {
+    this.dialog?.classList.remove('active');
+  },
 };
+ 
 
 // Initialize when DOM is ready
 document.addEventListener('DOMContentLoaded', () => {
@@ -8376,10 +8622,10 @@ function _updateEffectUI(activeKey) {
 		el.classList.toggle('effect-active', isActive);
 		// Update cm-check icon (context menu)
 		const cmCheck = el.querySelector('.cm-check');
-		if (cmCheck) cmCheck.innerHTML = isActive ? '<img class="svg-icon" src="../../assets/icons/fa/check.svg" alt="">' : '';
+		if (cmCheck) cmCheck.textContent = isActive ? '●' : '';
 		// Update nav-effect-check icon (nav bar)
 		const navCheck = el.querySelector('.nav-effect-check');
-		if (navCheck) navCheck.innerHTML = isActive ? '<img class="svg-icon" src="../../assets/icons/fa/check.svg" alt="">' : '';
+		if (navCheck) navCheck.textContent = isActive ? '●' : '';
 	});
 }
 
@@ -8401,14 +8647,20 @@ Object.entries(_effectIdMap).forEach(([id, key]) => {
 
 // Restore saved audio effect on startup — silently (no status message on every launch)
 // The effect is saved to localStorage whenever the user manually picks one.
-(function restoreAudioEffectOnStartup() {
+function restoreAudioEffectOnStartup() {
 	const saved = localStorage.getItem('activeAudioEffect') || 'auto';
 	// Suppress the status message only for this one startup call
 	window._suppressNextStatusMessage = true;
 	applyAudioEffect(saved);
 	// Flag is cleared inside showStatusMessage; reset here too as safety net
 	window._suppressNextStatusMessage = false;
-})();
+}
+
+if (document.readyState === 'loading') {
+	document.addEventListener('DOMContentLoaded', restoreAudioEffectOnStartup);
+} else {
+	restoreAudioEffectOnStartup();
+}
 
 
 
@@ -8509,12 +8761,30 @@ const SPEED_STEPS = {
 	'slower-fine': -0.1,
 	'slower': -0.5,
 };
+let currentSpeedOptionKey = 'normal';
+
+function updateSpeedUI() {
+	document.querySelectorAll('.speed-option').forEach(el => {
+		const isActive = el.dataset.speed === currentSpeedOptionKey;
+		el.classList.toggle('active', isActive);
+		el.classList.toggle('speed-active', isActive);
+
+		// Use dedicated check span (nav-speed-check / cm-speed-check) —
+		// always reserves fixed width so text never shifts.
+		const checkEl = el.querySelector('.nav-speed-check, .cm-speed-check');
+		if (checkEl) {
+			checkEl.textContent = isActive ? '●' : '';
+		}
+	});
+}
 
 function applySpeedOption(key) {
 	const step = SPEED_STEPS[key];
 	video.playbackRate = (step === null) ?
 		1.0 :
 		Math.max(0.1, Math.min(4.0, Math.round((video.playbackRate + step) * 100) / 100));
+	currentSpeedOptionKey = key;
+	updateSpeedUI();
 	const ap = document.getElementById('audioTrackPlayer');
 	if (ap) ap.playbackRate = video.playbackRate;
 	if (typeof showStatusMessage === 'function') showStatusMessage(`Speed: ${video.playbackRate.toFixed(2)}×`);
@@ -8528,6 +8798,8 @@ document.querySelectorAll('.speed-option').forEach(el => {
 		if (cm) cm.style.display = 'none';
 	});
 });
+
+updateSpeedUI();
 // ══ DRAGGABLE TOOL MODALS ══════════════════════════════════════════════════
 // Allows Video Effects, Track Sync and About modals to be dragged by header.
 (function initDraggableModals() {

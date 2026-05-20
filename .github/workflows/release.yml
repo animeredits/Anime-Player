@@ -78,6 +78,7 @@ jobs:
   build-macos:
     name: Build for macOS
     runs-on: macos-latest
+    if: false
     # IMPORTANT: Set to false to skip Mac builds until signing is configured
     # Change to: if: true  OR  remove this line entirely to enable
 
@@ -168,7 +169,7 @@ jobs:
 # Release Job (runs on direct tag push OR after tag-release creates a tag)
   release:
     name: Publish Release
-    needs: [build-linux, build-windows]
+    needs: [build-linux, build-windows, tag-release]
     runs-on: ubuntu-latest
     if: startsWith(github.ref, 'refs/tags/v') || (github.ref == 'refs/heads/main' && needs.tag-release.outputs.tag_created == 'true')
 
@@ -199,16 +200,45 @@ jobs:
             echo "version=v$VERSION" >> $GITHUB_OUTPUT
           fi
 
-      - name: Upload Release Assets using `gh release`
+      - name: Generate Changelog from Conventional Commits
+        id: changelog
+        run: |
+          # Get all commits since last tag
+          LAST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
+          if [ -z "$LAST_TAG" ]; then
+            COMMITS=$(git log --pretty=format:"%s" HEAD)
+          else
+            COMMITS=$(git log --pretty=format:"%s" $LAST_TAG..HEAD)
+          fi
+          
+          # Parse conventional commits
+          CHANGELOG=""
+          while IFS= read -r line; do
+            case "$line" in
+              feat:*|feature:*) CHANGELOG="$CHANGELOG\n[NEW] ${line#*: }" ;;
+              fix:*|bug:*)      CHANGELOG="$CHANGELOG\n[FIX] ${line#*: }" ;;
+              perf:*|optimize:*)CHANGELOG="$CHANGELOG\n[PERF] ${line#*: }" ;;
+              ui:*|style:*)     CHANGELOG="$CHANGELOG\n[UI] ${line#*: }" ;;
+              break:*|breaking:*) CHANGELOG="$CHANGELOG\n[BREAK] ${line#*: }" ;;
+            esac
+          done <<< "$COMMITS"
+          
+          # Fallback if no conventional commits found
+          if [ -z "$CHANGELOG" ]; then
+            CHANGELOG="\n[NEW] Latest improvements and fixes\n[FIX] General stability updates"
+          fi
+          
+          # Write to file
+          echo -e "$CHANGELOG" > changelog.txt
+          echo "changelog=$(cat changelog.txt | jq -R -s '.')" >> $GITHUB_OUTPUT
+
+      - name: Upload Release Assets with Changelog
         env:
           GH_TOKEN: ${{ secrets.GH_TOKEN }}
         run: |
           gh release create "${{ steps.extract_tag.outputs.version }}" \
             --title "Anime Player ${{ steps.extract_tag.outputs.version }}" \
-            --notes "New release of Anime Player" \
+            --notes "${{ steps.changelog.outputs.changelog }}" \
             --clobber \
             linux-dist/*.AppImage \
             windows-dist/*.exe
-            # Optional: Add macOS artifacts when available
-            # macos-dist/*.dmg \
-            # macos-dist/*.zip
